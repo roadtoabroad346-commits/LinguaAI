@@ -1,0 +1,2601 @@
+LINGUAAI
+FULL OPENCODE BUILD PROMPT
+From zero to production-ready web application
+AI-powered personalized English learning platform
+Purpose: copy/paste the master prompt into OpenCode, then run the project in separate, focused sessions by phase.
+
+Document scope	Included
+Product	Full LinguaAI web application
+Core stack	Next.js App Router + TypeScript + Tailwind + shadcn/ui + Supabase
+AI provider	Gemini through a provider adapter; user supplies API key/model configuration
+Data	Supabase Auth + Postgres + Storage
+Modes	Guided Path + Free Learning
+Skills	Vocabulary, Grammar, Reading, Listening, Speaking, Writing, Spelling, Read Aloud
+Systems	Smart Path, Personal Dictionary, XP, streaks, Daily Challenge, progress, analytics
+Workflow	10 development phases + session handoff protocol
+Optimization	Token-efficient OpenCode workflow, small-context sessions, incremental testing
+
+
+QUICK START — HOW TO USE THIS DOCUMENT
+This document is written as a build specification and a set of copy-paste prompts for OpenCode. Do not paste the entire document into every session. Use the Global Master Prompt once when creating the project, then start each new OpenCode session with the relevant phase prompt. Each session must read the persistent project documents and inspect only the files needed for that phase.
+Create a new empty repository/folder for LinguaAI.
+Start OpenCode in that repository.
+Paste the Global Master Prompt from Part A.
+Run Phase 0 only. Do not start later phases in the same session unless Phase 0 is very small and fully verified.
+At the end of every phase, require the agent to write/update the handoff file docs/DEVELOPMENT_STATUS.md.
+Start the next phase in a fresh session. Give only that phase prompt plus the short status file.
+After each phase, run the requested validation. Never accumulate many unverified changes.
+Only put real Gemini credentials into environment variables; never hard-code keys.
+Important: The goal is a real, runnable, maintainable product. Do not generate a fake UI-only demo with dead buttons. Every visible feature must either work or be explicitly marked as unavailable in the current phase.
+TABLE OF CONTENTS
+A. Global Master Prompt for OpenCode
+B. Product Requirements and Feature Map
+C. UX/UI Design System
+D. Application Routes and Screen Specifications
+E. Functional Requirements by Module
+F. AI/Gemini Architecture
+G. Supabase Database and Security
+H. Smart Path and Recommendation Logic
+I. Spaced Review and Vocabulary Mastery
+J. XP, Streak, Challenges and Progress
+K. Content and Seed Data Strategy
+L. Testing, Quality Assurance and Security
+M. Performance and Token/Credit Optimization
+N. Development Phases and Separate Session Prompts
+O. Final Acceptance Checklist
+P. Emergency Debugging / Recovery Prompt
+A. GLOBAL MASTER PROMPT FOR OPENCODE
+Copy the following block into the first OpenCode session. The agent should save a short summary of it in docs/PROJECT_CONTEXT.md and treat this as the permanent product contract.
+You are the lead full-stack engineer and product engineer for a project called LINGUAAI.
+
+PRODUCT:
+LinguaAI is a modern, responsive, AI-powered English-learning web application for secondary-school learners and independent learners. It combines a Duolingo-like guided path with a free-learning mode, a personal dictionary, vocabulary/grammar practice, reading, listening, speaking, writing, spelling, read-aloud, XP, streaks, daily challenges, progress analytics, and an AI teacher.
+
+PRIMARY GOAL:
+Build a real application from zero to a production-ready prototype. Do not build a static mockup. Routes, buttons, forms, data persistence, authentication, validation, empty states, loading states, error states, and core interactions must work.
+
+TECH STACK:
+- Next.js App Router
+- TypeScript, strict mode
+- Tailwind CSS
+- shadcn/ui or equivalent accessible component primitives
+- Supabase Auth, Postgres, Storage, Row Level Security
+- Gemini API through a server-side provider adapter
+- Use environment variables for secrets
+- Use a typed validation layer such as Zod
+- Use a practical testing setup appropriate to the repository
+- Keep dependencies minimal
+
+GEMINI:
+Gemini is the main AI provider. The developer/user will provide the API key and model identifiers.
+Create one provider abstraction so provider details are isolated:
+lib/ai/provider.ts
+lib/ai/gemini.ts
+lib/ai/prompts/*
+lib/ai/schemas/*
+Never expose Gemini API keys to the browser.
+Use Gemini for:
+1. text generation / exercise generation
+2. writing feedback and corrections
+3. speaking feedback when supported by the chosen audio workflow
+4. explanation and recommendation generation
+5. TTS when configured and supported
+6. optional content generation tools
+Use structured JSON outputs validated with schemas whenever possible.
+Provide graceful fallback/error messages when the API is unavailable.
+
+CORE PRINCIPLES:
+1. Build incrementally.
+2. Never invent API keys, database credentials, model IDs, or production URLs.
+3. Do not hard-code secrets.
+4. Do not duplicate business logic across client components.
+5. Prefer server-side actions/route handlers for privileged operations.
+6. Keep UI responsive on mobile, tablet and desktop.
+7. Make accessibility a first-class requirement.
+8. Every feature must have loading, error, empty and success states.
+9. Do not create dead buttons.
+10. Do not over-engineer. Prefer the simplest reliable implementation.
+11. Avoid unnecessary packages.
+12. Do not read node_modules, build artifacts, .next, lockfiles or generated files unless needed.
+13. Inspect only the files relevant to the current task.
+14. Before changing code, explain the plan in 3–7 concise bullets.
+15. After changing code, run focused checks and summarize only what changed and what remains.
+16. If a requirement conflicts with the current architecture, preserve the product goal and choose the simplest maintainable solution.
+17. Never silently remove an existing working feature to implement a new one.
+18. Keep reusable data types in shared modules.
+19. Use realistic seed/demo content, but clearly separate seed content from user-generated content.
+20. Never claim an AI score is equivalent to an official CEFR/IELTS score unless explicitly defined as an informal estimate.
+
+TOKEN-EFFICIENT WORKFLOW:
+- At session start: read only docs/PROJECT_CONTEXT.md and docs/DEVELOPMENT_STATUS.md, then inspect targeted source files.
+- Do not restate the whole project spec.
+- Do not print huge files.
+- Use targeted search (rg/grep) before opening files.
+- Prefer small diffs.
+- Never rewrite an entire file when a focused patch is enough.
+- Reuse existing components.
+- Do not add a library for a problem already solved by the stack.
+- Keep plans short.
+- Ask a question only when a decision blocks progress; otherwise make a reasonable documented assumption.
+- Never spend tokens narrating every trivial action.
+- At the end, write a compact handoff summary with files changed, tests run, known issues, and next step.
+- Each phase is a separate session whenever practical.
+
+REASONING/VERIFICATION:
+Think through dependencies before coding. Check edge cases. Verify assumptions against the repository and installed libraries. Prefer evidence from the code over guesses. After implementation, test the changed behavior. When a bug is found, reproduce it, identify the smallest root cause, patch it, then retest. Do not randomly change multiple unrelated files.
+
+PROJECT DOCUMENTATION:
+Maintain:
+docs/PROJECT_CONTEXT.md
+docs/DEVELOPMENT_STATUS.md
+docs/ARCHITECTURE.md
+docs/DATABASE.md
+docs/AI_ARCHITECTURE.md
+docs/UI_SPEC.md
+docs/QA_CHECKLIST.md
+docs/SECURITY.md
+
+HARD CONSTRAINTS:
+- Authenticated user data must be isolated by user_id.
+- Supabase RLS must protect user-owned rows.
+- Service role keys must never be exposed to the client.
+- AI requests must be rate-limited or otherwise guarded against accidental abuse.
+- File uploads must have type/size validation.
+- User-generated text/audio must not be stored forever without a clear product reason.
+- Do not log secrets or full private user content unnecessarily.
+- Use accessible labels for inputs and controls.
+- Avoid unsafe HTML rendering. Sanitize or render as structured text.
+- Validate all server inputs.
+- Handle AI failures and malformed outputs.
+- Prefer idempotent server operations where possible.
+
+DEFINITION OF DONE FOR EACH FEATURE:
+- TypeScript compiles.
+- Lint/format checks pass.
+- Relevant unit/integration test passes where practical.
+- UI works on mobile and desktop.
+- Loading/error/empty states exist.
+- Data persists correctly when the feature requires persistence.
+- Auth/RLS is respected.
+- No secrets are exposed.
+- Handoff status is updated.
+
+DO NOT:
+- fabricate test results
+- fabricate AI responses as if they came from Gemini
+- hard-code API keys
+- use client-side service-role access
+- introduce fake auth
+- make the dashboard show impossible statistics
+- call the AI on every keystroke
+- regenerate audio unnecessarily
+- store large AI outputs if only a small structured result is needed
+B. PRODUCT REQUIREMENTS AND FEATURE MAP
+B1. User roles
+Role	Capabilities
+Student	Learn, practice, save words, complete tests, track progress, use AI feedback.
+Admin/Content Manager (optional but recommended)	Manage topics, lessons, vocabulary, exercises, listening/reading content, published/unpublished state.
+Teacher (future-ready)	View assigned students and aggregated progress; no access to private AI prompts or unrelated students.
+
+B2. Authentication and onboarding
+Email/password sign-up and login.
+Google OAuth.
+Password reset.
+Email verification state handling if enabled.
+Logout.
+Protected routes.
+Profile creation after first login.
+Initial onboarding questions: current goal, daily target, preferred mode, optional exam goal.
+Placement test required before Guided Path begins.
+B3. Learning modes
+Guided Path	Free Learning
+Recommended next lesson.	User chooses module.
+Daily goal.	User chooses level/topic where available.
+Adaptive review.	Direct access to Vocabulary, Grammar, Reading, Listening, Speaking, Writing.
+AI recommendations.	User can still see personalized suggestions.
+
+B4. Global navigation
+Home
+Learn / Smart Path
+Dictionary
+Practice
+Progress
+Profile
+Optional Admin
+B5. Cross-cutting behavior
+Persist completion instantly or with reliable optimistic updates where safe.
+Show confirmation for destructive actions.
+Autosave writing drafts locally where appropriate; sync on explicit save/submit.
+Keyboard navigation for desktop.
+Accessible focus states.
+Responsive layout; mobile-first.
+Theme support can be added, but default theme is clean/light academic.
+C. UX/UI DESIGN SYSTEM
+Visual direction: clean educational product, modern but not childish. Prioritize clarity, trust, spacing, readable typography and visible progress. Use a consistent LinguaAI brand.
+Area	Guideline
+Brand	LinguaAI wordmark + subtle AI sparkle/brain/learning motif.
+Colors	Neutral/light base with a strong primary accent, plus semantic success/warning/error states. Keep contrast accessible.
+Cards	Rounded, lightly elevated, consistent padding.
+Typography	High readability; clear hierarchy; avoid decorative fonts.
+Buttons	Primary/secondary/ghost/destructive variants with clear states.
+Forms	Labels, helper/error text, accessible focus state.
+Charts	Simple progress charts; do not overload dashboard.
+Animations	Short, purposeful; respect reduced-motion preferences.
+Mobile	Bottom navigation or compact navigation; touch targets large enough.
+Empty states	Explain what to do next, not just “No data”.
+
+C1. Core reusable components
+AppShell
+TopBar
+Sidebar/BottomNav
+ProgressRing
+XPBadge
+StreakBadge
+SkillCard
+RecommendationCard
+LessonCard
+WordCard
+AudioButton
+TranscriptToggle
+Flashcard
+QuestionCard
+AnswerChoice
+ResultSummary
+FeedbackPanel
+WritingEditor
+SpeakingRecorder
+Timer
+ReviewBadge
+DifficultyBadge
+SkeletonLoader
+ErrorState
+EmptyState
+ConfirmDialog
+D. APPLICATION ROUTES AND SCREEN SPECIFICATIONS
+Route	Screen	Core requirements
+/	Landing page	Public product explanation, CTA to sign in, core benefits, privacy note.
+/login	Login	Email/password + Google, validation, error states.
+/register	Register	Email/password + Google; password requirements.
+/forgot-password	Password reset	Request reset email.
+/onboarding	Onboarding	Goal, daily time, mode, interests.
+/placement-test	Placement Test	15–20 questions, progress, submit, result.
+/dashboard	Dashboard	Streak, XP, daily goal, Continue Learning, Word of Day, AI recommendation.
+/learn	Smart Path	Today, upcoming, topic progress, review queue.
+/dictionary	Personal Dictionary	Search/filter/sort, word details, practice.
+/dictionary/[id]	Word Detail	Meaning, pronunciation, examples, source, mastery, audio, review.
+/vocabulary	Vocabulary	Word lists, levels/topics, save to dictionary.
+/vocabulary/[topic]	Vocabulary Topic	Learn and practice target words.
+/practice/vocabulary	Vocabulary Practice	Flashcards, Match, Gap, Smart Practice, Use the Word.
+/grammar	Grammar	Topic list, weak topic emphasis.
+/grammar/[slug]	Grammar Topic	Learn → Practice → Apply → Final Test.
+/reading	Reading Library	Level/topic filters.
+/reading/[id]	Reading	Article, word interaction, transcript-style vocabulary popup, questions.
+/listening	Listening Library	Dialogues, podcasts, practice, dictation.
+/listening/[id]	Listening	Audio controls, transcript toggle, questions.
+/speaking	Speaking	Topic Talk, Read Aloud.
+/speaking/topic/[id]	Topic Talk	Prompt, timer, recording, transcript, AI feedback.
+/speaking/read-aloud/[id]	Read Aloud	Text, recording, comparison, pronunciation feedback.
+/writing	Writing	Prompt library.
+/writing/[id]	Writing	Editor, word count, submit, AI feedback.
+/spelling	Spelling	Daily spelling queue and practice.
+/daily-challenge	Daily Challenge	Mixed five-part daily challenge.
+/progress	Progress	Skill scores, vocabulary mastery, activity history, weak areas.
+/profile	Profile & Settings	Account, learning mode, daily goal, privacy, logout.
+/admin	Admin	Optional content management and analytics.
+
+E. FUNCTIONAL REQUIREMENTS BY MODULE
+Dashboard
+Show current streak, total XP, level, daily goal progress, and a Continue Learning CTA.
+Show current day's plan and completion state.
+Show Word of the Day with save/play/example actions.
+Show one or two AI recommendations based on recent data.
+Do not display fake statistics; show 0/empty states for new accounts.
+Placement Test
+15–20 questions covering grammar, vocabulary and comprehension.
+One question at a time or paginated flow with progress indicator.
+Prevent accidental loss on refresh if practical.
+Score on server side.
+Map score bands to an approximate starting CEFR level configured in code/data, not hard-coded across UI.
+Store answers and final result.
+Explain that this is an in-app estimate, not an official certification.
+Vocabulary
+Word list by topic and level.
+Word detail: term, translation, transcription/pronunciation, example, audio, related examples, save/remove from dictionary.
+Practice modes: Quick Practice, Match, Fill the Gap, Flashcards, Smart Practice, Use the Word, Context Choice, Mini Dialogue, Sentence Writing, Mini Story, Optional Test.
+Every practice mode records correctness and difficulty signals.
+AI sentence evaluation is batched per submission, not on every keystroke.
+Dictionary
+Search, filter by level/topic/source/mastery, sort by newest or due for review.
+Word detail includes source and review history.
+Bulk selection for archive/delete if desired.
+Practice only due words or all saved words.
+Mastery indicator and next review date.
+Grammar
+List grammar topics by CEFR level with progress and weak-topic highlighting.
+Learn page: rule, examples, common errors, mini-check.
+Practice: multiple choice, correction, sentence completion, dialogue, translation.
+Apply: 2–3 original sentences and AI feedback.
+Final Test: 10 questions with review of mistakes.
+Reading
+Library by level/topic.
+Readable article layout.
+Click a word to view meaning and save it.
+Questions: multiple choice, true/false, open questions.
+Track reading completion and question performance.
+Listening
+Dialogue, podcast, practice clip, dictation.
+Audio controls with play/pause, speed, replay.
+Transcript mode: show/hide.
+Questions and answer validation.
+Track listening completion and accuracy.
+Cache/reuse audio assets rather than regenerating repeatedly.
+Speaking
+Topic Talk with 4–5 questions, 1–2 minute target.
+Record, stop, replay, submit.
+Transcript when available.
+AI feedback categories: grammar, vocabulary, fluency, coherence/relevance, suggested next step.
+Save a compact speaking attempt record; avoid storing large raw audio forever unless required.
+Read Aloud with target text and pronunciation feedback workflow.
+Writing
+Prompt selection by level/topic.
+Useful words/phrases and optional outline.
+Live word count.
+Draft save.
+Submit to AI for correction and feedback.
+Return: corrected version, key mistakes, strengths, score estimate, next steps.
+Never overwrite the student's original text.
+Spelling
+Daily queue.
+Write from meaning.
+Listen and type.
+Text gap spelling.
+Repeated mistakes increase review priority.
+Daily Challenge
+Mix Vocabulary + Grammar + Reading/Listening + Speaking/Writing + Spelling.
+One daily challenge record per user per local day.
+Completion grants XP bonus.
+Do not reset unexpectedly because of timezone changes; store UTC plus user timezone where relevant.
+Progress
+Skill scores for vocabulary, grammar, reading, listening, speaking, writing, spelling.
+Recent activities.
+Mastery distribution.
+Weak topic recommendations.
+Weekly/monthly trend where enough data exists.
+Explain that in-app scores are learning analytics, not official exam scores.
+F. AI/GEMINI ARCHITECTURE
+Keep Gemini behind a provider interface. The UI should never know the raw provider request format. This lets the app change Gemini models later without rewriting the whole product.
+src/
+  lib/
+    ai/
+      provider.ts
+      gemini.ts
+      prompts/
+        writing-feedback.ts
+        speaking-feedback.ts
+        grammar-explanation.ts
+        vocabulary-generation.ts
+        recommendation.ts
+        exercise-generation.ts
+      schemas/
+        writing-feedback.ts
+        speaking-feedback.ts
+        recommendation.ts
+      safety.ts
+      rate-limit.ts
+F1. Suggested AI contracts
+Function	Input	Output
+generateExercise	level, skill, topic, difficulty, format	structured exercise JSON
+evaluateWriting	text, prompt, level, rubric	scores, corrections, strengths, advice
+evaluateSpeaking	transcript/audio reference, prompt, level	feedback categories, examples, next step
+explainGrammar	topic, learner level, error sentence	simple rule + examples + micro practice
+recommendNext	progress snapshot, weak areas, due words	1–3 prioritized recommendations
+generateTTS	text, target voice/language	audio result or provider reference
+generateVocabulary	topic, CEFR level, count	validated word records
+
+F2. AI safety/quality rules
+Use schema validation on AI JSON.
+Set maximum input/output sizes.
+Do not send unnecessary user profile data.
+Do not include secrets or internal database details in prompts.
+Rate-limit AI routes.
+Handle timeouts and malformed JSON.
+Provide retry only where it is safe; avoid duplicate charges.
+Cache reusable generated content such as published vocabulary/audio.
+Do not generate a new TTS file when an equivalent approved audio asset already exists.
+Keep a provider request identifier for observability, not raw secrets.
+F3. AI prompt design
+SYSTEM:
+You are LinguaAI, a supportive English-learning assistant.
+Give accurate, level-appropriate feedback.
+Do not shame the learner.
+Prefer short explanations and one or two examples.
+Do not claim official exam certification.
+Return only the requested structured JSON.
+
+USER:
+Level: B1
+Task: Present Perfect vs Past Simple
+Learner answer: "I have went to London last year."
+
+OUTPUT SCHEMA:
+{
+  "isCorrect": false,
+  "correction": "I went to London last year.",
+  "explanation": "Use Past Simple for a finished time such as 'last year'.",
+  "errorType": "grammar",
+  "topic": "past-simple-vs-present-perfect",
+  "nextPractice": "past-simple-vs-present-perfect"
+}
+G. SUPABASE DATABASE AND SECURITY
+G1. Core tables
+Table	Fields (conceptual)
+profiles	id, user_id, display_name, level, learning_mode, daily_goal_minutes, timezone, goal, created_at, updated_at
+placement_attempts	id, user_id, started_at, completed_at, score, estimated_level
+placement_answers	id, attempt_id, question_id, selected_answer, is_correct
+topics	id, slug, name, category, level_min, level_max, is_published
+lessons	id, topic_id, title, lesson_type, order_index, is_published
+vocabulary_items	id, word, translation, pronunciation, example, level, topic_id, audio_url
+user_vocabulary	id, user_id, vocabulary_id, mastery, times_seen, times_correct, times_wrong, next_review_at, last_reviewed_at
+grammar_topics	id, slug, title, level, explanation, examples, is_published
+exercises	id, lesson_id, type, prompt, payload_json, answer_json, difficulty
+reading_items	id, title, body, level, topic_id, estimated_minutes, is_published
+reading_questions	id, reading_id, type, prompt, payload_json, answer_json
+listening_items	id, title, description, level, topic_id, audio_url, transcript, duration_seconds, is_published
+listening_questions	id, listening_id, type, prompt, payload_json, answer_json
+speaking_topics	id, title, level, topic_id, questions_json, target_seconds
+writing_prompts	id, title, prompt, level, topic_id, min_words, max_words, rubric_json
+spelling_items	id, vocabulary_id, prompt_type, difficulty
+activity_attempts	id, user_id, activity_type, content_id, score, duration_seconds, metadata_json, created_at
+writing_attempts	id, user_id, prompt_id, original_text, word_count, feedback_json, score, created_at
+speaking_attempts	id, user_id, topic_id, transcript, feedback_json, duration_seconds, created_at
+daily_plans	id, user_id, plan_date, timezone, items_json, completed_count, total_count
+daily_challenges	id, user_id, challenge_date, items_json, completed, xp_awarded
+xp_transactions	id, user_id, source_type, source_id, xp, created_at
+streaks	user_id, current_streak, longest_streak, last_activity_date
+ai_recommendations	id, user_id, type, title, reason, target_route, target_id, priority, created_at, dismissed_at
+error_patterns	id, user_id, normalized_error, topic, error_type, count, last_seen_at
+content_generation_jobs	id, type, status, payload_json, result_json, error, created_at
+
+G2. RLS principles
+User-owned tables require auth.uid() = user_id.
+Public published content can be readable to authenticated users, but editing requires admin authorization.
+Never expose service-role credentials to client code.
+Storage policies must isolate user uploads/audio if private.
+Admin operations must use explicit role claims or an admin table plus server-side authorization.
+Test RLS using an authenticated test user; do not assume it works because queries work in development.
+G3. Environment variables
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+GEMINI_API_KEY=
+GEMINI_TEXT_MODEL=
+GEMINI_AUDIO_MODEL=
+GEMINI_TTS_MODEL=
+NEXT_PUBLIC_APP_URL=
+Model identifiers are placeholders. Use the model names supported by the selected Gemini API setup at implementation time. Keep them configurable, not scattered through the code.
+H. SMART PATH AND RECOMMENDATION LOGIC
+Smart Path should be deterministic enough to test and explainable enough that a student understands why something was recommended.
+H1. Input signals
+CEFR level estimate
+Skill accuracy
+Recent activity
+Recent mistakes
+Due vocabulary
+Vocabulary mastery
+Time since last practice
+User daily time target
+Current topic progress
+Optional user goal (General English, IELTS, school, travel, work)
+H2. Priority score (prototype)
+priority =
+  0.30 * weakness
++ 0.25 * recent_error_frequency
++ 0.20 * review_due
++ 0.10 * recency_gap
++ 0.10 * goal_relevance
++ 0.05 * variety_bonus
+
+Apply caps so one skill does not consume the whole plan.
+Then select a daily mix.
+The exact weights are configuration, not scientific truth. They should be tuneable and tested experimentally.
+H3. Daily plan example
+Block	Target	Reason
+Vocabulary	8 due/weak words	Review overdue vocabulary
+Grammar	Past Simple vs Present Perfect	Repeated error pattern
+Listening	1 short dialogue	Listening is currently weakest skill
+Speaking	1 topic response	Apply target grammar/vocabulary
+Spelling	5 words	Three words were repeatedly misspelled
+
+H4. Recommendation examples
+“Review Present Perfect” — triggered by repeated grammar errors.
+“Practice these 8 words” — triggered by due reviews.
+“Try a short listening exercise” — triggered by low recent listening accuracy.
+“Use the word sustainable in a sentence” — triggered by recognition without productive use.
+I. SPACED REVIEW AND VOCABULARY MASTERY
+Use a simple, transparent review scheduler first. Do not implement a complex scientific spaced-repetition algorithm unless the product actually needs it.
+Mastery	Suggested state
+0	New
+1	Learning
+2	Familiar
+3	Good
+4	Strong
+5	Mastered
+
+Review interval can increase after correct answers and decrease after incorrect answers. Keep the scheduler configurable. Record only the signals needed to support review.
+On correct:
+  mastery += 1 up to max
+  increase next_review interval
+
+On incorrect:
+  mastery -= 1 down to min
+  shorten next_review interval
+
+Also increase priority when:
+  a word is repeatedly wrong
+  a word is overdue
+  the word is not used productively
+J. XP, STREAK, CHALLENGE AND PROGRESS
+Action	Suggested XP
+Vocabulary session	10
+Grammar session	10
+Reading session	10
+Listening session	15
+Speaking	20
+Writing	20
+Spelling	10
+Daily Challenge complete	30 bonus
+
+Keep XP rules in one configuration module. Do not scatter numeric constants through UI components.
+J1. Streak rules
+Count a day only when the user completes at least one qualifying learning activity.
+Store the activity date in the user's timezone and store UTC timestamps for audit.
+Handle missed days consistently.
+Do not change streak logic silently between releases.
+J2. Progress model
+Skill score should be based on recent validated activity, not arbitrary UI values.
+Show confidence/coverage when there is little data.
+Do not label a student “C1” just because they completed a C1 lesson; level is an estimate based on assessment/configuration.
+K. CONTENT AND SEED DATA STRATEGY
+The prototype needs enough content to demonstrate the entire flow. Use seed data instead of generating hundreds of AI items at runtime.
+K1. Initial content target
+Content type	Initial prototype target
+Topics	10–15
+Vocabulary	150–300 words
+Grammar topics	20–30
+Reading texts	10–15
+Listening items	10–15
+Speaking topics	15–20
+Writing prompts	15–20
+Spelling items	Linked to vocabulary
+
+Example topics: Travel, Technology, Education, Environment, Food, Health, Science, Culture, Careers, Daily Life, Hobbies, Society.
+Content should be level-tagged A1/A2/B1/B2/C1 and reviewed for age appropriateness. Keep content in database/seed files, not inside giant React components.
+L. TESTING, QUALITY ASSURANCE AND SECURITY
+L1. Minimum test layers
+TypeScript compile/typecheck
+Lint
+Unit tests for pure algorithms (placement scoring, review scheduler, XP/streak, Smart Path selection)
+Integration tests for critical server actions/API routes
+RLS/security tests
+Manual end-to-end smoke test of main user journey
+L2. Main smoke-test journey
+Register/Login
+→ Onboarding
+→ Placement Test
+→ Dashboard
+→ Smart Path
+→ Vocabulary
+→ Save word
+→ Dictionary
+→ Review word
+→ Grammar
+→ Reading + save word
+→ Listening + transcript toggle
+→ Speaking
+→ Writing + AI feedback
+→ Spelling
+→ Daily Challenge
+→ Progress
+→ Logout/Login again
+→ Confirm data persists
+L3. Security checklist
+Validate all incoming request bodies.
+Authorize resource ownership on every user-specific operation.
+Do not trust user_id from the browser when the session already identifies the user.
+Do not expose service-role key.
+Do not store API keys in source control.
+Restrict uploads.
+Escape or safely render AI/user text.
+Rate-limit expensive AI endpoints.
+Use sensible timeouts.
+Do not log raw audio or private essays unless needed.
+Provide account/data deletion path in the product plan.
+M. PERFORMANCE AND TOKEN/CREDIT OPTIMIZATION
+This section is specifically for using OpenCode efficiently and for reducing unnecessary Gemini/API usage.
+M1. OpenCode token optimization
+Fresh session per phase.
+Persistent docs prevent the agent from re-reading the whole specification.
+At session start, read only PROJECT_CONTEXT + DEVELOPMENT_STATUS.
+Use rg/ripgrep to find symbols before opening files.
+Inspect max ~3–8 relevant files at a time.
+Do not dump full directories.
+Do not read generated files.
+Do not ask the agent to explain code that it already wrote unless debugging requires it.
+End every session with a 10–20 line handoff summary.
+Use one phase prompt at a time.
+Commit after a stable phase if Git is used.
+M2. Gemini/API cost optimization
+Do not call AI for deterministic tasks; use local/database logic.
+Do not call AI on every keypress.
+Submit writing only on explicit Analyze button.
+Submit speaking analysis once after recording or with explicit retry.
+Generate lesson content offline/seed-time where possible.
+Cache TTS audio by a stable content hash.
+Cache repeated grammar explanations when content is identical.
+Keep AI prompts short and structured.
+Ask for concise JSON rather than long prose.
+Set output token limits appropriate to each task.
+Do not send the entire learner history; send a compact progress snapshot.
+Use deterministic local scoring for MCQ, True/False, spelling where possible.
+Batch small related recommendations into one AI request when appropriate.
+M3. Performance optimization
+Use server components for static/read-only content where practical.
+Use client components only when interaction requires them.
+Paginate long dictionary/history views.
+Lazy-load audio-heavy or chart-heavy modules.
+Compress and limit audio uploads.
+Use caching/revalidation for published content.
+Use database indexes for user_id, next_review_at, plan_date, topic_id, level.
+Keep dashboard queries compact.
+N. DEVELOPMENT PHASES AND SEPARATE OPENCODE SESSION PROMPTS
+Use the following as separate sessions. Do not combine all phases into one enormous coding session. Each phase has a narrow objective, acceptance criteria, and a copy-paste prompt.
+PHASE 0 — DISCOVERY, ARCHITECTURE AND PROJECT FOUNDATION
+You are starting Phase 0 of LinguaAI. Do not build the full product yet.
+
+Goal:
+Establish the repository, architecture, coding conventions, environment placeholders, documentation, and a clean running shell.
+
+Tasks:
+1. Inspect the repository.
+2. Confirm or initialize Next.js App Router + TypeScript + Tailwind + shadcn/ui (or the repo's equivalent existing setup).
+3. Set strict TypeScript and basic lint/format configuration.
+4. Create docs/PROJECT_CONTEXT.md, DEVELOPMENT_STATUS.md, ARCHITECTURE.md, DATABASE.md, AI_ARCHITECTURE.md, UI_SPEC.md, QA_CHECKLIST.md, SECURITY.md.
+5. Create environment.example with placeholder variables only.
+6. Create the base app shell and a minimal LinguaAI landing/login shell without fake business data.
+7. Create folder boundaries for app/, components/, lib/, server actions/API routes, database types, AI provider adapter.
+8. Add a health-check route/page if useful.
+9. Add basic error/not-found/loading boundaries.
+10. Do not implement major learning modules yet.
+
+Verification:
+- install succeeds
+- typecheck passes
+- lint passes
+- dev server builds/runs
+- no secret files are added
+
+End:
+Update DEVELOPMENT_STATUS.md with exact files changed, checks run, and next recommended phase.
+PHASE 1 — AUTHENTICATION, ONBOARDING AND PLACEMENT TEST
+Implement Phase 1 for LinguaAI.
+
+Goal:
+Create a real authenticated learner entry flow.
+
+Tasks:
+1. Supabase browser/server clients using the repository's recommended Next.js pattern.
+2. Email/password auth.
+3. Google OAuth wiring using environment/config placeholders where credentials are unavailable.
+4. Protected route handling.
+5. Profile row creation/update.
+6. Onboarding screen:
+   - learner goal
+   - daily minutes 10/20/30
+   - Guided Path / Free Learning
+   - optional interests
+7. Placement Test:
+   - 15–20 seeded questions
+   - grammar/vocabulary/comprehension
+   - progress indicator
+   - answer persistence
+   - server-side score
+   - configurable A1–C1 estimate
+8. Result page with clear “in-app estimate, not official certification” language.
+9. Persist level in profile.
+10. Add tests for placement scoring and auth guards.
+
+Do not implement Smart Path yet beyond a placeholder link.
+
+Acceptance:
+A new user can register, complete onboarding, complete the placement test, receive a persisted estimated level, log out, log in again, and reach the protected dashboard shell.
+
+Update handoff status.
+PHASE 2 — DESIGN SYSTEM, NAVIGATION AND DASHBOARD
+Implement Phase 2 of LinguaAI.
+
+Goal:
+Build the high-quality responsive application shell and real dashboard.
+
+Tasks:
+1. Create reusable design system components.
+2. Desktop sidebar + mobile navigation.
+3. Dashboard cards:
+   - streak
+   - total XP
+   - daily goal
+   - skill snapshot
+   - Continue Learning
+   - Word of the Day
+   - AI recommendation placeholder backed by real data when available
+4. Empty/new-user states.
+5. Loading/skeleton states.
+6. Error states.
+7. Profile/settings shell.
+8. Responsive behavior at small/mobile/tablet/desktop widths.
+9. Use real profile data from Supabase; never fake statistics.
+10. Add route-level navigation and breadcrumbs where useful.
+
+Acceptance:
+The authenticated user can navigate the app shell and see a clean dashboard with correct persisted profile information and honest empty states.
+
+Update docs/UI_SPEC.md if design decisions were made.
+PHASE 3 — PERSONAL DICTIONARY + VOCABULARY SYSTEM
+Implement Phase 3 of LinguaAI.
+
+Goal:
+Make vocabulary and the personal dictionary fully functional.
+
+Tasks:
+1. Database tables and RLS for vocabulary content and user_vocabulary.
+2. Seed vocabulary by level/topic.
+3. Vocabulary list and word detail.
+4. Save/remove from personal dictionary.
+5. Dictionary search/filter/sort.
+6. Word detail:
+   - translation
+   - pronunciation/transcription
+   - example
+   - source
+   - audio control placeholder or configured TTS hook
+   - mastery
+   - review date
+7. Flashcards.
+8. Match.
+9. Fill the Gap.
+10. Quick Practice.
+11. Smart Practice based on due/weak words.
+12. Use the Word with sentence submission.
+13. Context Choice.
+14. Mini Dialogue.
+15. Sentence Writing.
+16. Mini Story.
+17. Optional 10-question test.
+18. Record attempt data.
+19. Implement simple configurable mastery/review scheduler.
+20. Unit tests for review scheduler and vocabulary state transitions.
+
+AI rule:
+Do not call Gemini for deterministic MCQ/matching/gap checking. Use AI only where free-form language evaluation is needed.
+
+Acceptance:
+A student can learn words, save them, find them later, practice them, and see mastery/review changes persisted in Supabase.
+PHASE 4 — GRAMMAR + READING + LISTENING
+Implement Phase 4 of LinguaAI.
+
+Goal:
+Build the main receptive/grammar learning modules.
+
+Grammar:
+- topic library by level
+- Learn page
+- examples/common mistakes
+- Basic practice
+- Applied practice
+- Apply with 2–3 original sentences
+- Final 10-question test
+- error pattern storage
+
+Reading:
+- library by level/topic
+- article page
+- clickable word interaction
+- save to dictionary
+- comprehension questions
+- True/False and open questions
+- completion tracking
+
+Listening:
+- library
+- dialogue/podcast/practice/dictation content
+- audio controls
+- speed/replay
+- transcript show/hide
+- questions
+- dictation input
+- completion tracking
+
+Use seed content.
+Do not make AI generate content at runtime for normal student use unless explicitly requested.
+Add tests for scoring and content access.
+Ensure all content access obeys level/published rules.
+Update DEVELOPMENT_STATUS.md.
+PHASE 5 — GEMINI AI LAYER + WRITING + AI TEACHER
+Implement Phase 5 of LinguaAI.
+
+Goal:
+Integrate Gemini safely and add Writing plus AI Teacher functionality.
+
+First:
+1. Create provider adapter.
+2. Keep API key server-side.
+3. Add environment-based model configuration.
+4. Add Zod schemas for structured Gemini responses.
+5. Add timeout/error handling.
+6. Add rate-limit/abuse protection suitable for the existing stack.
+7. Add compact logging without sensitive content.
+
+Writing:
+- prompt library
+- helpful words
+- word count
+- draft autosave
+- submit for analysis
+- preserve original text
+- AI response:
+  strengths
+  corrected version
+  key grammar errors
+  vocabulary advice
+  organization advice
+  concise score estimate
+  next practice recommendation
+
+AI Teacher:
+- grammar explanation
+- error explanation
+- recommendation generation
+- targeted micro-practice generation where useful
+
+Important:
+Never pretend a response came from Gemini if the API call failed.
+Handle malformed JSON robustly.
+Do not call Gemini on every keystroke.
+Use explicit “Analyze” action.
+
+Acceptance:
+With a valid GEMINI_API_KEY and configured model, a learner can submit writing and receive validated AI feedback. Without a key, the UI must show a clear configuration/error state rather than crash.
+PHASE 6 — SPEAKING, READ ALOUD AND GEMINI AUDIO/TTS
+Implement Phase 6 of LinguaAI.
+
+Goal:
+Add speaking practice and read-aloud with a provider-agnostic audio workflow.
+
+Speaking:
+1. Topic Talk screen with 4–5 questions.
+2. Target speaking time 1–2 minutes.
+3. Record/stop/replay.
+4. Submit.
+5. Obtain transcript using the chosen configured speech/audio workflow available in the project.
+6. Send only necessary data to the AI evaluation route.
+7. Return compact feedback:
+   grammar
+   vocabulary
+   fluency
+   coherence/relevance
+   next step
+8. Save a compact speaking attempt record.
+
+Read Aloud:
+1. Show target text.
+2. Record.
+3. Compare transcript to target when available.
+4. Mark likely omissions/substitutions.
+5. Provide pronunciation practice guidance.
+6. Use Gemini TTS for model audio when configured.
+
+TTS:
+- Build an audio-generation service.
+- Cache by content hash + voice/config identifier.
+- Do not regenerate identical audio.
+
+Privacy:
+- Validate audio type and size.
+- Delete temporary uploads when no longer needed.
+- Do not keep raw recordings by default unless the product explicitly needs history.
+
+Acceptance:
+The application provides a usable speaking workflow on supported devices and graceful fallback/error states when microphone, transcription or Gemini audio support is unavailable.
+PHASE 7 — SPELLING + DAILY CHALLENGE + XP + STREAK + PROGRESS
+Implement Phase 7 of LinguaAI.
+
+Goal:
+Complete gamification and progress systems.
+
+Spelling:
+- write from meaning
+- listen and type
+- text gap
+- error tracking
+
+XP:
+- centralized configurable XP rules
+- transaction history
+- no duplicate XP from refresh/retry
+
+Streak:
+- user timezone aware
+- qualifying activity rule
+- current and longest streak
+- consistent behavior across login sessions
+
+Daily Challenge:
+- one daily challenge per user/date
+- Vocabulary
+- Grammar
+- Reading/Listening
+- Speaking/Writing
+- Spelling
+- XP bonus
+- persistence and completion
+
+Progress:
+- skill scores
+- vocabulary mastery
+- recent activity
+- weak topics
+- trends
+- clear new-user states
+
+Tests:
+- XP idempotency
+- streak rules
+- daily challenge uniqueness
+- progress calculations
+
+Acceptance:
+Completing real learning activities updates XP, streak, daily challenge, and progress without double counting.
+PHASE 8 — SMART PATH, ADAPTIVE PERSONALIZATION AND CROSS-MODULE LEARNING
+Implement Phase 8 of LinguaAI.
+
+Goal:
+Turn independent modules into one adaptive learning system.
+
+Tasks:
+1. Build Smart Path service using the documented priority model.
+2. Read compact user progress, recent errors, due vocabulary and activity history.
+3. Create daily plan:
+   Vocabulary
+   Grammar
+   Reading OR Listening
+   Speaking OR Writing
+   Spelling
+4. Respect 10/20/30 minute user goal.
+5. Avoid repeating the exact same activity too frequently.
+6. Prioritize weak areas but maintain skill variety.
+7. Connect topic content across modules.
+8. When a word is learned or saved in one module, allow it to appear in other relevant modules.
+9. Store daily plan as structured JSON plus normalized references where useful.
+10. Dashboard Continue Learning must point to the actual next unfinished task.
+11. Add AI recommendation only when the deterministic Smart Path needs language-rich explanation; do not ask Gemini to make every scheduling decision.
+12. Add tests for plan selection and edge cases.
+
+Example:
+If Listening is much weaker and several Present Perfect errors are recent, prioritize Listening + Present Perfect while still including vocabulary review and one productive task.
+
+Acceptance:
+Two users with different weaknesses can receive different recommended plans from the same content pool.
+PHASE 9 — POLISH, ADMIN/CONTENT, SECURITY, PERFORMANCE, QA
+Implement Phase 9 as the final production-polish phase.
+
+Goal:
+Make the system demo-ready and maintainable.
+
+Tasks:
+1. Complete all loading/error/empty/success states.
+2. Accessibility audit:
+   labels, keyboard navigation, focus, contrast, reduced motion.
+3. Responsive test across mobile/tablet/desktop.
+4. Security audit:
+   RLS
+   auth
+   server/client boundaries
+   secrets
+   uploads
+   AI endpoints
+5. Performance:
+   query indexes
+   pagination
+   caching
+   lazy loading
+   audio optimization
+6. Content/admin:
+   add the smallest practical admin/content management interface OR documented seed-based content workflow.
+7. Add analytics that are useful but privacy-aware.
+8. Add data export/deletion flow if feasible.
+9. Complete QA checklist.
+10. Build production build.
+11. Fix all TypeScript/lint/test failures.
+12. Prepare demo seed account workflow without exposing secrets.
+
+Final acceptance:
+The full student journey works end to end:
+Register → Onboarding → Placement → Dashboard → Smart Path → Vocabulary → Dictionary → Grammar → Reading → Listening → Speaking → Writing → Spelling → Daily Challenge → Progress.
+
+Do not add major new features in this phase. Prioritize stability and polish.
+O. FINAL ACCEPTANCE CHECKLIST
+Area	Done when
+Auth	Email/Google login and protected routes work; logout/login persistence works.
+Placement	15–20 questions, persisted result, configurable scoring, clear disclaimer.
+Guided Path	Daily personalized sequence exists and updates from real activity.
+Free Learning	Every main learning module is directly accessible.
+Dictionary	Save/search/review/mastery works across modules.
+Vocabulary	All core practice modes work and attempts are stored.
+Grammar	Learn → Practice → Apply → Test works.
+Reading	Library, article, word interaction and questions work.
+Listening	Audio, transcript toggle, questions, dictation work where assets exist.
+Speaking	Record/replay/analyze workflow works or clearly reports unavailable capability.
+Read Aloud	Target text + recording/transcript feedback workflow works where supported.
+Writing	Draft, word count, submit, AI feedback, corrected version works.
+Spelling	All core task types work and errors affect review.
+AI Teacher	Structured feedback works with Gemini and fails gracefully without it.
+XP/Streak	No duplicate rewards; timezone behavior is consistent.
+Daily Challenge	One per day; mixed skills; completion and bonus work.
+Progress	Real metrics only; weak areas and history visible.
+Supabase	RLS policies tested; no service-role key in browser.
+Security	Validation, rate limiting, upload restrictions and safe rendering present.
+Performance	No obviously wasteful AI calls; caching/pagination/lazy loading where needed.
+Accessibility	Core flows keyboard-accessible and labeled.
+Documentation	README + environment setup + architecture + AI + database + QA docs are current.
+
+O1. Demo script for a scientific project presentation
+Open LinguaAI landing page.
+Log in with the prepared demo account.
+Show the learner profile and placement result.
+Show the personalized Dashboard and explain why the plan is different for the learner.
+Complete one vocabulary task and save a new word.
+Open Dictionary and show mastery/review information.
+Complete a grammar micro-task and show error feedback.
+Open Reading; click a difficult word and save it.
+Play Listening; hide/show transcript.
+Complete a short Speaking task and show AI feedback.
+Open Writing; submit a short paragraph and show correction.
+Complete Spelling.
+Open Daily Challenge and Progress.
+Explain the core cycle: Learn → Practice → Feedback → Review → Improve.
+P. EMERGENCY DEBUGGING / RECOVERY PROMPT
+You are debugging LinguaAI. Do not rewrite the project.
+
+First:
+1. Read docs/PROJECT_CONTEXT.md and docs/DEVELOPMENT_STATUS.md.
+2. Reproduce the problem with the smallest possible test.
+3. Find the exact source file(s) using targeted search.
+4. Identify the smallest root cause.
+5. Make the smallest safe patch.
+6. Run the narrowest relevant test/typecheck first.
+7. Then run the broader check required by the phase.
+8. Do not change unrelated features.
+9. Do not replace real integration with fake data just to make the error disappear.
+
+When finished, report:
+- Root cause
+- Files changed
+- Why the patch fixes it
+- Tests/checks run
+- Any remaining risk
+- One next action
+
+Problem:
+[PASTE THE ERROR OR BUG HERE]
+P1. SESSION HANDOFF TEMPLATE
+# docs/DEVELOPMENT_STATUS.md
+
+## Current phase
+Phase X — <name>
+
+## Completed
+- ...
+
+## Files changed
+- ...
+
+## Database changes
+- ...
+
+## AI/API changes
+- ...
+
+## Checks run
+- typecheck:
+- lint:
+- tests:
+- build:
+
+## Known issues
+- ...
+
+## Assumptions
+- ...
+
+## Next phase
+Phase X+1 — <name>
+
+## Important context for next session
+- ...
+APPENDIX A — RECOMMENDED FOLDER STRUCTURE
+app/
+  (public)/
+    page.tsx
+    login/page.tsx
+    register/page.tsx
+    forgot-password/page.tsx
+  (auth)/
+    onboarding/page.tsx
+    placement-test/page.tsx
+  (app)/
+    layout.tsx
+    dashboard/page.tsx
+    learn/page.tsx
+    dictionary/page.tsx
+    dictionary/[id]/page.tsx
+    vocabulary/page.tsx
+    vocabulary/[topic]/page.tsx
+    practice/vocabulary/page.tsx
+    grammar/page.tsx
+    grammar/[slug]/page.tsx
+    reading/page.tsx
+    reading/[id]/page.tsx
+    listening/page.tsx
+    listening/[id]/page.tsx
+    speaking/page.tsx
+    speaking/topic/[id]/page.tsx
+    speaking/read-aloud/[id]/page.tsx
+    writing/page.tsx
+    writing/[id]/page.tsx
+    spelling/page.tsx
+    daily-challenge/page.tsx
+    progress/page.tsx
+    profile/page.tsx
+  api/
+    ai/
+    audio/
+    progress/
+    ...
+components/
+  ui/
+  layout/
+  dashboard/
+  vocabulary/
+  grammar/
+  reading/
+  listening/
+  speaking/
+  writing/
+  spelling/
+  progress/
+lib/
+  supabase/
+  ai/
+  auth/
+  validation/
+  learning/
+  xp/
+  streak/
+  review/
+  smart-path/
+  utils/
+server/
+  actions/
+  services/
+supabase/
+  migrations/
+  seed/
+types/
+docs/
+tests/
+APPENDIX B — BUSINESS LOGIC RULES
+A completed lesson must have an idempotent completion key or unique constraint to prevent double XP.
+Saving a dictionary word must be idempotent per user + vocabulary item.
+A Daily Challenge must be unique by user + local date.
+AI feedback must reference the attempt it belongs to.
+A retry after an AI timeout must not create duplicate writing/speaking attempts unless the user intentionally submits again.
+Published content can be shared across users; learner-specific attempts cannot.
+Deletion of a user should cascade or anonymize data according to the final privacy policy.
+All scores shown on the UI should come from stored/derived data rather than hard-coded numbers.
+APPENDIX C — WHAT NOT TO DO
+Do not implement 100 pages before testing the first 2 pages.
+Do not generate hundreds of AI content records every time the app loads.
+Do not make every button call Gemini.
+Do not put Gemini API keys in NEXT_PUBLIC_* variables.
+Do not store the entire chat/history/prompt context in every request.
+Do not create giant React components for entire modules.
+Do not use fake “database” arrays after Supabase is connected.
+Do not silently swallow errors.
+Do not report invented research data in the Daryn project.
+Do not claim the application's informal scores are official CEFR/IELTS results.
+APPENDIX D — ONE-LINE SESSION START PROMPTS
+These are intentionally short. Use them after the first setup session to minimize context usage.
+Session	Prompt
+0	Read docs/PROJECT_CONTEXT.md and docs/DEVELOPMENT_STATUS.md. Execute Phase 0 only. Keep the plan under 7 bullets and inspect only relevant files.
+1	Read project context + status. Execute Phase 1 only. Verify auth, onboarding and placement end to end. Do not touch later modules.
+2	Read project context + status. Execute Phase 2 only. Build the design system, navigation and dashboard. Use real data and honest empty states.
+3	Read project context + status. Execute Phase 3 only. Build Dictionary + Vocabulary with real persistence and review state.
+4	Read project context + status. Execute Phase 4 only. Build Grammar + Reading + Listening with seeded content and scoring.
+5	Read project context + status. Execute Phase 5 only. Integrate Gemini safely and build Writing + AI Teacher.
+6	Read project context + status. Execute Phase 6 only. Build Speaking + Read Aloud + TTS/audio workflow with fallback states.
+7	Read project context + status. Execute Phase 7 only. Build Spelling + Daily Challenge + XP + Streak + Progress.
+8	Read project context + status. Execute Phase 8 only. Build Smart Path and connect modules into adaptive learning.
+9	Read project context + status. Execute Phase 9 only. Stabilize, secure, optimize, test, document and prepare the final demo.
+
+APPENDIX E — FINAL META-INSTRUCTION FOR OPENCODE
+Build the smallest complete feature that proves the requirement. Verify it. Record the result. Move to the next dependency. Prefer reliable, testable code over clever code. Prefer deterministic local logic over unnecessary AI calls. Preserve context through short persistent documents, not through repeated giant prompts.
+
+====================================================================
+FINAL ADDENDUM — PREMIUM SAAS UI/UX, PRODUCT POLISH, TOKEN EFFICIENCY
+====================================================================
+
+PURPOSE OF THIS ADDENDUM
+
+The original LinguaAI build specification above is the product contract.
+Do not rewrite, weaken, remove, or reinterpret that contract. Preserve all
+previous requirements. This addendum adds a higher-fidelity SaaS product
+experience, stronger UI/UX rules, better information architecture, more
+reliable implementation discipline, and a more efficient OpenCode workflow.
+
+Treat this addendum as an extension, not a replacement.
+
+====================================================================
+1. NORTH-STAR PRODUCT EXPERIENCE
+====================================================================
+
+LinguaAI should feel like a premium educational SaaS product, not a school
+worksheet converted into a website.
+
+Target emotional response:
+- clear;
+- calm;
+- motivating;
+- modern;
+- trustworthy;
+- fast;
+- friendly;
+- focused;
+- rewarding without becoming childish.
+
+Primary design principle:
+“Reduce cognitive load. Show the learner what matters now.”
+
+Secondary principle:
+“One screen = one clear next action.”
+
+Third principle:
+“Personalization should be visible, explainable, and useful.”
+
+Do not overload screens with cards, charts, badges, decorative gradients,
+large illustrations, or excessive text. Every element must help the learner
+understand, act, or reflect.
+
+====================================================================
+2. PREMIUM SAAS VISUAL DIRECTION
+====================================================================
+
+Use a polished SaaS visual language similar to high-quality modern learning,
+productivity, finance, and developer products, while keeping LinguaAI clearly
+original.
+
+Brand personality:
+- intelligent rather than robotic;
+- youthful rather than childish;
+- academic rather than corporate;
+- premium rather than flashy;
+- energetic through motion and feedback, not through visual noise.
+
+Recommended visual system:
+- light-first interface;
+- white or very light neutral surfaces;
+- dark readable text;
+- one strong brand accent;
+- subtle secondary accent;
+- restrained gradients only for hero moments or AI states;
+- semantic success / warning / error colors;
+- soft borders;
+- moderate radius;
+- subtle shadows;
+- strong spacing rhythm.
+
+Do not use excessive glassmorphism. Avoid low-contrast text on gradients.
+Avoid neon overload. Avoid giant rounded UI on every element. Avoid random
+component styles.
+
+The product must look intentionally designed rather than assembled from
+unrelated UI kits.
+
+====================================================================
+3. DESIGN TOKENS — SINGLE SOURCE OF TRUTH
+====================================================================
+
+Create a central design-token layer. Do not scatter visual constants across
+components.
+
+Define tokens for:
+- brand colors;
+- semantic colors;
+- page background;
+- surface levels;
+- text hierarchy;
+- borders;
+- radii;
+- spacing scale;
+- control heights;
+- shadows;
+- focus ring;
+- typography sizes;
+- motion durations;
+- content width;
+- sidebar width;
+- mobile navigation height.
+
+Use CSS variables or the project's equivalent token mechanism.
+
+Example semantic naming style:
+--background
+--surface
+--surface-muted
+--foreground
+--foreground-muted
+--border
+--primary
+--primary-foreground
+--success
+--warning
+--danger
+--info
+--focus-ring
+
+Do not hard-code the same color or radius repeatedly in different files.
+
+====================================================================
+4. TYPOGRAPHY
+====================================================================
+
+Prioritize readability over style.
+
+Typography hierarchy should have at least:
+- display / hero;
+- page title;
+- section title;
+- card title;
+- body;
+- secondary text;
+- label;
+- helper/error text;
+- numeric emphasis for XP, streak, scores, and timers.
+
+Rules:
+- body text should remain comfortable on laptop and mobile;
+- paragraph width should be limited for readability;
+- do not use all caps for normal sentence content;
+- avoid overly light font weights;
+- numbers such as XP and streak should be visually strong;
+- learning content should be easier to read than navigation chrome.
+
+Use one coherent font stack. If a custom font is introduced, keep the fallback
+stack robust and local.
+
+====================================================================
+5. RESPONSIVE DESIGN — MOBILE FIRST, DESKTOP EXCELLENT
+====================================================================
+
+The product must work well at:
+- small mobile;
+- large mobile;
+- tablet;
+- laptop;
+- wide desktop.
+
+Do not simply shrink desktop cards onto mobile.
+
+Responsive behavior requirements:
+- navigation changes form at mobile widths;
+- multi-column dashboard sections collapse gracefully;
+- tables become cards or horizontal scroll only when appropriate;
+- learning controls remain thumb-friendly;
+- bottom action areas stay reachable;
+- audio controls remain usable on small screens;
+- speaking microphone action must remain prominent;
+- flashcards should not become cramped;
+- progress charts should remain readable or switch to summaries;
+- modals become full-screen sheets when appropriate.
+
+Use breakpoints consistently. Do not invent a different breakpoint for every
+component.
+
+Mobile priority order:
+1. current lesson/action;
+2. progress feedback;
+3. navigation;
+4. secondary information.
+
+====================================================================
+6. GLOBAL APPLICATION SHELL
+====================================================================
+
+Authenticated pages should use a consistent SaaS shell.
+
+Desktop:
+- left sidebar with logo and primary navigation;
+- main content area with max-width;
+- optional right-side context panel only when genuinely useful;
+- persistent profile / settings entry;
+- compact top utility bar when required.
+
+Suggested navigation:
+Home
+Smart Path
+Dictionary
+Vocabulary
+Grammar
+Reading
+Listening
+Speaking
+Writing
+Spelling
+Progress
+
+Optional lower-priority items:
+Daily Challenge
+Settings
+Help
+
+Mobile:
+- top bar with LinguaAI brand and profile;
+- bottom navigation for the 4–5 most important destinations;
+- More sheet for secondary modules;
+- no tiny desktop sidebar squeezed into 360px.
+
+Navigation should preserve current route and active state.
+
+====================================================================
+7. DASHBOARD UX — THE “TODAY” EXPERIENCE
+====================================================================
+
+The Dashboard is not an analytics wall. It is the learner's “what should I do
+now?” screen.
+
+Suggested hierarchy:
+
+A. Greeting + level
+“Good evening, Ayan.”
+“B1 • 7 day streak”
+
+B. Daily goal card
+- minutes target;
+- progress ring or progress bar;
+- completed / remaining estimate;
+- primary action: Continue Learning.
+
+C. Today’s Smart Path
+- 4–6 tasks;
+- each with skill icon;
+- estimated minutes;
+- state: locked / available / complete;
+- primary next task highlighted.
+
+D. AI recommendation
+Short, specific, actionable.
+Example:
+“Your listening score dropped this week. Try today’s 6-minute airport dialogue.”
+
+E. Personal Dictionary preview
+Show 3 due words and a Review Now action.
+
+F. Optional secondary progress
+Weekly consistency and skill balance.
+
+Avoid ten equally important cards.
+There must be one dominant CTA: Continue Learning.
+
+====================================================================
+8. SMART PATH UI/UX
+====================================================================
+
+Smart Path should feel like a guided journey, not a spreadsheet.
+
+Display:
+- current CEFR level;
+- unit/topic;
+- completed nodes;
+- current node;
+- upcoming nodes;
+- estimated time;
+- skill icons;
+- review markers.
+
+The current lesson should have a subtle emphasis state.
+
+Use a clear progression line or modular path. Do not create a maze-like
+interface that becomes visually noisy.
+
+Each node should answer:
+- what is this;
+- why now;
+- how long;
+- what skill it trains.
+
+Example node:
+“Present Perfect Review”
+Grammar • 7 min • Recommended because of 3 recent errors
+
+When a recommendation comes from deterministic learning logic, show a brief
+reason. This makes personalization explainable.
+
+====================================================================
+9. LEARNING SESSION MODE — FOCUS UI
+====================================================================
+
+Once a learner starts an activity, minimize distractions.
+
+Session layout:
+- compact top progress;
+- lesson title;
+- main task card;
+- feedback area;
+- primary action;
+- optional exit / pause.
+
+Do not show full sidebar navigation inside intense practice unless necessary.
+
+At the end of a lesson, show:
+- result;
+- what improved;
+- what was difficult;
+- XP earned;
+- one next action.
+
+Do not create a generic “Congratulations!” screen with no useful information.
+
+====================================================================
+10. VOCABULARY UX
+====================================================================
+
+Vocabulary must feel fast and tactile.
+
+Word card hierarchy:
+word
+pronunciation
+translation
+part of speech
+example
+play audio
+source
+save / saved state
+
+Actions should be obvious:
+- Save to Dictionary;
+- Practice now;
+- Hear pronunciation;
+- Show example;
+- Mark difficult.
+
+Flashcards:
+- large central word;
+- optional image only when useful;
+- tap/click reveal;
+- confidence buttons;
+- keyboard support on desktop;
+- swipe gestures on mobile where safe;
+- immediate feedback after reveal.
+
+Avoid forcing the learner through unnecessary confirmation dialogs.
+
+====================================================================
+11. PERSONAL DICTIONARY UX
+====================================================================
+
+The Dictionary should become a personal learning asset, not merely a word list.
+
+Features:
+- search;
+- filters by source;
+- filters by mastery;
+- sort by date / due / difficulty;
+- pronunciation playback;
+- quick practice;
+- delete / archive;
+- bulk selection only if useful;
+- word detail page or sheet.
+
+Visual states:
+New
+Learning
+Familiar
+Good
+Mastered
+
+Due words should have a clear review state.
+
+Empty state example:
+“Your personal dictionary is empty. Save a word from Reading, Listening, or
+Vocabulary to start building it.”
+
+====================================================================
+12. GRAMMAR UX
+====================================================================
+
+Grammar explanations should be simple, structured, and visually scannable.
+
+Preferred layout:
+Rule
+→ Why it matters
+→ Examples
+→ Common mistake
+→ Quick check
+
+Use highlighted examples rather than very long paragraphs.
+
+Practice should increase in difficulty:
+recognize → choose → correct → transform → create.
+
+When AI feedback is used, explain the correction in the learner’s approximate
+level language.
+
+====================================================================
+13. READING UX
+====================================================================
+
+Reading screen should prioritize the text.
+
+Include:
+- title;
+- level;
+- estimated reading time;
+- comfortable line length;
+- paragraph spacing;
+- progress;
+- text interaction.
+
+Word interaction:
+click/tap word
+→ lightweight definition popover
+→ translation
+→ pronunciation
+→ example
+→ Add to Dictionary
+
+Do not open a giant modal for every unknown word.
+
+The popover must not cover too much reading content.
+
+====================================================================
+14. LISTENING UX
+====================================================================
+
+Audio controls should be obvious and stable.
+
+Provide:
+- play/pause;
+- progress bar;
+- playback speed;
+- transcript toggle;
+- optional repeat sentence;
+- completion state.
+
+Transcript mode must have two explicit states:
+Shown / Hidden.
+
+Do not autoplay audio unless the user has intentionally started an experience.
+
+For AI-generated audio, indicate generation state and cache/reuse results when
+possible rather than regenerating identical audio.
+
+====================================================================
+15. SPEAKING UX
+====================================================================
+
+Speaking must feel safe and encouraging.
+
+Main screen:
+- topic;
+- 4–5 prompts;
+- clear target duration;
+- microphone CTA;
+- recording timer;
+- pause / stop;
+- transcript after processing;
+- feedback.
+
+Microphone CTA should be visually dominant but not intimidating.
+
+States:
+Ready
+Recording
+Processing
+Feedback
+Retry
+
+Never leave the user wondering whether recording started.
+Use clear live feedback such as a timer and recording indicator.
+
+If microphone permission fails:
+explain the problem in plain language and provide retry instructions.
+
+====================================================================
+16. WRITING UX
+====================================================================
+
+Writing should look like a focused editor, not a generic form.
+
+Include:
+- prompt;
+- useful words;
+- target length;
+- editor;
+- live word count;
+- save draft;
+- submit for AI feedback.
+
+After evaluation, separate feedback into:
+- strengths;
+- corrections;
+- vocabulary;
+- organization;
+- next step.
+
+Do not replace the learner’s original writing. Show original and improved
+version separately.
+
+The learner should be able to understand what changed.
+
+====================================================================
+17. SPELLING UX
+====================================================================
+
+Spelling tasks should be quick and satisfying.
+
+Use large input controls and immediate validation.
+
+Feedback should distinguish:
+- correct;
+- capitalization issue;
+- spelling issue;
+- missing letter;
+- multiple errors.
+
+Do not mark every capitalization difference as a serious spelling failure.
+
+====================================================================
+18. PROGRESS / ANALYTICS UX
+====================================================================
+
+Analytics must answer questions, not just display charts.
+
+Show:
+- current level estimate;
+- XP earned;
+- study days;
+- streak;
+- weekly minutes;
+- skill balance;
+- vocabulary mastery;
+- top weak topics;
+- recent improvement;
+- recommendation.
+
+Prefer small useful visualizations and explanatory labels.
+
+Example:
+Listening 54% — Needs attention
+“Try 2 short listening sessions this week.”
+
+Do not display fake precision such as 67.384% unless the metric genuinely needs
+that precision.
+
+====================================================================
+19. AI UX RULES
+====================================================================
+
+AI is a product feature, not a decorative “AI” badge.
+
+AI states must be explicit:
+- generating;
+- evaluating;
+- available;
+- unavailable;
+- retrying.
+
+Do not make the UI look frozen during AI calls.
+
+Show concise progress language such as:
+“Checking your writing…”
+“Building feedback…”
+“Preparing your next practice…”
+
+Never expose raw API errors to learners.
+
+Never show secret keys, server traces, internal prompts, or provider details.
+
+====================================================================
+20. AI RESPONSE COST CONTROL
+====================================================================
+
+Gemini should NOT be called for tasks that can be handled deterministically.
+
+Use deterministic code for:
+- navigation;
+- XP calculations;
+- streak calculations;
+- score aggregation;
+- due-date calculations;
+- fixed multiple-choice checking;
+- simple placement scoring;
+- mastery state transitions.
+
+Use Gemini only when language intelligence is actually valuable:
+- writing feedback;
+- speaking feedback;
+- explanation generation;
+- personalized natural-language recommendation;
+- controlled exercise generation;
+- optional content generation.
+
+For predictable prompts:
+- use short system instructions;
+- send only relevant learner context;
+- use structured output;
+- cap output length;
+- avoid sending the full history;
+- summarize old history before passing it to AI;
+- cache reusable content;
+- debounce user-triggered AI actions;
+- never evaluate every keystroke.
+
+====================================================================
+21. AI CONTEXT PACKING
+====================================================================
+
+Never send the entire database row set or entire learning history to Gemini.
+
+Construct a compact context packet.
+
+Recommended packet:
+- user level;
+- target skill;
+- current topic;
+- last 3–5 relevant mistakes;
+- top 5–10 due vocabulary items;
+- recent skill score;
+- task text;
+- learner answer.
+
+Do not send irrelevant profile data.
+
+Do not send the same instructions repeatedly if the provider adapter supports
+reusable system instructions or equivalent mechanisms.
+
+====================================================================
+22. DETERMINISTIC FIRST, AI SECOND
+====================================================================
+
+This is a core architecture rule.
+
+The system should use a two-layer recommendation model:
+
+Layer 1 — Deterministic learning engine
+- choose due vocabulary;
+- detect weak skill;
+- detect repeated topic mistakes;
+- select eligible lessons;
+- enforce prerequisite order;
+- enforce daily time budget.
+
+Layer 2 — AI explanation layer
+- explain why the recommendation is useful;
+- generate natural-language coaching;
+- create optional extra practice.
+
+Do not ask Gemini to decide everything.
+This lowers latency, cost, unpredictability, and debugging complexity.
+
+====================================================================
+23. SAAS EMPTY / LOADING / ERROR / SUCCESS STATES
+====================================================================
+
+Every meaningful screen must have all relevant states.
+
+Loading:
+- use skeletons that resemble final layout;
+- avoid flashing empty content;
+- do not block the full app if only one card is loading.
+
+Empty:
+- explain why it is empty;
+- tell the user what to do next;
+- provide one CTA.
+
+Error:
+- human-readable message;
+- retry action;
+- no raw stack trace;
+- preserve any safe local draft where possible.
+
+Success:
+- clear confirmation;
+- next logical action;
+- no excessive celebration for tiny tasks.
+
+Partial failure:
+If an AI card fails but the main lesson works, keep the lesson usable and show a
+small retry state only for the failed AI card.
+
+====================================================================
+24. ACCESSIBILITY
+====================================================================
+
+Target strong practical accessibility.
+
+Requirements:
+- semantic HTML;
+- keyboard navigation;
+- visible focus state;
+- sufficient color contrast;
+- labels for controls;
+- proper button semantics;
+- meaningful alt text for meaningful images;
+- no color-only meaning;
+- screen-reader friendly status updates;
+- reduced-motion support;
+- captions/transcript for audio where available.
+
+Do not use a div as a button when a real button is appropriate.
+
+Focus management must be handled for modals, sheets, and route-level changes
+where required.
+
+====================================================================
+25. MICROINTERACTIONS
+====================================================================
+
+Use motion to communicate state, not to impress.
+
+Good examples:
+- progress bar fill;
+- card hover lift;
+- success check animation;
+- XP count-up after a completed task;
+- subtle path-node transition;
+- recording pulse;
+- skeleton shimmer.
+
+Avoid:
+- constant floating elements;
+- excessive parallax;
+- long transitions;
+- bouncing every time something changes;
+- motion that slows completion.
+
+Respect prefers-reduced-motion.
+
+====================================================================
+26. DESIGN SYSTEM COMPONENT INVENTORY
+====================================================================
+
+Create reusable primitives before building many screens.
+
+Core primitives:
+- Button
+- IconButton
+- Input
+- Textarea
+- Select
+- Checkbox
+- Radio
+- Badge
+- Card
+- Progress
+- Tabs
+- Tooltip
+- Popover
+- Sheet
+- Dialog
+- Alert
+- Toast
+- Skeleton
+- EmptyState
+- ErrorState
+- Avatar
+- Dropdown
+- Pagination where needed
+
+LinguaAI-specific components:
+- XPBadge
+- StreakBadge
+- DailyGoalCard
+- SmartPathNode
+- LessonCard
+- SkillCard
+- WordCard
+- DictionaryWordRow
+- Flashcard
+- AudioPlayer
+- TranscriptToggle
+- SpeakingRecorder
+- WritingEditor
+- AIInsightCard
+- FeedbackPanel
+- PracticeProgress
+- ReviewDueCard
+- DailyChallengeCard
+- LevelPill
+
+Do not create five slightly different button components.
+
+====================================================================
+27. PAGE COMPOSITION RULES
+====================================================================
+
+Each page should establish a visual hierarchy:
+1. context;
+2. main action;
+3. supporting content;
+4. optional details.
+
+Use consistent content widths.
+
+For dense management screens, prefer a max content width and grouped sections.
+
+For learning screens, use a narrower reading / task width.
+
+For dashboards, use a wider grid but keep card count controlled.
+
+Avoid full-width text blocks that become difficult to scan on desktop.
+
+====================================================================
+28. LANDING PAGE — PREMIUM SaaS MARKETING EXPERIENCE
+====================================================================
+
+Public landing page should communicate the product in seconds.
+
+Hero:
+“Your English journey, personalized by AI.”
+Supporting text explains that LinguaAI combines guided learning, practice,
+feedback, vocabulary review, and progress in one system.
+
+Primary CTA:
+Start Learning
+
+Secondary CTA:
+See How It Works
+
+Sections:
+- problem;
+- personalized solution;
+- feature overview;
+- Smart Path visualization;
+- Personal Dictionary;
+- AI Teacher;
+- cross-skill learning;
+- privacy / responsible AI note;
+- final CTA.
+
+Do not make unsupported claims such as “guaranteed fluency” or “official CEFR
+certification”.
+
+====================================================================
+29. ONBOARDING UX
+====================================================================
+
+Onboarding should be short and purposeful.
+
+Recommended steps:
+1. Welcome
+2. Goal
+3. Daily time
+4. Placement test
+5. Results
+6. Learning mode
+7. First lesson
+
+Show progress like 2 of 7.
+
+Do not ask for unnecessary personal information.
+
+Explain why a setting is being requested when it affects personalization.
+
+Example:
+“Your daily goal helps Smart Path choose the right number of tasks.”
+
+====================================================================
+30. PLACEMENT RESULT EXPERIENCE
+====================================================================
+
+Do not show only a level.
+
+Show:
+- approximate level;
+- strengths;
+- one or two growth areas;
+- suggested first lesson;
+- confidence note that this is an in-app estimate.
+
+Example:
+
+Estimated level: B1
+Strongest area: Reading
+Focus area: Listening
+
+“Let’s begin with a short Listening lesson and a vocabulary review.”
+
+====================================================================
+31. USER FEEDBACK LOOP
+====================================================================
+
+The interface should continuously answer:
+“What happened?”
+“What did I learn?”
+“What should I do next?”
+
+After an activity:
+- score / correctness;
+- explanation;
+- XP;
+- one useful insight;
+- next recommended task.
+
+After a week:
+- consistency;
+- strongest skill;
+- weakest skill;
+- words learned/reviewed;
+- next week's focus.
+
+====================================================================
+32. PRIVACY-FIRST UX
+====================================================================
+
+Language learning data can include personal writing and voice recordings.
+
+Provide clear settings for:
+- audio retention where implemented;
+- delete recording;
+- delete draft;
+- account deletion;
+- sign out;
+- data export if implemented.
+
+Do not store audio forever by default without a product reason.
+
+Do not use user writing as training data unless there is an explicit, legally
+appropriate product policy and consent mechanism.
+
+====================================================================
+33. SECURITY HARDENING
+====================================================================
+
+OpenCode must treat all browser input as untrusted.
+
+Validate:
+- route params;
+- form inputs;
+- AI request payloads;
+- uploaded audio/files;
+- content IDs;
+- pagination;
+- filters;
+- user-owned identifiers.
+
+Enforce authorization on the server/database.
+Do not rely only on hidden UI controls.
+
+RLS must prevent cross-user access.
+
+API routes that call Gemini must enforce authentication, validation, and abuse
+controls where appropriate.
+
+====================================================================
+34. PERFORMANCE BUDGET
+====================================================================
+
+Keep the app fast on average student devices.
+
+Rules:
+- lazy-load expensive learning modules;
+- do not ship large audio/model assets on every page;
+- cache static content;
+- fetch only what the current screen needs;
+- paginate long lists;
+- avoid unnecessary rerenders;
+- keep client components small;
+- use server components where appropriate;
+- memoize only when useful;
+- avoid state updates inside animation or audio loops unless necessary;
+- do not run AI work automatically on page load unless the feature requires it.
+
+Target fast perceived interaction even if some AI tasks take longer.
+
+For AI latency, show immediate UI state and allow the user to continue other
+work whenever possible.
+
+====================================================================
+35. AUDIO / GEMINI TTS COST CONTROL
+====================================================================
+
+For TTS:
+- generate only when needed;
+- cache by normalized text + voice/model configuration;
+- reuse cached audio;
+- avoid generating audio on list pages for every word;
+- allow user-triggered playback;
+- preload only the next likely item, not the entire lesson.
+
+If TTS is unavailable, the rest of the learning task must still work.
+
+====================================================================
+36. DATA MODEL DISCIPLINE
+====================================================================
+
+Avoid duplicating derived values in many tables.
+
+Prefer storing source events and computing simple aggregates when practical.
+
+Examples of event-style records:
+- exercise attempt;
+- vocabulary review;
+- XP transaction;
+- lesson completion;
+- AI feedback result.
+
+Keep deterministic fields normalized.
+
+Use timestamps consistently.
+
+Store timezone for daily-goal/streak calculations.
+Do not assume UTC is the learner’s local date.
+
+====================================================================
+37. CONTENT QUALITY SYSTEM
+====================================================================
+
+Seed content should look human-curated.
+
+Every content item should have:
+- level;
+- topic;
+- skill;
+- difficulty where appropriate;
+- source/license metadata if external;
+- published state;
+- estimated time.
+
+Avoid generating hundreds of low-quality placeholder exercises.
+
+For MVP, a smaller high-quality dataset is better.
+
+====================================================================
+38. SMART CONTENT REUSE
+====================================================================
+
+One topic should power multiple skills.
+
+Example topic object:
+Travel
+
+Can connect to:
+- vocabulary set;
+- grammar focus;
+- reading text;
+- listening dialogue;
+- speaking prompt;
+- writing prompt;
+- spelling list.
+
+This reduces content duplication and makes the product coherent.
+
+====================================================================
+39. ADMIN / CONTENT MANAGER — FUTURE-READY, NOT OVERBUILT
+====================================================================
+
+If an admin/content role is implemented, provide simple CRUD workflows for:
+- topics;
+- vocabulary;
+- grammar lessons;
+- reading materials;
+- listening materials;
+- speaking prompts;
+- writing prompts;
+- exercises;
+- publish/unpublish.
+
+Do not build a giant CMS unless required.
+
+Use the same design system.
+
+====================================================================
+40. FIRST-CLASS ERROR RECOVERY
+====================================================================
+
+When anything fails, the product should recover gracefully.
+
+Examples:
+- Gemini timeout → retry button + deterministic fallback where available;
+- TTS failure → text remains usable;
+- dictionary save conflict → show current saved state after refresh;
+- network interruption → preserve safe local draft;
+- microphone denied → instructions + retry;
+- empty content → useful empty state;
+- session expired → re-authentication flow.
+
+Never show “Unknown error” when a better message is possible.
+
+====================================================================
+41. OPEN CODE SESSION PROTOCOL — EXTRA STRICT MODE
+====================================================================
+
+Use this protocol in every new OpenCode session.
+
+SESSION START:
+1. Read docs/PROJECT_CONTEXT.md.
+2. Read docs/DEVELOPMENT_STATUS.md.
+3. Read only the current phase section.
+4. Use rg/grep to locate relevant modules.
+5. Inspect only necessary files.
+6. State a plan of 3–7 bullets.
+7. Implement the smallest coherent slice.
+8. Run focused validation.
+9. Update DEVELOPMENT_STATUS.md.
+10. Stop at the phase boundary unless a blocker requires a narrowly related fix.
+
+NEVER:
+- reread the whole repository;
+- print giant files;
+- restate the complete product spec;
+- regenerate already working components;
+- refactor unrelated code;
+- add dependencies “just in case”;
+- make broad changes without tests.
+
+====================================================================
+42. TOKEN BUDGET RULES FOR OPENCODE
+====================================================================
+
+Assume the project has a limited reasoning/token budget.
+
+Default behavior:
+- use targeted search first;
+- inspect only relevant files;
+- patch small sections;
+- run focused tests;
+- summarize compactly.
+
+Do not output large code blocks unless needed for an external copy/paste task.
+Prefer editing files directly.
+
+When a file is huge:
+- search for symbol/heading;
+- inspect a narrow line range;
+- patch only the relevant range.
+
+When debugging:
+- reproduce first;
+- capture exact error;
+- find root cause;
+- patch root cause;
+- rerun one relevant check;
+- then continue.
+
+Do not repeatedly rerun an entire test suite after every tiny edit unless the
+phase specifically requires it.
+
+====================================================================
+43. SESSION HANDOFF FORMAT
+====================================================================
+
+At the end of every OpenCode phase, update:
+
+docs/DEVELOPMENT_STATUS.md
+
+with exactly this compact structure:
+
+PHASE: <number and name>
+STATUS: DONE | PARTIAL | BLOCKED
+
+COMPLETED:
+- <item>
+- <item>
+- <item>
+
+FILES CHANGED:
+- <path>
+- <path>
+
+VALIDATION:
+- <command or manual check>
+- <result>
+
+KNOWN ISSUES:
+- <issue or NONE>
+
+NEXT PHASE:
+<number and name>
+
+NOTES:
+<max 5 short lines>
+
+Do not paste giant diffs into the status file.
+
+====================================================================
+44. SESSION START COMMAND TEMPLATE
+====================================================================
+
+At the beginning of each new session, use a short prompt like:
+
+“You are continuing LinguaAI. Read docs/PROJECT_CONTEXT.md and docs/DEVELOPMENT_STATUS.md. Execute ONLY PHASE X. Inspect only relevant files. Preserve all working features. Use deterministic logic before AI. Keep changes focused. Run targeted validation. Update docs/DEVELOPMENT_STATUS.md using the required compact format. Do not explain the whole project.”
+
+====================================================================
+45. UI REVIEW GATE AFTER EACH MAJOR SCREEN
+====================================================================
+
+Before marking any major screen done, inspect it visually at:
+- mobile width;
+- tablet width;
+- desktop width.
+
+Check:
+- hierarchy;
+- spacing;
+- contrast;
+- loading state;
+- empty state;
+- error state;
+- keyboard focus;
+- touch target size;
+- text wrapping;
+- button consistency;
+- visual density.
+
+Do not declare a screen done from code inspection alone.
+
+====================================================================
+46. JURY / DEMO-FIRST EXPERIENCE
+====================================================================
+
+The first 60–90 seconds of the demo should communicate the strongest product
+idea.
+
+Recommended demo flow:
+1. Landing
+2. Register/login
+3. Placement result
+4. Dashboard
+5. Smart Path
+6. Start vocabulary
+7. Save a word to Dictionary
+8. Complete a short grammar task
+9. Submit one writing or speaking task to Gemini
+10. Show AI feedback
+11. Show XP/progress update
+12. Return to Smart Path and demonstrate the next recommendation
+
+The jury should be able to see the learning loop, not only individual screens.
+
+====================================================================
+47. GOLDEN PATH DEFINITION
+====================================================================
+
+There must be one completely reliable end-to-end path.
+
+Golden path:
+
+Create account
+→ complete onboarding
+→ placement test
+→ receive level
+→ see dashboard
+→ start Smart Path
+→ complete activity
+→ save vocabulary
+→ receive feedback
+→ earn XP
+→ update progress
+→ continue to next task
+
+This path must work on the actual environment used for the demonstration.
+
+====================================================================
+48. FINAL PRODUCT QUALITY BAR
+====================================================================
+
+LinguaAI is NOT DONE if:
+- buttons are decorative;
+- routes crash;
+- user data is not persisted;
+- loading states are missing;
+- errors expose internals;
+- AI is mocked in production without clear labeling;
+- mobile layout breaks;
+- keyboard navigation is broken on core flows;
+- RLS is missing for user-owned data;
+- API keys are exposed;
+- the dashboard shows fake statistics;
+- Smart Path does not change from real learner data;
+- the personal dictionary is disconnected from learning modules;
+- production build is failing.
+
+LinguaAI IS READY for prototype release when:
+- the Golden Path works;
+- core features are real;
+- AI is integrated through the server-side adapter;
+- Supabase persistence and RLS are working;
+- UI/UX is coherent and responsive;
+- major states are covered;
+- tests and build pass at the agreed quality level;
+- known limitations are documented honestly.
+
+====================================================================
+49. FINAL OPEN CODE META-INSTRUCTION
+====================================================================
+
+Treat the entire prompt above as the product specification.
+
+The objective is not to produce the largest amount of code.
+The objective is to produce the smallest maintainable codebase that fully
+implements the intended user experience and can be demonstrated reliably.
+
+Prefer:
+- simple architecture;
+- typed contracts;
+- reusable components;
+- deterministic business logic;
+- server-side AI integration;
+- focused tests;
+- real persistence;
+- fast UI;
+- accessible interaction;
+- small commits;
+- explicit documentation.
+
+When two solutions meet the product requirement, choose the simpler one.
+When a requirement is ambiguous, choose the lowest-risk interpretation that
+preserves the user experience and document the assumption.
+
+Never sacrifice security, correctness, accessibility, or user data integrity
+just to save a few tokens.
+
+Never sacrifice maintainability just to make the demo look impressive.
+
+Make the demo impressive because the product itself is coherent, fast,
+explainable, useful, and polished.
+
+====================================================================
+50. FINAL COPY/PASTE EXECUTION ORDER
+====================================================================
+
+FIRST SESSION:
+Paste only:
+- the Global Master Prompt from Part A;
+- the project repository path/context;
+- the request to execute PHASE 0.
+
+THEN:
+Use a fresh OpenCode session for each phase.
+Each session receives:
+- the short Session Start prompt;
+- the relevant Phase prompt;
+- docs/PROJECT_CONTEXT.md;
+- docs/DEVELOPMENT_STATUS.md.
+
+DO NOT paste this entire document into every new session.
+
+Only return to this full master document when a phase needs a source-of-truth
+requirement that is not already captured in the persistent project docs.
+
+FINAL REMINDER:
+Build LinguaAI as a real product, not as a visual mockup.
+Make personalization real.
+Make the Dictionary central.
+Make Smart Path adaptive.
+Use Gemini where language intelligence matters.
+Use deterministic logic where AI is unnecessary.
+Keep UI/UX premium, comfortable, fast, accessible, and unmistakably SaaS.
+Keep every phase independently verifiable.
+Keep the codebase maintainable.
+Keep all secrets server-side.
+Keep all experimental claims honest.

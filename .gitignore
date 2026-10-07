@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+.env
+.env*.local
+!.env.example
+.DS_Store
+.vercel
+supabase/.temp/
+tsconfig.tsbuildinfo
+coverage/
+*.log
+*.pem
+*.key
+service-account*.json

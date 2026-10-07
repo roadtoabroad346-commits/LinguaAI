@@ -1,0 +1,20 @@
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+export async function updateSession(request: NextRequest) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anon) return NextResponse.next({ request });
+  const response = NextResponse.next({ request });
+  const supabase = createServerClient(url, anon, {
+    cookies: {
+      getAll: () => request.cookies.getAll(),
+      setAll: (cookiesToSet: Array<{ name: string; value: string; options: unknown }>) => {
+        cookiesToSet.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2])
+        );
+      }
+    }
+  });
+  await supabase.auth.getUser();
+  return response;
+}
