@@ -114,7 +114,15 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
         provider: "google",
         options: { redirectTo: `${window.location.origin}/auth/callback?next=/onboarding` },
       });
-      if (error) setFormError(error.message);
+      if (error) {
+        const msg = error.message.toLowerCase();
+        // Провайдер выключен в Supabase Dashboard -> Auth -> Providers -> Google
+        if (msg.includes("provider is not enabled") || msg.includes("unsupported provider")) {
+          setFormError(t("auth.errors.oauthFailed"));
+        } else {
+          setFormError(error.message);
+        }
+      }
     } catch (err) {
       setFormError(err instanceof Error ? err.message : t("auth.errors.googleFailed"));
     } finally {
