@@ -1,5 +1,5 @@
 # LinguaAI
-Personalized AI-powered English learning (A1–C1).
+Personalized AI-powered English learning (A1–C1). Mobile-first premium app shell with motion.
 ## Quickstart
 ```bash
 cp .env.example .env   # fill in keys
@@ -8,6 +8,8 @@ npm run dev            # http://localhost:3000
 ```
 ## Scripts
 `dev` / `build` / `typecheck` (`tsc --noEmit`) / `lint` (`next lint`) / `test` (Vitest).
+## Design system (Phase 10)
+Tokens in `tailwind.config.ts` + `src/app/globals.css` (light/dark, Inter + Sora, glass/gradients, safe-area, 100dvh). UI kit in `src/components/ui/` (Button motion press/shine, Card, Tabs, Progress+Ring, Sheet bottom sheet, Toast, Skeleton, Avatar, Section). Motion in `src/lib/motion/` (page transitions, reveals, counters, confetti). Shell: bottom tab bar (Home/Learn/Words/Challenge/Profile, hide-on-scroll) + desktop sidebar, theme toggle (`linguaai_theme`), reduced-motion + haptics settings on Profile. Landing is a scroll story (`src/components/landing/LandingStory.tsx`). PWA manifest + `/offline`.
 ## Environment
 See `.env.example`. Server-only: `GEMINI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. Public: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 ## Google OAuth (Phase 1) — production настроен

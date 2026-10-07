@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Alert, Badge, Progress } from "@/components/ui/feedback";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
+import { StickyActionBar } from "@/components/learn/StickyActionBar";
 import { LanguageOptions } from "@/components/i18n/LanguageSwitcher";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 import type { Locale } from "@/lib/i18n/config";
@@ -42,6 +45,7 @@ export function OnboardingWizard({ initial }: { initial: Omit<Partial<Onboarding
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [direction, setDirection] = useState(1);
 
   function toggleGoal(g: string) {
     setGoals((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g].slice(0, 6)));
@@ -76,6 +80,7 @@ export function OnboardingWizard({ initial }: { initial: Omit<Partial<Onboarding
     setSubmitError(null);
     if (validateStep(step)) {
       setErrors({});
+      setDirection(1);
       setStep((s) => Math.min(s + 1, STEP_KEYS.length - 1));
     }
   }
@@ -139,7 +144,16 @@ export function OnboardingWizard({ initial }: { initial: Omit<Partial<Onboarding
       <CardDescription>{t(STEP_KEYS[step])}</CardDescription>
       <Progress value={((step + 1) / STEP_KEYS.length) * 100} className="mt-3" />
 
-      <div className="mt-5">
+      <div className="mt-5 min-h-[240px]">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={step}
+            custom={direction}
+            initial={{ opacity: 0, x: 44 * direction }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -44 * direction }}
+            transition={{ type: "spring", stiffness: 320, damping: 32 }}
+          >
         {step === 0 && (
           <div className="space-y-3">
             <p className="text-sm text-ink-500">{t("language.chooseLanguageDesc")}</p>
@@ -199,10 +213,10 @@ export function OnboardingWizard({ initial }: { initial: Omit<Partial<Onboarding
                       onClick={() => toggleGoal(g)}
                       aria-pressed={active}
                       className={cn(
-                        "min-w-0 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2",
+                        "touch-44 min-h-[44px] min-w-0 rounded-full border px-4 py-2.5 text-sm font-semibold transition-all focus-visible:outline-2",
                         active
-                          ? "border-brand-600 bg-brand-600 text-white"
-                          : "border-ink-200 bg-white text-ink-700 hover:border-ink-300"
+                          ? "border-brand-600 bg-brand-600 text-white shadow-pop"
+                          : "border-ink-200 bg-white text-ink-700 hover:border-brand-300 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200"
                       )}
                     >
                       {g}
@@ -247,6 +261,8 @@ export function OnboardingWizard({ initial }: { initial: Omit<Partial<Onboarding
             <p className="text-xs text-ink-500">{t("onboarding.pathHint")}</p>
           </div>
         )}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {submitError && (
@@ -257,18 +273,18 @@ export function OnboardingWizard({ initial }: { initial: Omit<Partial<Onboarding
         </div>
       )}
 
-      <div className="mt-6 flex justify-between gap-2">
-        <Button variant="ghost" onClick={() => setStep((s) => Math.max(s - 1, 0))} disabled={step === 0 || saving}>
-          {t("common.back")}
+      <StickyActionBar className="mt-6">
+        <Button variant="ghost" onClick={() => { setDirection(-1); setStep((s) => Math.max(s - 1, 0)); }} disabled={step === 0 || saving} className="flex-1">
+          <ArrowLeft className="h-4 w-4" /> {t("common.back")}
         </Button>
         {step < STEP_KEYS.length - 1 ? (
-          <Button onClick={next}>{t("common.continue")}</Button>
+          <Button onClick={next} className="flex-[2]" shine>{t("common.continue")} <ArrowRight className="h-4 w-4" /></Button>
         ) : (
-          <Button onClick={finish} loading={saving}>
+          <Button onClick={finish} loading={saving} className="flex-[2]" shine>
             {t("onboarding.saveStart")}
           </Button>
         )}
-      </div>
+      </StickyActionBar>
     </Card>
   );
 }
@@ -291,12 +307,14 @@ function ModeCard({
       aria-checked={active}
       onClick={onSelect}
       className={cn(
-        "w-full rounded-2xl border p-4 text-left transition-colors focus-visible:outline-2",
-        active ? "border-brand-600 bg-brand-50 ring-2 ring-brand-100" : "border-ink-200 bg-white hover:border-ink-300"
+        "touch-44 w-full rounded-3xl border p-5 text-left transition-all focus-visible:outline-2",
+        active
+          ? "border-brand-600 bg-brand-50 shadow-[0_0_0_3px_rgb(99_102_241/0.16)] dark:bg-brand-950"
+          : "border-ink-200 bg-white hover:border-brand-300 dark:border-ink-700 dark:bg-ink-900"
       )}
     >
-      <p className="font-semibold text-ink-900">{title}</p>
-      <p className="mt-1 text-sm text-ink-500">{description}</p>
+      <p className="font-bold text-ink-900 dark:text-ink-50">{title}</p>
+      <p className="mt-1 text-sm leading-relaxed text-ink-500">{description}</p>
     </button>
   );
 }

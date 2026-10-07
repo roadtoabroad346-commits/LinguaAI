@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { AuthShell } from "@/components/learn/AuthShell";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
+import { ThemeToggle } from "@/components/providers/ThemeToggle";
 import { getSessionProfile, getSessionUser } from "@/lib/auth/session";
 import { isSupabaseConfigured } from "@/lib/env";
 import { Alert } from "@/components/ui/feedback";
@@ -14,7 +16,7 @@ export default async function OnboardingPage() {
 
   if (!isSupabaseConfigured()) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-dvh">
         <Header right={<LanguageSwitcher />} />
         <main className="mx-auto max-w-lg px-4 py-12">
           <Alert tone="warning" title={t("common.backendMissing")}>
@@ -32,9 +34,17 @@ export default async function OnboardingPage() {
   if (profile?.onboarding_completed) redirect("/placement");
 
   return (
-    <div className="min-h-screen">
-      <Header right={<LanguageSwitcher />} />
-      <main className="mx-auto max-w-lg px-4 py-12">
+    <div className="min-h-dvh">
+      <Header
+        title={t("onboarding.title")}
+        right={
+          <>
+            <ThemeToggle />
+            <LanguageSwitcher />
+          </>
+        }
+      />
+      <AuthShell wide title={t("onboarding.title")} desc={t("onboarding.subtitle")}>
         <OnboardingWizard
           initial={{
             displayName: profile?.display_name ?? "",
@@ -45,7 +55,7 @@ export default async function OnboardingPage() {
             preferredLanguage: (profile as { preferred_language?: string } | null)?.preferred_language ?? undefined,
           }}
         />
-      </main>
+      </AuthShell>
     </div>
   );
 }
