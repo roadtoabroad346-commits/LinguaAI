@@ -4,6 +4,7 @@ import { UserMenu } from "@/components/auth/UserMenu";
 import { BottomTabBar } from "./MobileNav";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { ThemeToggle } from "@/components/providers/ThemeToggle";
+import { PageTransition } from "@/lib/motion/components";
 import { getRequestLocale, getServerT } from "@/lib/i18n/server";
 
 export function AppShell({ children, title }: { children: React.ReactNode; title?: string }) {
@@ -34,7 +35,7 @@ export function AppShell({ children, title }: { children: React.ReactNode; title
           </div>
         </aside>
         <main id="main" className="min-w-0 pb-28 md:pb-10">
-          {children}
+          <PageTransition>{children}</PageTransition>
         </main>
       </div>
       <BottomTabBar />
