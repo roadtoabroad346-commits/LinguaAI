@@ -10,8 +10,17 @@ npm run dev            # http://localhost:3000
 `dev` / `build` / `typecheck` (`tsc --noEmit`) / `lint` (`next lint`) / `test` (Vitest).
 ## Environment
 See `.env.example`. Server-only: `GEMINI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. Public: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-## Google OAuth (Phase 1)
-Enable Google sign-in in Supabase: Authentication → Providers → Google (paste Client ID + Secret from Google Cloud Console). Add redirect URL `https://<project>.supabase.co/auth/v1/callback` in Google Cloud, and set Site URL to your app URL in Supabase → Authentication → URL Configuration (`NEXT_PUBLIC_APP_URL` locally).
+## Google OAuth (Phase 1) — production настроен
+Код: `src/components/auth/AuthForm.tsx` (`signInWithOAuth provider google`,
+`redirectTo: <origin>/auth/callback?next=/onboarding`), обмен кода — `src/app/auth/callback/route.ts`.
+1. Google Cloud Console → Credentials → OAuth client ID (Web): Authorized redirect URI
+   `https://ekeubyepwustjhzuthkd.supabase.co/auth/v1/callback`. Взять Client ID + Client Secret.
+2. Supabase Dashboard → Authentication → Sign In / Providers → Google → Enable,
+   вставить Client ID (только `xxx.apps.googleusercontent.com`, без `https://`) + Secret → Save.
+3. Supabase → Authentication → URL Configuration: Site URL `https://lingua-ai-project.vercel.app`;
+   Redirect URLs: `https://lingua-ai-project.vercel.app/auth/callback` и `http://localhost:3000/auth/callback`.
+4. Vercel Production env: `NEXT_PUBLIC_APP_URL=https://lingua-ai-project.vercel.app` (+ остальные 5 из `.env.example`).
+Секреты (Client Secret, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`) только в `.env.local` и Vercel env — никогда в git.
 ## Database
 Apply migrations in order in Supabase SQL editor (or `supabase db push`):
 - `supabase/migrations/0001_foundation.sql` — `profiles`, `xp_events`, `dictionary_entries` with owner-only RLS.
