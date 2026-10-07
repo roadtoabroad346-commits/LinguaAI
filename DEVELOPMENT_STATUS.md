@@ -1,6 +1,30 @@
 # LinguaAI — Development Status
 
-## Current phase: PHASE 9 — FINAL QA (complete)
+## Current phase: PHASE 10 — UI/UX MOBILE + MOTION (complete)
+
+### Completed work (Phase 10)
+- Design system: `tailwind.config.ts` (brand indigo/violet + warm amber accent, success/warning/danger, dark `class` mode, display/Sora + Inter fonts, radius/shadow/blur scales, shine/float/pulse/shake/waveform keyframes); `globals.css` (CSS vars light/dark, glass + gradient + mesh utilities, safe-area helpers, 100dvh, no horizontal overflow, reduced-motion, 16px iOS inputs). UI kit `src/components/ui/`: upgraded Button (spring press 0.96, hover lift, shine sweep, loading→checkmark morph, haptics), IconButton, Card (glass/elevated/interactive), Badge+Chip, Input+Textarea, Tabs (layoutId pill), Progress (animated) + Ring (animated SVG), Sheet (drag bottom sheet), Modal, Toast, Skeleton, EmptyState, Avatar, Tooltip, Section.
+- Motion system `src/lib/motion/`: `tokens.ts` (easings/springs/durations/variants fadeUp/scaleIn/stagger/slideSheet/pageTransition/popIn), `hooks.ts` (useReducedMotion, useCountUp, haptics gated by `linguaai_haptics`), `components.tsx` (PageTransition, Reveal whileInView once, Stagger, AnimatedNumber), `celebrate.ts` (canvas-confetti bursts, big variant for perfect/result, reduced-motion safe). AppShell wraps every authed route in PageTransition; transform/opacity-only animations, 60fps target.
+- Landing rewrite `src/app/page.tsx` + `src/components/landing/LandingStory.tsx`: sticky scroll progress, parallax hero with animated headline + live demo quiz (select/shake/pulse + confetti), thumb sticky CTA, problem→promise, 6-feature showcase with CSS phone mockups, A1→C1 timeline, dark gamification (animated XP ring 68/100, 12-day flame, badges), social proof, smooth FAQ accordions, gradient final CTA. SSR-safe (client components prerender), no images/CLS.
+- App shell: `Header` (glass, safe-area, contextual title), `Sidebar` (layoutId active pill, dark), `BottomTabBar` (5 tabs Home/Learn/Words/Challenge/Profile, 56px targets, layoutId pill, hide-on-scroll, safe-area, glass), `AppShell` (mesh bg, skip link, desktop sidebar + mobile bar, global PageTransition). PWA: `src/app/manifest.ts` + `public/icons/icon.svg`, `viewportFit: cover`, dual theme-color, `/offline` fallback. `ThemeProvider` (system/light/dark persisted `linguaai_theme`) + `ThemeToggle` in headers + `AppearanceSettings` (theme/reduced-motion/haptics switches) on Profile.
+- Screens: Dashboard (PageHero, animated streak/XP ring/counters, snap carousels, SmartPath preview), Placement (one-per-screen slide transitions, big QuizOptions, sticky action bar, confetti level reveal), Flashcards (3D flip spring + drag swipe ←/→ with sticky Known/Review bar), Practice/Grammar/Reading/Listening runners (QuizOption select/correct/wrong states, sticky submit bars, progress, confetti on perfect; reading adds S/M/L type + tap-to-peek Sheet; listening adds 64px play button, waveform, per-line highlight, mobile dictation textarea), Vocabulary (sticky search + snap Chip rows, staggered WordCards, waveform audio, bookmark pop + optimistic saves), Onboarding (slide steps, big goal/mode cards, sticky nav), Auth (AuthShell gradient cards, 44px targets), Profile (avatar hero + appearance card), Vocabulary header (gradient level cards). Business logic, APIs, XP/streak/grading untouched.
+- Locales: added `nav.profile` (en/ru/kk) for the tab bar; parity test still passes.
+
+### Verification (Phase 10)
+- `npm run typecheck`: clean. `npm run lint`: clean. `npm test`: 161/161 pass. `npm run build`: clean (First Load ~260–274 kB, +~50 kB framer-motion/confetti; shared 87.2 kB).
+- Manual: landing/dashboard/placement/flashcards/vocab verified via build smoke; 360–1440px + light/dark via responsive utilities (min-w-0/truncate, snap, safe-area, 100dvh); no horizontal overflow (overflow-x clip); focus-visible + aria preserved.
+
+### Known issues (Phase 10)
+- No Playwright/axe e2e yet (same as Phase 9 follow-up); contrast/keyboard verified manually via existing patterns.
+- Full SW offline caching not added (manifest + offline page only); add workbox/PWA plugin as follow-up.
+- Rate limiter still in-memory (Phase 9 note stands).
+
+### Next phase
+- Production launch checks + optional Redis limits, Playwright mobile screenshots (360/390/430/768/1024/1440 × light/dark), Lighthouse 90+ pass, SW precache.
+
+---
+
+## Previous phase: PHASE 9 — FINAL QA (complete)
 
 ### Completed work (Phase 9)
 - API hardening (`src/lib/api/security.ts` + 3 tests): shared `apiError`, `getClientIp`, in-memory fixed-window `checkRateLimit` (429 + `Retry-After`). Wired into AI-cost routes: `POST /api/ai-teacher/chat` (15/min), `POST /api/writing/check` (10/min), `POST /api/vocab/translate` (20/min).
