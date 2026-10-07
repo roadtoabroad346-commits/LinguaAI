@@ -1,9 +1,12 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { Search } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Alert, EmptyState } from "@/components/ui/feedback";
 import { Button } from "@/components/ui/Button";
+import { Chip } from "@/components/ui/feedback";
+import { Stagger, StaggerItem } from "@/lib/motion/components";
 import { searchWords, type VocabWord } from "@/lib/vocab/bank";
 import { WordCard } from "./WordCard";
 import { readLocalSaved } from "./SaveWordButton";
@@ -27,12 +30,12 @@ export function VocabularyExplorer({ initialWords, savedEntries, signedIn, defau
   const [q, setQ] = useState("");
   const { t } = useTranslation();
   const [level, setLevel] = useState<string>(defaultLevel ?? "all");
-  const [pos, setPos] = useState<string>("all");  const [saved, setSaved] = useState<Map<string, number>>(
+  const [pos, setPos] = useState<string>("all");
+  const [saved, setSaved] = useState<Map<string, number>>(
     () => new Map(savedEntries.map((e) => [e.word, e.mastery]))
   );
   const [localTick, setLocalTick] = useState(0);
 
-  // Signed-out learners keep saves in localStorage; re-read after toggles.
   useEffect(() => {
     if (signedIn) return;
     setSaved(new Map(readLocalSaved().map((w) => [w, 0])));
@@ -45,35 +48,42 @@ export function VocabularyExplorer({ initialWords, savedEntries, signedIn, defau
 
   useEffect(() => {
     if (!signedIn) {
-      const id = setInterval(() => setLocalTick((t) => t + 1), 1500);
+      const id = setInterval(() => setLocalTick((x) => x + 1), 1500);
       return () => clearInterval(id);
     }
   }, [signedIn]);
 
   return (
     <div>
-      <Card>
-        <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
+      <div className="sticky top-16 z-20 -mx-4 bg-ink-50/90 px-4 py-2 backdrop-blur dark:bg-ink-950/90 md:top-16">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
           <Input
-            label={t("learn.searchWords")}
+            label=""
+            aria-label={t("learn.searchWords")}
             placeholder={t("learn.searchWordsPlaceholder")}
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            className="h-12 rounded-2xl pl-11 shadow-card"
           />
-          <div>
-            <label htmlFor="vocab-level" className="mb-1.5 block text-sm font-medium text-ink-700">{t("learn.level")}</label>
-            <select id="vocab-level" value={level} onChange={(e) => setLevel(e.target.value)} className="h-10 rounded-xl border border-ink-200 bg-white px-3 text-sm">
-              {LEVELS.map((l) => <option key={l} value={l}>{l === "all" ? t("learn.allLevels") : l}</option>)}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="vocab-pos" className="mb-1.5 block text-sm font-medium text-ink-700">{t("learn.type")}</label>
-            <select id="vocab-pos" value={pos} onChange={(e) => setPos(e.target.value)} className="h-10 rounded-xl border border-ink-200 bg-white px-3 text-sm">
-              {POS.map((p) => <option key={p} value={p}>{p === "all" ? t("learn.allTypes") : p}</option>)}
-            </select>
-          </div>
         </div>
-        <p className="mt-2 text-xs text-ink-500" role="status">
+        <div className="no-scrollbar -mx-1 mt-2 flex snap-x gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label={t("learn.level")}>
+          {LEVELS.map((l) => (
+            <Chip key={l} active={level === l} onClick={() => setLevel(l)}>
+              {l === "all" ? t("learn.allLevels") : l}
+            </Chip>
+          ))}
+          <span aria-hidden className="w-px shrink-0 bg-ink-200 dark:bg-ink-700" />
+          {POS.map((p) => (
+            <Chip key={p} active={pos === p} onClick={() => setPos(p)}>
+              {p === "all" ? t("learn.allTypes") : p}
+            </Chip>
+          ))}
+        </div>
+      </div>
+
+      <Card className="mt-3">
+        <p className="text-xs font-medium text-ink-500" role="status">
           {t("learn.resultsOf", { shown: results.length, total: initialWords.length })} {t("learn.wordsUnit")}
           {!signedIn && ` · ${t("learn.previewSaves")}`}
         </p>
@@ -88,11 +98,13 @@ export function VocabularyExplorer({ initialWords, savedEntries, signedIn, defau
           />
         </div>
       ) : (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Stagger className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {results.map((w) => (
-            <WordCard key={w.slug} word={w} saved={saved.has(w.slug)} mastery={saved.has(w.slug) ? saved.get(w.slug) ?? 0 : null} signedIn={signedIn} />
+            <StaggerItem key={w.slug}>
+              <WordCard word={w} saved={saved.has(w.slug)} mastery={saved.has(w.slug) ? saved.get(w.slug) ?? 0 : null} signedIn={signedIn} />
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       )}
 
       {!signedIn && (
