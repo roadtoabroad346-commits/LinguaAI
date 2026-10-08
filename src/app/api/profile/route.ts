@@ -73,7 +73,35 @@ export async function PATCH(request: Request) {
     .from("profiles")
     .update(patch as never)
     .eq("id", userData.user.id);
-  if (error) return NextResponse.json({ error: "Could not save profile." }, { status: 500 });
+  if (error) {
+    // Backend predates 0013: retry with legacy columns only (extended fields sync later).
+    if (/column|schema cache|0013/i.test(error.message)) {
+      const legacy: Record<string, unknown> = {};
+      for (const k of [
+        "display_name",
+        "native_language",
+        "goals",
+        "daily_goal_xp",
+        "learning_mode",
+        "preferred_language",
+        "timezone",
+      ]) {
+        if (patch[k] !== undefined) legacy[k] = patch[k];
+      }
+      if (Object.keys(legacy).length > 0) {
+        const { error: legacyError } = await supabase
+          .from("profiles")
+          .update(legacy as never)
+          .eq("id", userData.user.id);
+        if (!legacyError) {
+          const res = NextResponse.json({ ok: true, migrated: false });
+          res.headers.set("Cache-Control", "no-store");
+          return res;
+        }
+      }
+    }
+    return NextResponse.json({ error: "Could not save profile." }, { status: 500 });
+  }
   const res = NextResponse.json({ ok: true });
   res.headers.set("Cache-Control", "no-store");
   return res;

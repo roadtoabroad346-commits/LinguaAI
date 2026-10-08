@@ -92,6 +92,22 @@ export async function POST(request: Request) {
     .update(profilePatch as never)
     .eq("id", user.id);
   if (profileError) {
+    // Backend predates 0013: retry with legacy columns so the level is still saved.
+    if (/column|schema cache|0013/i.test(profileError.message)) {
+      const legacyPatch: Record<string, unknown> = {
+        level: grade.level,
+        placement_score: grade.percent,
+        placement_taken_at: new Date().toISOString(),
+      };
+      if (parsed.data.learningMode) legacyPatch.learning_mode = parsed.data.learningMode;
+      const { error: legacyError } = await supabase
+        .from("profiles")
+        .update(legacyPatch as never)
+        .eq("id", user.id);
+      if (!legacyError) {
+        return NextResponse.json({ ...grade, saved: true, migrated: false }, { headers: noStore });
+      }
+    }
     return NextResponse.json({ error: "Result saved, but profile update failed." }, { status: 500, headers: noStore });
   }
 

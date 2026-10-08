@@ -94,9 +94,36 @@ export async function POST(request: Request) {
     { onConflict: "id" }
   );
   if (error) {
+    // Backend predates 0013 (new columns missing): retry with the legacy column set
+    // so onboarding still completes; extended fields sync after the migration is applied.
+    if (isMissingColumnError(error.message)) {
+      const { error: legacyError } = await supabase.from("profiles").upsert(
+        {
+          id: user.id,
+          email: user.email,
+          display_name: d.displayName,
+          native_language: d.nativeLanguage,
+          goals: d.goals,
+          daily_goal_xp: d.dailyGoalXp,
+          learning_mode: d.learningMode,
+          preferred_language: d.preferredLanguage ?? "en",
+          onboarding_completed: true,
+        } as never,
+        { onConflict: "id" }
+      );
+      if (!legacyError) {
+        const res = NextResponse.json({ ok: true, next: "/placement", migrated: false });
+        res.headers.set("Cache-Control", "no-store");
+        return res;
+      }
+    }
     return NextResponse.json({ error: "Could not save onboarding. Try again." }, { status: 500 });
   }
   const res = NextResponse.json({ ok: true, next: "/placement" });
   res.headers.set("Cache-Control", "no-store");
   return res;
+}
+
+function isMissingColumnError(message: string): boolean {
+  return /column|schema cache|0013/i.test(message);
 }
