@@ -15,14 +15,6 @@ export const metadata = {
 export default async function LandingPage() {
   const locale = await getEffectiveLocale();
   const t = getServerT(locale);
-  const copy = {
-    badge: t("landing.badge"),
-    subtitle: t("landing.subtitle"),
-    getStarted: t("landing.getStarted"),
-    tryPlacement: t("landing.tryPlacement"),
-    login: t("landing.login"),
-    signup: t("landing.signup"),
-  };
   return (
     <div className="min-h-dvh">
       <Header
@@ -32,32 +24,32 @@ export default async function LandingPage() {
             <LanguageSwitcher />
             <Link href="/login">
               <Button variant="ghost" size="sm">
-                {copy.login}
+                {t("landing.login")}
               </Button>
             </Link>
             <Link href="/signup">
-              <Button size="sm">{copy.signup}</Button>
+              <Button size="sm">{t("landing.signup")}</Button>
             </Link>
           </>
         }
       />
       <main>
-        <LandingStory t={copy} />
+        <LandingStory />
       </main>
       <footer className="border-t border-ink-200/60 py-8 dark:border-ink-800">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 text-xs text-ink-500 sm:flex-row">
           <p>
-            © {new Date().getFullYear()} {APP_NAME} · A1–C1 English with AI
+            © {new Date().getFullYear()} {APP_NAME} · {t("landing.footTag")}
           </p>
           <div className="flex gap-4">
             <Link href="/placement" className="hover:underline">
-              Placement
+              {t("landing.footPlacement")}
             </Link>
             <Link href="/dashboard" className="hover:underline">
-              Dashboard
+              {t("landing.footDashboard")}
             </Link>
             <Link href="/health" className="hover:underline">
-              Status
+              {t("landing.footStatus")}
             </Link>
           </div>
         </div>

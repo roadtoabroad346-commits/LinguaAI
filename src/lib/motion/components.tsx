@@ -6,6 +6,59 @@ import { DURATION, EASE, fadeUp, pageTransition, popIn, scaleIn, staggerChild, s
 import { useCountUp } from "./hooks";
 import { cn } from "@/lib/utils";
 
+/**
+ * Bulletproof in-view-once hook.
+ * - SSR / no-JS / no-IntersectionObserver → visible (inView starts true on server,
+ *   flips to false after mount only when IO exists and element is below the fold).
+ * - If IO never fires for an element already near the viewport (broken observer,
+ *   aggressive blockers, framer quirks) a fallback timer forces it visible.
+ * Content is NEVER stuck at opacity 0.
+ */
+function useInViewOnce<T extends HTMLElement>(threshold = 0.12) {
+  const ref = React.useRef<T | null>(null);
+  const [inView, setInView] = React.useState(true);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setInView(true);
+      return;
+    }
+    const rect = el.getBoundingClientRect();
+    const belowFold = rect.top > window.innerHeight * 0.92;
+    if (belowFold) setInView(false);
+    else {
+      setInView(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            setInView(true);
+            io.disconnect();
+          }
+        }
+      },
+      { threshold, rootMargin: "0px 0px -6% 0px" }
+    );
+    io.observe(el);
+    // Safety net: if the element is near/inside the viewport but IO stayed
+    // silent, force-show so nothing is ever left invisible.
+    const fallback = window.setTimeout(() => {
+      const r = el.getBoundingClientRect();
+      if (r.top < window.innerHeight * 1.1 && r.bottom > -160) setInView(true);
+    }, 1200);
+    return () => {
+      io.disconnect();
+      window.clearTimeout(fallback);
+    };
+  }, [threshold]);
+
+  return { ref, inView };
+}
+
 /** Page-level fade/slide wrapper — use once per route. */
 export function PageTransition({ children, className }: { children: React.ReactNode; className?: string }) {
   const reduce = useFMMotion();
@@ -17,7 +70,10 @@ export function PageTransition({ children, className }: { children: React.ReactN
   );
 }
 
-/** Scroll-triggered reveal (once). Falls back to plain div with reduced motion. */
+/**
+ * Scroll-triggered reveal (once). SSR-safe: renders visible, animates in only
+ * when the observer confirms entry. Falls back to plain div with reduced motion.
+ */
 export function Reveal({
   children,
   className,
@@ -30,13 +86,14 @@ export function Reveal({
   y?: number;
 }) {
   const reduce = useFMMotion();
+  const { ref, inView } = useInViewOnce<HTMLDivElement>();
   if (reduce) return <div className={className}>{children}</div>;
   return (
     <motion.div
+      ref={ref}
       className={className}
-      initial={{ opacity: 0, y }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-64px" }}
+      initial={false}
+      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y }}
       transition={{ duration: DURATION.base, ease: EASE.out, delay }}
     >
       {children}
@@ -46,9 +103,16 @@ export function Reveal({
 
 export function Stagger({ children, className }: { children: React.ReactNode; className?: string }) {
   const reduce = useFMMotion();
+  const { ref, inView } = useInViewOnce<HTMLDivElement>(0.06);
   if (reduce) return <div className={className}>{children}</div>;
   return (
-    <motion.div className={className} variants={staggerParent} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-40px" }}>
+    <motion.div
+      ref={ref}
+      className={className}
+      variants={staggerParent}
+      initial={false}
+      animate={inView ? "show" : "hidden"}
+    >
       {children}
     </motion.div>
   );
@@ -58,7 +122,7 @@ export function StaggerItem({ children, className }: { children: React.ReactNode
   const reduce = useFMMotion();
   if (reduce) return <div className={className}>{children}</div>;
   return (
-    <motion.div className={className} variants={staggerChild}>
+    <motion.div className={className} variants={staggerChild} initial={false}>
       {children}
     </motion.div>
   );
