@@ -11,7 +11,13 @@ import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
 
 export const metadata = { title: "Onboarding" };
 
-export default async function OnboardingPage() {
+export const dynamic = "force-dynamic";
+
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams?: { edit?: string };
+}) {
   const t = getServerT(await getEffectiveLocale());
 
   if (!isSupabaseConfigured()) {
@@ -28,10 +34,17 @@ export default async function OnboardingPage() {
   }
 
   const user = await getSessionUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/login?next=/onboarding");
 
   const profile = await getSessionProfile();
-  if (profile?.onboarding_completed) redirect("/placement");
+  const placementDone =
+    (profile as { placement_completed?: boolean } | null)?.placement_completed === true ||
+    (typeof profile?.level === "string" && (profile.level?.length ?? 0) > 0);
+  // Completed users are sent home — unless they explicitly chose "Edit answers".
+  if (profile?.onboarding_completed && placementDone && searchParams?.edit !== "1") {
+    redirect("/dashboard");
+  }
+  if (profile?.onboarding_completed && !placementDone && searchParams?.edit !== "1") redirect("/placement");
 
   return (
     <div className="min-h-dvh">
@@ -53,6 +66,7 @@ export default async function OnboardingPage() {
             dailyGoalXp: profile?.daily_goal_xp ?? 30,
             learningMode: profile?.learning_mode ?? "guided",
             preferredLanguage: (profile as { preferred_language?: string } | null)?.preferred_language ?? undefined,
+            onboardingStep: (profile as { onboarding_step?: number } | null)?.onboarding_step ?? 0,
           }}
         />
       </AuthShell>

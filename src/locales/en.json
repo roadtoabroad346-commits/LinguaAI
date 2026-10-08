@@ -473,6 +473,7 @@
     "resultNotSavedOut": "Log in or create an account to save your level and unlock your learning path.",
     "goDashboard": "Go to dashboard",
     "retake": "Retake test",
+    "retakeHint": "saved level — retaking keeps history and updates it on completion",
     "submit": "See my level",
     "start": "Start test",
     "loginToSave": "Log in to save your result",

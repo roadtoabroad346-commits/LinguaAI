@@ -26,6 +26,8 @@ import {
   type FlashMode,
 } from "@/lib/vocab/flashcards";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
+import { useAuth } from "@/components/auth/AuthProvider";
+import { namespacedKey } from "@/lib/auth/storage";
 import { cn } from "@/lib/utils";
 
 interface CardItem extends FlashCard {
@@ -46,9 +48,9 @@ function readStorage(key: string): string | null {
   }
 }
 
-function readFavs(): Set<string> {
+function readFavs(key: string): Set<string> {
   try {
-    const raw = readStorage(FAV_KEY);
+    const raw = typeof window === "undefined" ? null : window.localStorage.getItem(key);
     return new Set(raw ? (JSON.parse(raw) as string[]) : []);
   } catch {
     return new Set();
@@ -59,6 +61,9 @@ const MODES: FlashMode[] = ["flip", "write", "choice", "listen"];
 
 export function FlashcardRunner() {
   const { t } = useTranslation();
+  const { status, userId } = useAuth();
+  // Favorites are per-account: namespaced by user id when signed in, guest key otherwise.
+  const favKey = status === "authenticated" && userId ? namespacedKey(userId, "flash_fav") : FAV_KEY;
   const [allCards, setAllCards] = useState<CardItem[] | null>(null);
   const [signedIn, setSignedIn] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -84,7 +89,7 @@ export function FlashcardRunner() {
     const d = readStorage(DIR_KEY);
     if (d === "def-word" || d === "mixed" || d === "word-def") setDirection(d);
     setShuffled(readStorage(SHUFFLE_KEY) === "1");
-    setFavs(readFavs());
+    setFavs(readFavs(favKey));
     let cancelled = false;
     fetch("/api/flashcards")
       .then(async (r) => {
@@ -104,6 +109,11 @@ export function FlashcardRunner() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    setFavs(readFavs(favKey));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [favKey]);
 
   const cards = useMemo(() => {
     if (!allCards) return null;
@@ -140,11 +150,12 @@ export function FlashcardRunner() {
   }
 
   function toggleFav(slug: string) {
+    const key = favKey;
     setFavs((prev) => {
       const next = new Set(prev);
       if (next.has(slug)) next.delete(slug);
       else next.add(slug);
-      persist(FAV_KEY, JSON.stringify(Array.from(next)));
+      persist(key, JSON.stringify(Array.from(next)));
       return next;
     });
   }

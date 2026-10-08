@@ -178,7 +178,7 @@ export function PlacementRunner({
   // ---------- Question state: one per screen ----------
   return (
     <PageTransition>
-      <div className="mx-auto w-full max-w-xl">
+      <div className="mx-auto w-full max-w-xl" key={signedIn ? "authed" : "guest"}>
         <div className="flex min-w-0 items-center justify-between gap-2">
           <p className="min-w-0 flex-1 truncate text-sm font-semibold text-ink-500">
             {t("placement.questionOf", { current: index + 1, total })}
@@ -186,9 +186,9 @@ export function PlacementRunner({
           <Badge tone="brand">{question.level}</Badge>
         </div>
         <Progress value={((index + 1) / total) * 100} label={`${answeredCount} / ${total}`} className="mt-2.5" tone="brand" />
-        {existingLevel && (
+        {existingLevel && answeredCount === 0 && (
           <p className="mt-2 text-xs text-ink-500">
-            {t("profile.placementScore")}: <strong>{existingLevel}</strong>
+            {t("profile.placementScore")}: <strong>{existingLevel}</strong> · {t("placement.retakeHint")}
           </p>
         )}
 

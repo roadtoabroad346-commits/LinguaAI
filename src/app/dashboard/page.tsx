@@ -24,7 +24,10 @@ export default async function DashboardPage() {
 
   const profile = data.profile;
   const needsOnboarding = profile && !profile.onboarding_completed;
-  const needsPlacement = profile && profile.onboarding_completed && !profile.level;
+  const placementDone =
+    (profile as { placement_completed?: boolean } | null)?.placement_completed === true ||
+    (typeof profile?.level === "string" && (profile.level?.length ?? 0) > 0);
+  const needsPlacement = profile && profile.onboarding_completed && !placementDone;
 
   return (
     <AppShell>

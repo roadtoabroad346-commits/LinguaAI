@@ -96,10 +96,13 @@ export default async function ProfilePage() {
               </div>
             </dl>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Link href="/placement">
+              <Link href={profile.level ? "/placement?retake=1" : "/placement"}>
                 <Button variant="secondary" size="sm">
                   {profile.level ? t("profile.retake") : t("profile.takePlacement")}
                 </Button>
+              </Link>
+              <Link href="/onboarding?edit=1">
+                <Button variant="ghost" size="sm">{t("profile.editProfile")}</Button>
               </Link>
               <Link href="/progress">
                 <Button variant="ghost" size="sm">{t("nav.progress")}</Button>
