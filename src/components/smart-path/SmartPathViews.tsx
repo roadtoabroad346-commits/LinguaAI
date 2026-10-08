@@ -219,7 +219,7 @@ export function SmartPathViews() {
             {t("smart.adaptsDesc")}
           </CardDescription>
           <ul className="mt-3 space-y-2 text-sm">
-            <li className="rounded-xl bg-ink-50 px-3 py-2">
+            <li className="rounded-xl bg-ink-50 px-3 py-2 dark:bg-ink-800">
               <span className="font-semibold">{t("smart.reviewSchedule")} </span>
               {data.signals.dueCount > 0 ? (
                 <span>{t("smart.dueWords", { due: data.signals.dueCount, total: data.signals.totalWords })}</span>
@@ -228,31 +228,31 @@ export function SmartPathViews() {
               )}
             </li>
             {data.signals.weakAreas.length > 0 && (
-              <li className="rounded-xl bg-ink-50 px-3 py-2">
+              <li className="rounded-xl bg-ink-50 px-3 py-2 dark:bg-ink-800">
                 <span className="font-semibold">{t("smart.weakSkills")} </span>
                 {data.signals.weakAreas.map((w) => `${w.label} (${w.reason})`).join(" · ")}
               </li>
             )}
             {data.signals.avgMastery !== null && (
-              <li className="rounded-xl bg-ink-50 px-3 py-2">
+              <li className="rounded-xl bg-ink-50 px-3 py-2 dark:bg-ink-800">
                 <span className="font-semibold">{t("smart.vocabMastery")} </span>
                 {t("smart.vocabMasteryDesc", { pct: data.signals.avgMastery, n: data.signals.totalWords })}
               </li>
             )}
             {data.signals.writingErrors.length > 0 && (
-              <li className="rounded-xl bg-ink-50 px-3 py-2">
+              <li className="rounded-xl bg-ink-50 px-3 py-2 dark:bg-ink-800">
                 <span className="font-semibold">{t("smart.writingPatterns")} </span>
                 {t("smart.writingPatternsDesc")} — {data.signals.writingErrors.map((e) => `${e.category} (${e.count})`).join(", ")}.
               </li>
             )}
             {data.signals.misspelledWords.length > 0 && (
-              <li className="rounded-xl bg-ink-50 px-3 py-2">
+              <li className="rounded-xl bg-ink-50 px-3 py-2 dark:bg-ink-800">
                 <span className="font-semibold">{t("smart.spellingMisses")} </span>
                 {data.signals.misspelledWords.map((m) => `“${m.word}” (${m.misses}×)`).join(", ")}.
               </li>
             )}
             {data.signals.recentKinds.length > 0 && (
-              <li className="rounded-xl bg-ink-50 px-3 py-2">
+              <li className="rounded-xl bg-ink-50 px-3 py-2 dark:bg-ink-800">
                 <span className="font-semibold">{t("smart.thisWeek")} </span>
                 {data.signals.recentKinds.join(", ")} — {t("smart.thisWeekDesc")}
               </li>

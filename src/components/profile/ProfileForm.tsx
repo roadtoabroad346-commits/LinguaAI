@@ -185,7 +185,7 @@ export function ProfileForm({ profile }: Props) {
           id="profile-timezone"
           value={timezone}
           onChange={(e) => setTimezone(e.target.value)}
-          className="mt-1 w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+          className="mt-1 w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-50"
         >
           {Array.from(new Set([timezone, ...COMMON_TIMEZONES])).map((tz) => (
             <option key={tz} value={tz}>{tz}</option>

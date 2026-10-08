@@ -50,7 +50,7 @@ export function WritingExplorer({ initialTasks }: { initialTasks: TaskSummary[] 
           <Input aria-label={t("learn.searchTasks")} placeholder={t("learn.searchTasks")} value={query} onChange={(e) => setQuery(e.target.value)} />
           <label className="flex min-w-0 items-center gap-2 text-sm">
             <span className="shrink-0 text-ink-500">{t("learn.level")}</span>
-            <select aria-label={t("learn.level")} value={level} onChange={(e) => setLevel(e.target.value)} className="h-10 min-w-0 flex-1 rounded-xl border border-ink-200 bg-white px-2 text-sm">
+            <select aria-label={t("learn.level")} value={level} onChange={(e) => setLevel(e.target.value)} className="h-10 min-w-0 flex-1 rounded-xl border border-ink-200 bg-white px-2 text-sm dark:border-ink-700 dark:bg-ink-900 dark:text-ink-50">
               <option value="all">{t("learn.all")}</option>
               {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
             </select>
@@ -169,7 +169,7 @@ export function WritingEditor({ task, onBack }: { task: TaskSummary; onBack: () 
       <Card>
         <label htmlFor="writing-text" className="mb-1.5 block text-sm font-medium text-ink-700">{t("learn.yourText")}</label>
         <textarea id="writing-text" rows={9} value={text} onChange={(e) => setText(e.target.value)}
-          placeholder={t("learn.writeHere")} className="w-full rounded-xl border border-ink-200 bg-white p-3 text-sm leading-relaxed text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100" />
+          placeholder={t("learn.writeHere")} className="w-full rounded-xl border border-ink-200 bg-white p-3 text-sm leading-relaxed text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-50" />
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-ink-500" role="status">
           <span>{t("learn.wordsStatus", { n: words, min: task.minWords })}</span>
           <span>{words > task.maxWords ? t("learn.overLimit", { n: words - task.maxWords }) : t("learn.toGo", { n: Math.max(0, task.minWords - words) })}</span>

@@ -298,7 +298,7 @@ function TopicPractice({ topic, onBack }: { topic: TopicSummary; onBack: () => v
         <textarea id="speak-transcript" rows={6} value={live.transcript || manual}
           onChange={(e) => { live.setTranscript(e.target.value); setManual(e.target.value); }}
           placeholder={t("learn.saidHere")}
-          className="mt-3 w-full rounded-xl border border-ink-200 bg-white p-3 text-sm leading-relaxed text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100" />
+          className="mt-3 w-full rounded-xl border border-ink-200 bg-white p-3 text-sm leading-relaxed text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-50" />
         <p className="mt-1 text-xs text-ink-500" role="status">{t("learn.wordsStatus", { n: words, min: topic.minWords })}</p>
         {error && <div className="mt-3"><Alert tone="danger" title={t("learn.feedbackFailed")}>{error}</Alert></div>}
         <div className="mt-3 flex flex-wrap gap-2">
@@ -360,7 +360,7 @@ export function TopicTalkExplorer({ initialTopics }: { initialTopics: TopicSumma
           <Input aria-label={t("learn.searchSpeaking")} placeholder={t("learn.searchSpeaking")} value={query} onChange={(e) => setQuery(e.target.value)} />
           <label className="flex min-w-0 items-center gap-2 text-sm">
             <span className="shrink-0 text-ink-500">{t("learn.level")}</span>
-            <select aria-label={t("learn.level")} value={level} onChange={(e) => setLevel(e.target.value)} className="h-10 min-w-0 flex-1 rounded-xl border border-ink-200 bg-white px-2 text-sm">
+            <select aria-label={t("learn.level")} value={level} onChange={(e) => setLevel(e.target.value)} className="h-10 min-w-0 flex-1 rounded-xl border border-ink-200 bg-white px-2 text-sm dark:border-ink-700 dark:bg-ink-900 dark:text-ink-50">
               <option value="all">{t("learn.all")}</option>
               {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
             </select>
@@ -523,7 +523,7 @@ function ReadAloudPractice({ passage, onBack }: { passage: PassageSummary; onBac
         <textarea id="readaloud-transcript" rows={4} value={live.transcript || manual}
           onChange={(e) => { live.setTranscript(e.target.value); setManual(e.target.value); }}
           placeholder={t("learn.heardHere")}
-          className="w-full rounded-xl border border-ink-200 bg-white p-3 text-sm leading-relaxed text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100" />
+          className="w-full rounded-xl border border-ink-200 bg-white p-3 text-sm leading-relaxed text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-50" />
         <p className="mt-1 text-xs text-ink-500" role="status">{t("learn.wordsHeard", { n: words })}</p>
         {error && <div className="mt-3"><Alert tone="danger" title={t("learn.checkFailed")}>{error}</Alert></div>}
         <div className="mt-3 flex flex-wrap gap-2">
@@ -554,7 +554,7 @@ export function ReadAloudExplorer({ initialPassages }: { initialPassages: Passag
       <Card>
         <label className="flex min-w-0 max-w-xs items-center gap-2 text-sm">
           <span className="shrink-0 text-ink-500">{t("learn.level")}</span>
-          <select aria-label={t("learn.level")} value={level} onChange={(e) => setLevel(e.target.value)} className="h-10 min-w-0 flex-1 rounded-xl border border-ink-200 bg-white px-2 text-sm">
+          <select aria-label={t("learn.level")} value={level} onChange={(e) => setLevel(e.target.value)} className="h-10 min-w-0 flex-1 rounded-xl border border-ink-200 bg-white px-2 text-sm dark:border-ink-700 dark:bg-ink-900 dark:text-ink-50">
             <option value="all">{t("learn.all")}</option>
             {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
           </select>
@@ -590,10 +590,10 @@ export function SpeakingTabs({ topics, passages }: { topics: TopicSummary[]; pas
   const [tab, setTab] = useState<"talk" | "read">("talk");
   return (
     <div>
-      <div role="tablist" aria-label={t("learn.speakingModes")} className="flex gap-1 rounded-xl border border-ink-200 bg-white p-1">
+      <div role="tablist" aria-label={t("learn.speakingModes")} className="flex gap-1 rounded-xl border border-ink-200 bg-white p-1 dark:border-ink-700 dark:bg-ink-900">
         {(["talk", "read"] as const).map((mode) => (
           <button key={mode} role="tab" aria-selected={tab === mode} onClick={() => { setTab(mode); stopSpeaking(); }}
-            className={`min-w-0 flex-1 truncate rounded-lg px-4 py-2 text-sm font-medium transition-colors ${tab === mode ? "bg-brand-600 text-white" : "text-ink-600 hover:bg-ink-100"}`}>
+            className={`min-w-0 flex-1 truncate rounded-lg px-4 py-2 text-sm font-medium transition-colors ${tab === mode ? "bg-brand-600 text-white dark:bg-brand-500" : "text-ink-600 hover:bg-ink-100 dark:text-ink-300 dark:hover:bg-ink-800"}`}>
             {mode === "talk" ? t("learn.topicTalk") : t("learn.readAloud")}
           </button>
         ))}

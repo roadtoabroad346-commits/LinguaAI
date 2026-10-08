@@ -45,10 +45,10 @@ export function TranslationPanel({ word, initialTranslation, signedIn, nativeLan
   }
 
   return (
-    <div className="rounded-2xl border border-ink-200/70 bg-white p-4">
-      <h2 className="text-sm font-semibold text-ink-900">{t("learn.translation")}</h2>
+    <div className="rounded-2xl border border-ink-200/70 bg-white p-4 dark:border-ink-700 dark:bg-ink-900">
+      <h2 className="text-sm font-semibold text-ink-900 dark:text-ink-50">{t("learn.translation")}</h2>
       {translation ? (
-        <p className="mt-1 text-base text-ink-900">{translation}</p>
+        <p className="mt-1 text-base text-ink-900 dark:text-ink-50">{translation}</p>
       ) : (
         <p className="mt-1 text-sm text-ink-500">{t("learn.noTranslation")}</p>
       )}
@@ -58,7 +58,7 @@ export function TranslationPanel({ word, initialTranslation, signedIn, nativeLan
           id="tr-lang"
           value={target}
           onChange={(e) => setTarget(e.target.value)}
-          className="h-9 w-36 min-w-0 rounded-xl border border-ink-200 px-2 text-sm"
+          className="h-9 w-36 min-w-0 rounded-xl border border-ink-200 bg-white px-2 text-sm text-ink-900 dark:border-ink-700 dark:bg-ink-800 dark:text-ink-50"
           maxLength={48}
         />
         <Button size="sm" variant="secondary" onClick={translate} loading={loading} disabled={loading || target.trim().length < 2}>

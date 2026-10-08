@@ -194,7 +194,7 @@ export function SpellingViews() {
           id="spelling-level"
           value={level}
           onChange={(e) => setLevel(e.target.value)}
-          className="rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm"
+          className="rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm dark:border-ink-700 dark:bg-ink-900 dark:text-ink-50"
         >
           {LEVELS.map((l) => (
             <option key={l} value={l}>{l === "all" ? t("learn.mixed") : l}</option>

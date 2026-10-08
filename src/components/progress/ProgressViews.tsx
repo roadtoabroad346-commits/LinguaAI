@@ -255,7 +255,7 @@ export function ProgressViews() {
             {data.achievements.map((a) => (
               <li
                 key={a.key}
-                className={`rounded-xl border px-3 py-2.5 ${a.unlocked ? "border-green-200 bg-green-50" : "border-ink-200 bg-ink-50 opacity-70"}`}
+                className={`rounded-xl border px-3 py-2.5 ${a.unlocked ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950" : "border-ink-200 bg-ink-50 opacity-70 dark:border-ink-700 dark:bg-ink-800"}`}
               >
                 <p className="text-sm font-semibold">{a.unlocked ? "🏆 " : "🔒 "}{a.title}</p>
                 <p className="mt-0.5 text-xs text-ink-500">{a.description}</p>

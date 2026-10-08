@@ -104,7 +104,7 @@ export function DictionaryView({ initialEntries, signedIn }: { initialEntries: D
           <Input label={t("learn.searchDict")} placeholder={t("learn.searchDictPlaceholder")} value={q} onChange={(e) => setQ(e.target.value)} />
           <div>
             <label htmlFor="dict-band" className="mb-1.5 block text-sm font-medium text-ink-700">{t("learn.mastery")}</label>
-            <select id="dict-band" value={band} onChange={(e) => setBand(e.target.value)} className="h-10 rounded-xl border border-ink-200 bg-white px-3 text-sm">
+            <select id="dict-band" value={band} onChange={(e) => setBand(e.target.value)} className="h-10 rounded-xl border border-ink-200 bg-white px-3 text-sm dark:border-ink-700 dark:bg-ink-900 dark:text-ink-50">
               <option value="all">{t("learn.all")}</option>
               <option value="new">{t("learn.bandNew")}</option>
               <option value="learning">{t("learn.bandLearning")}</option>
@@ -114,13 +114,13 @@ export function DictionaryView({ initialEntries, signedIn }: { initialEntries: D
           </div>
           <div>
             <label htmlFor="dict-level" className="mb-1.5 block text-sm font-medium text-ink-700">{t("learn.level")}</label>
-            <select id="dict-level" value={level} onChange={(e) => setLevel(e.target.value)} className="h-10 rounded-xl border border-ink-200 bg-white px-3 text-sm">
+            <select id="dict-level" value={level} onChange={(e) => setLevel(e.target.value)} className="h-10 rounded-xl border border-ink-200 bg-white px-3 text-sm dark:border-ink-700 dark:bg-ink-900 dark:text-ink-50">
               {["all", "A1", "A2", "B1", "B2", "C1"].map((l) => <option key={l} value={l}>{l === "all" ? t("learn.all") : l}</option>)}
             </select>
           </div>
           <div>
             <label htmlFor="dict-sort" className="mb-1.5 block text-sm font-medium text-ink-700">{t("learn.sort")}</label>
-            <select id="dict-sort" value={sort} onChange={(e) => setSort(e.target.value as never)} className="h-10 rounded-xl border border-ink-200 bg-white px-3 text-sm">
+            <select id="dict-sort" value={sort} onChange={(e) => setSort(e.target.value as never)} className="h-10 rounded-xl border border-ink-200 bg-white px-3 text-sm dark:border-ink-700 dark:bg-ink-900 dark:text-ink-50">
               <option value="recent">{t("learn.recent")}</option>
               <option value="mastery">{t("learn.mastery")}</option>
               <option value="alpha">{t("learn.alphaAZ")}</option>

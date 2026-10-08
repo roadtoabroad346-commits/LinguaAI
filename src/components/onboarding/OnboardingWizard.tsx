@@ -205,7 +205,7 @@ export function OnboardingWizard({ initial }: { initial: Omit<Partial<Onboarding
                 id="native"
                 value={nativeLanguage}
                 onChange={(e) => setNativeLanguage(e.target.value)}
-                className="h-10 w-full rounded-xl border border-ink-200 bg-white px-3 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+                className="h-10 w-full rounded-xl border border-ink-200 bg-white px-3 text-sm text-ink-900 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-50"
                 aria-invalid={Boolean(errors.nativeLanguage) || undefined}
               >
                 <option value="">{t("onboarding.selectOption")}</option>
