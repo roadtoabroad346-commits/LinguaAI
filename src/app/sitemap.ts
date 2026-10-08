@@ -20,6 +20,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/grammar", priority: 0.6, changeFrequency: "weekly" },
     { path: "/reading", priority: 0.6, changeFrequency: "weekly" },
     { path: "/listening", priority: 0.6, changeFrequency: "weekly" },
+    { path: "/pronunciation", priority: 0.6, changeFrequency: "weekly" },
   ];
   return pages.map((p) => ({ url: `${base}${p.path}`, changeFrequency: p.changeFrequency, priority: p.priority }));
 }

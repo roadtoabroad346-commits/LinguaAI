@@ -12,6 +12,7 @@ import { StickyActionBar } from "@/components/learn/StickyActionBar";
 import { PageTransition, Stagger, StaggerItem } from "@/lib/motion/components";
 import { celebrate } from "@/lib/motion/celebrate";
 import { LEVELS } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 import type { GrammarTopic } from "@/lib/grammar/topics";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 
@@ -75,16 +76,31 @@ export function GrammarRunner({ slug, questions }: { slug: string; questions: Pu
   const { t } = useTranslation();
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{ score: number; total: number; xpEarned: number; perfect: boolean; saved: boolean } | null>(null);
+  const [result, setResult] = useState<{ score: number; total: number; xpEarned: number; perfect: boolean; saved: boolean; correctIds?: string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const answered = Object.keys(answers).length;
-  const allAnswered = answered === questions.length;
+  const [shuffled, setShuffled] = useState(false);
+  // Retry mode: after a submit, narrow the set to the missed questions only.
+  const [retryIds, setRetryIds] = useState<string[] | null>(null);
+  const visible = useMemo(() => {
+    const base = retryIds ? questions.filter((q) => retryIds.includes(q.id)) : questions;
+    if (!shuffled) return base;
+    const arr = [...base];
+    let seed = 42;
+    for (let i = arr.length - 1; i > 0; i--) {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      const j = seed % (i + 1);
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }, [questions, retryIds, shuffled]);
+  const answered = visible.filter((q) => answers[q.id] !== undefined).length;
+  const allAnswered = answered === visible.length;
 
   async function submit() {
     setSubmitting(true);
     setError(null);
     try {
-      const selections = questions.map((x) => ({ questionId: x.id, selected: answers[x.id], choices: x.choices }));
+      const selections = visible.map((x) => ({ questionId: x.id, selected: answers[x.id], choices: x.choices }));
       const res = await fetch("/api/grammar/complete", {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ slug, selections }),
@@ -99,6 +115,17 @@ export function GrammarRunner({ slug, questions }: { slug: string; questions: Pu
     } finally {
       setSubmitting(false);
     }
+  }
+
+  const wrongIds = result && !result.perfect && Array.isArray(result.correctIds)
+    ? visible.filter((q) => !result.correctIds!.includes(q.id)).map((q) => q.id)
+    : [];
+
+  function retryMistakes() {
+    setRetryIds(wrongIds.length > 0 ? wrongIds : null);
+    setAnswers({});
+    setResult(null);
+    setError(null);
   }
 
   if (result) {
@@ -117,7 +144,10 @@ export function GrammarRunner({ slug, questions }: { slug: string; questions: Pu
           <CardDescription>{result.saved ? t("learn.xpSaved", { xp: result.xpEarned }) : t("learn.xpPreview", { xp: result.xpEarned })}</CardDescription>
           <Progress value={(result.score / Math.max(1, result.total)) * 100} tone={result.perfect ? "success" : "brand"} className="mx-auto mt-3 max-w-xs" />
           <div className="mt-4 flex flex-wrap justify-center gap-2">
-            <Button size="md" variant="secondary" onClick={() => window.location.reload()}>{t("learn.tryAgain")}</Button>
+            {wrongIds.length > 0 && (
+              <Button size="md" onClick={retryMistakes} shine>{t("learn.retryMistakes", { count: wrongIds.length })}</Button>
+            )}
+            <Button size="md" variant="secondary" onClick={() => { setRetryIds(null); setAnswers({}); setResult(null); }}>{t("learn.tryAgain")}</Button>
             <Link href="/grammar"><Button size="md" variant="ghost">{t("learn.allTopics")}</Button></Link>
           </div>
         </Card>
@@ -128,12 +158,34 @@ export function GrammarRunner({ slug, questions }: { slug: string; questions: Pu
   return (
     <PageTransition>
       <div className="mx-auto w-full max-w-2xl">
-        <Progress value={(answered / Math.max(1, questions.length)) * 100} label={`${answered}/${questions.length}`} className="mb-3" />
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <Progress value={(answered / Math.max(1, visible.length)) * 100} label={`${answered}/${visible.length}`} />
+          </div>
+          <button
+            type="button"
+            onClick={() => setShuffled((v) => !v)}
+            aria-pressed={shuffled}
+            className={cn(
+              "shrink-0 rounded-xl border px-3 py-2 text-xs font-semibold",
+              shuffled
+                ? "border-brand-600 bg-brand-50 text-brand-800 dark:bg-brand-950 dark:text-brand-200"
+                : "border-ink-200 text-ink-500 hover:bg-ink-50 dark:border-ink-700 dark:hover:bg-ink-800"
+            )}
+          >
+            {t("learn.shuffle")}
+          </button>
+        </div>
+        {retryIds && (
+          <p className="mb-3 rounded-2xl bg-brand-50 px-3 py-2 text-sm font-medium text-brand-800 dark:bg-brand-950 dark:text-brand-200" role="status">
+            {t("learn.retryingMistakes", { count: visible.length })}
+          </p>
+        )}
         <div className="space-y-3">
-          {questions.map((x, i) => (
+          {visible.map((x, i) => (
             <Card key={x.id}>
               <p className="text-[15px] font-bold leading-snug">{i + 1}. {x.prompt}</p>
-              <div className="mt-3 grid gap-2" role="radiogroup" aria-label={t("placement.questionOf", { current: i + 1, total: questions.length })}>
+              <div className="mt-3 grid gap-2" role="radiogroup" aria-label={t("placement.questionOf", { current: i + 1, total: visible.length })}>
                 {x.choices.map((c, ci) => (
                   <QuizOption
                     key={ci}
@@ -154,7 +206,7 @@ export function GrammarRunner({ slug, questions }: { slug: string; questions: Pu
             {!allAnswered ? t("learn.answerAllHint") : t("learn.readyToSubmit")}
           </div>
           <Button onClick={submit} loading={submitting} disabled={!allAnswered || submitting} shine size="lg" className="flex-1">
-            {t("learn.submitCount", { a: answered, b: questions.length })}
+            {t("learn.submitCount", { a: answered, b: visible.length })}
           </Button>
         </StickyActionBar>
       </div>

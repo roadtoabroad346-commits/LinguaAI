@@ -4,6 +4,7 @@ import type { LearningMode, Level } from "@/types/database";
 import { GRAMMAR_TOPICS } from "@/lib/grammar/topics";
 import { READING_PASSAGES } from "@/lib/reading/library";
 import { LISTENING_TRACKS } from "@/lib/listening/library";
+import { PRONUNCIATION_DRILLS } from "@/lib/pronunciation/drills";
 import { VOCAB_BANK } from "@/lib/vocab/bank";
 import { SKILL_META, type SkillScore, type WeakArea } from "@/lib/gamification/gamification";
 
@@ -106,6 +107,7 @@ interface Levelled {
 const GRAMMAR_LEVELLED: Levelled[] = GRAMMAR_TOPICS.map((t) => ({ slug: t.slug, level: t.level, title: t.title }));
 const READING_LEVELLED: Levelled[] = READING_PASSAGES.map((p) => ({ slug: p.slug, level: p.level, title: p.title }));
 const LISTENING_LEVELLED: Levelled[] = LISTENING_TRACKS.map((t) => ({ slug: t.slug, level: t.level, title: t.title }));
+const PRON_LEVELLED: Levelled[] = PRONUNCIATION_DRILLS.map((t) => ({ slug: t.slug, level: t.level, title: t.title }));
 
 const KIND_HREF: Record<string, string> = {
   grammar: "/grammar",
@@ -379,6 +381,37 @@ function weakSkillStep(
     }
   }
 
+  if (skill === "pronunciation") {
+    const worst = input.worstSlugs.find((w) => w.skill === "pronunciation");
+    if (worst && worst.accuracyPct < 100) {
+      return {
+        used: [worst.slug],
+        step: {
+          id: "weak-pron-slug", kind: "weak-skill", skill,
+          title: `Re-drill: ${worst.title}`,
+          description: "Same drill with slow reference audio — then re-rate your attempt.",
+          href: `/pronunciation/${worst.slug}`,
+          reason: `${weakReason} · lowest drill “${worst.title}” (${worst.accuracyPct}%)`,
+          xpEstimate: 12, minutes: 8, level,
+        },
+      };
+    }
+    const pick = pickContent(PRON_LEVELLED, target, input.recentSlugs, remedial);
+    if (pick) {
+      return {
+        used: [pick.slug],
+        step: {
+          id: "weak-pron", kind: "weak-skill", skill,
+          title: `Pronunciation: ${pick.title}`,
+          description: "Minimal pairs, stress and intonation with slow + normal audio.",
+          href: `/pronunciation/${pick.slug}`,
+          reason: weakReason + (pick.remedial ? ` · easing down to ${pick.level}` : ""),
+          xpEstimate: 12, minutes: 8, level: pick.level,
+        },
+      };
+    }
+  }
+
   if (skill === "vocabulary") {
     const avg = input.avgMastery;
     return {
@@ -549,6 +582,10 @@ function freshContentStep(input: SmartPathInput, usedHrefs: Set<string>): SmartS
     {
       skill: "listening", pool: LISTENING_LEVELLED, hrefOf: (s) => `/listening/${s}`,
       titleOf: (t) => `Listening: ${t}`, desc: "New dialogue or podcast with transcript.", xp: 18, minutes: 10,
+    },
+    {
+      skill: "pronunciation", pool: PRON_LEVELLED, hrefOf: (s) => `/pronunciation/${s}`,
+      titleOf: (t) => `Pronunciation: ${t}`, desc: "New drill with slow + normal reference audio.", xp: 12, minutes: 8,
     },
     {
       skill: "grammar", pool: GRAMMAR_LEVELLED, hrefOf: (s) => `/grammar/${s}`,

@@ -7,7 +7,7 @@ import { Alert, EmptyState } from "@/components/ui/feedback";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/feedback";
 import { Stagger, StaggerItem } from "@/lib/motion/components";
-import { searchWords, type VocabWord } from "@/lib/vocab/bank";
+import { searchWords, VOCAB_TOPICS, type VocabWord } from "@/lib/vocab/bank";
 import { WordCard } from "./WordCard";
 import { readLocalSaved } from "./SaveWordButton";
 import type { Level } from "@/types/database";
@@ -31,6 +31,7 @@ export function VocabularyExplorer({ initialWords, savedEntries, signedIn, defau
   const { t } = useTranslation();
   const [level, setLevel] = useState<string>(defaultLevel ?? "all");
   const [pos, setPos] = useState<string>("all");
+  const [topic, setTopic] = useState<string>("all");
   const [saved, setSaved] = useState<Map<string, number>>(
     () => new Map(savedEntries.map((e) => [e.word, e.mastery]))
   );
@@ -42,8 +43,8 @@ export function VocabularyExplorer({ initialWords, savedEntries, signedIn, defau
   }, [signedIn, localTick]);
 
   const results = useMemo(
-    () => searchWords({ q, level: level as never, pos: pos as never }),
-    [q, level, pos]
+    () => searchWords({ q, level: level as never, pos: pos as never, topic: topic as never }),
+    [q, level, pos, topic]
   );
 
   useEffect(() => {
@@ -79,6 +80,12 @@ export function VocabularyExplorer({ initialWords, savedEntries, signedIn, defau
               {p === "all" ? t("learn.allTypes") : p}
             </Chip>
           ))}
+          <span aria-hidden className="w-px shrink-0 bg-ink-200 dark:bg-ink-700" />
+          {["all", ...VOCAB_TOPICS].map((tp) => (
+            <Chip key={tp} active={topic === tp} onClick={() => setTopic(tp)}>
+              {tp === "all" ? t("learn.all") : tp}
+            </Chip>
+          ))}
         </div>
       </div>
 
@@ -94,7 +101,7 @@ export function VocabularyExplorer({ initialWords, savedEntries, signedIn, defau
           <EmptyState
             title={t("learn.noWords")}
             description={t("learn.noWordsDesc")}
-            action={<Button variant="secondary" size="sm" onClick={() => { setQ(""); setLevel("all"); setPos("all"); }}>{t("learn.clearFilters")}</Button>}
+            action={<Button variant="secondary" size="sm" onClick={() => { setQ(""); setLevel("all"); setPos("all"); setTopic("all"); }}>{t("learn.clearFilters")}</Button>}
           />
         </div>
       ) : (

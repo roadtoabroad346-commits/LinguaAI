@@ -10,10 +10,11 @@ import { Input } from "@/components/ui/Input";
 import { Sheet } from "@/components/ui/Sheet";
 import { QuizOption } from "@/components/learn/QuizOption";
 import { StickyActionBar } from "@/components/learn/StickyActionBar";
+import { SpeedMenu } from "@/components/learn/SpeedMenu";
 import { PageTransition, Stagger, StaggerItem } from "@/lib/motion/components";
 import { celebrate } from "@/lib/motion/celebrate";
 import { LEVELS } from "@/lib/constants";
-import { speak } from "@/lib/vocab/speak";
+import { speak, stopSpeaking } from "@/lib/vocab/speak";
 import type { ListeningTrack } from "@/lib/listening/library";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
@@ -98,8 +99,10 @@ export function ListeningRunner({ slug, lines, vocabFocus, questions, dictationI
   dictationIndexes: number[];
 }) {
   const { t } = useTranslation();
-  const [showTranscript, setShowTranscript] = useState(true);
+  // Progressive reveal: listen FIRST, then unlock the transcript (retrieval before recognition).
+  const [showTranscript, setShowTranscript] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [playToken, setPlayToken] = useState(0);
   const [activeLine, setActiveLine] = useState<number | null>(null);
   const [peek, setPeek] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -116,15 +119,29 @@ export function ListeningRunner({ slug, lines, vocabFocus, questions, dictationI
   const answered = Object.keys(answers).length;
 
   function playAll() {
+    if (playing) {
+      stopSpeaking();
+      setPlaying(false);
+      setActiveLine(null);
+      return;
+    }
+    const token = playToken + 1;
+    setPlayToken(token);
     setPlaying(true);
     setActiveLine(0);
     try {
+      // speak() uses the learner's saved playback speed (SpeedMenu below).
       speak(fullText);
     } finally {
       window.setTimeout(() => {
-        setPlaying(false);
-        setActiveLine(null);
-      }, Math.min(30000, fullText.length * 80));
+        setPlayToken((cur) => {
+          if (cur === token) {
+            setPlaying(false);
+            setActiveLine(null);
+          }
+          return cur;
+        });
+      }, Math.min(60000, fullText.length * 90));
     }
   }
   function playSentence(i: number) {
@@ -188,14 +205,14 @@ export function ListeningRunner({ slug, lines, vocabFocus, questions, dictationI
             </div>
             <button
               onClick={playAll}
-              disabled={playing}
-              aria-label={playing ? t("learn.playing") : t("learn.playFull")}
+              aria-label={playing ? t("learn.stopPlayback") : t("learn.playFull")}
               className="bg-brand-gradient touch-44 flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-white shadow-pop disabled:opacity-70"
             >
               {playing ? <Pause className="h-6 w-6" /> : <Play className="ml-0.5 h-6 w-6" />}
             </button>
           </div>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <SpeedMenu />
             <Button size="sm" variant="secondary" onClick={() => setShowTranscript((v) => !v)}>
               {showTranscript ? t("learn.hideTranscript") : t("learn.showTranscript")}
             </Button>
@@ -210,7 +227,7 @@ export function ListeningRunner({ slug, lines, vocabFocus, questions, dictationI
               </span>
             )}
           </div>
-          {showTranscript && (
+          {showTranscript ? (
             <ol className="mt-3 space-y-2">
               {lines.map((l, i) => (
                 <li
@@ -234,6 +251,10 @@ export function ListeningRunner({ slug, lines, vocabFocus, questions, dictationI
                 </li>
               ))}
             </ol>
+          ) : (
+            <p className="mt-3 rounded-2xl bg-ink-50 px-3 py-2.5 text-sm text-ink-500 dark:bg-ink-800">
+              {t("learn.listenFirstHint")}
+            </p>
           )}
           <div className="mt-3 flex flex-wrap gap-1.5" aria-label={t("learn.focusVocab")}>
             {vocabFocus.map((w) => (

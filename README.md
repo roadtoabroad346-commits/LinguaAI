@@ -36,7 +36,8 @@ Apply migrations in order in Supabase SQL editor (or `supabase db push`):
 - `supabase/migrations/0009_phase7_compliance.sql` — `profiles.timezone`, `spelling_sessions` (idempotent XP), unique `(session_id, word)`.
 - `supabase/migrations/0010_phase9_rls_audit.sql` — re-enables RLS on all 15 tables, recreates owner-only policies (idempotent).
 - `supabase/migrations/0011_i18n_preferred_language.sql` — `profiles.preferred_language` (kk/ru/en check).
-Apply `0001` → `0011` in order; every file is idempotent (`if not exists`).
+- `supabase/migrations/0012_pronunciation_skill.sql` — widens `skill_attempts.skill` to include `pronunciation` (+ speaking/writing/spelling/vocabulary for future modules).
+Apply `0001` → `0012` in order; every file is idempotent (`if not exists`).
 ## Auth + onboarding flow (Phase 1)
 `/signup` → `/onboarding` (profile, goals, Guided/Free) → `/placement` (20 questions, A1–C1) → `/dashboard`. `/login` for returning users; `/profile` to view/edit; `/auth/callback` handles OAuth code exchange.
 ## Dashboard (Phase 2)

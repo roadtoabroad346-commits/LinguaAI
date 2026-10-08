@@ -1,6 +1,31 @@
 # LinguaAI — Development Status
 
-## Current phase: PHASE 11 — HARDEN + OPTIMIZE (complete)
+## Current phase: PHASE 12 — LISTENING SPEED + PRONUNCIATION + FLASHCARD MODES + VOCAB TOPICS (complete)
+
+### Completed work (Phase 12)
+- Listening speed (real): new `src/lib/audio/speed.ts` (0.5/0.75/1/1.25/1.5/1.75/2 ladder, clamp, localStorage persistence `linguaai_playback_speed`, cross-component sync event) + `SpeedMenu` component (`src/components/learn/SpeedMenu.tsx`, accessible listbox, current speed displayed). `speak()` now accepts `{ rate }` and defaults to the saved speed (backward-compatible with `speak(text, lang)`); `stopSpeaking()`/`canSpeak()` added. Listening runner: play button toggles stop, speed menu beside transcript, transcript hidden by default (progressive reveal: listen → answer → inspect) with a "listen first" hint. Same speed + slow-audio (0.6×) wired into flashcards and pronunciation.
+- Pronunciation module (new section): `src/lib/pronunciation/drills.ts` — 24 drills A1–C1 (minimal pairs, word/sentence stress, linking & reductions, intonation) each with focus, CAPS stress marks, IPA, coach tip, contrast examples and shadow lines. `/pronunciation` list (search + level + kind filters) + `/pronunciation/[slug]` runner: stress/ipa card, per-line normal/slow audio, on-device recording (MediaRecorder, graceful unsupported state), 1–5 honest self-rating → `POST /api/pronunciation/complete` (zod + 30/min rate limit, inserts `skill_attempts(skill='pronunciation')`, productive-band XP via shared `awardXp`). Nav entry (AudioLines icon), sitemap entry, trilingual strings.
+- Flashcards (Quizlet-style upgrade): 4 modes (flip / write-type-the-word / choice / listen-choose), direction (word→meaning / meaning→word / mixed alternation), seeded shuffle toggle, star/favorites with favorites-only filter (localStorage), keyboard shortcuts (Space flip, ←/→ grade, 1–4 choose), slow audio, SpeedMenu, auto-play in listen mode, settings persisted. Pure helpers in `src/lib/vocab/flashcards.ts` (shuffle, sides, distractors, forgiving typed grading).
+- Vocabulary: bank 60 → 100 words (20/level) with 7 content topics (everyday/travel/business/academic/technology/education/culture); `wordTopic()`/`listTopics()`; topic filter chips in the explorer; new-word search covered by tests.
+- Grammar runner: question shuffle toggle + "Retry N mistakes" narrowing to missed items (uses returned `correctIds`); "Try again" resets without reload.
+- Adaptive loop closed for pronunciation: `SKILL_META`/`SKILL_ORDER` + progress scores include pronunciation; Smart Path engine gains weak-skill re-drill branch + fresh-content candidate; `/api/smart-path` resolves drill titles. Migration `0012_pronunciation_skill.sql` widens the `skill_attempts` check (idempotent); `types/database.ts` union updated; README migration list updated.
+- i18n: ~60 new keys × en/ru/kk (parity test passes); `/api/health` now reports `phase: 12`.
+
+### Verification (Phase 12)
+- `npm run typecheck`: clean. `npm run lint`: clean. `npm test`: 177/177 pass (+13 new: speed 3, drills 4, flashcard helpers 4, vocab topics 1, engine re-drill 1).
+- `npm run build`: clean (new routes `/pronunciation`, `/pronunciation/[slug]`, `/api/pronunciation/complete` present).
+- Runtime smoke (prod server): `/api/health` ok; `/pronunciation`, `/pronunciation/ship-sheep`, `/flashcards` → 200; invalid pronunciation payload → 400; valid rating=4 → `{score:80, xpEarned:17, saved:false}` (signed-out preview, no keys in this env).
+
+### Known issues / follow-ups (Phase 12)
+- Signed-in end-to-end (pronunciation XP/streak/attempt rows, 0012 migration applied, RLS owner checks) still needs a live Supabase project — same standing note as previous phases.
+- Self-ratings are honest practice estimates by design, never lab-grade pronunciation scoring; Web Speech recognition deliberately not used (accuracy too uneven across browsers/accents).
+- Recording uses MediaRecorder in-browser only; nothing is uploaded.
+- Rate limiter still in-memory (Phase 9 note stands); new pronunciation route included (30/min).
+
+### Supabase actions for the owner
+1. SQL editor → run `0012_pronunciation_skill.sql` (idempotent; `0001` → `0012` in order for fresh projects).
+
+---
 
 ### Completed work (Phase 11)
 - Env hardening (`src/lib/env.ts` + `src/lib/env.test.ts`, 4 tests): `isSupabaseUrlValid()` rejects pasted JWTs/keys/whitespace/non-URLs, so a misconfigured `NEXT_PUBLIC_SUPABASE_URL` falls back to the preview-mode warning instead of crashing every Supabase call at runtime. All 30+ `isSupabaseConfigured()` gates inherit the protection.

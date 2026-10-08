@@ -126,7 +126,7 @@ describe("skill scores", () => {
   it("covers every known skill in a stable order", () => {
     const skills = computeSkillScores([]);
     expect(skills.map((s) => s.skill)).toEqual(
-      ["vocabulary", "grammar", "reading", "listening", "dictation", "spelling", "writing", "speaking", "read-aloud"]
+      ["vocabulary", "grammar", "reading", "listening", "pronunciation", "dictation", "spelling", "writing", "speaking", "read-aloud"]
     );
   });
 });
@@ -173,6 +173,7 @@ describe("findWeakAreas", () => {
       { skill: "spelling", score: 9, total: 10 },
       { skill: "writing", score: 90, total: 100 },
       { skill: "speaking", score: 85, total: 100 },
+      { skill: "pronunciation", score: 80, total: 100 },
       { skill: "read-aloud", score: 95, total: 100 },
       { skill: "dictation", score: 8, total: 10 },
     ], { avg: 90, count: 5 });

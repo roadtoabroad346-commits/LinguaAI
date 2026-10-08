@@ -97,6 +97,19 @@ describe("buildSmartPath", () => {
     expect(step?.reason).toContain("Past Simple");
   });
 
+  it("re-drills the weakest pronunciation drill", () => {
+    const plan = buildSmartPath(
+      baseInput({
+        skills: [{ skill: "pronunciation", label: "Pronunciation", attempts: 2, accuracyPct: 40, href: "/pronunciation", note: "accuracy" }],
+        weakAreas: [{ skill: "pronunciation", label: "Pronunciation", reason: "40% accuracy — needs work", href: "/pronunciation" }],
+        worstSlugs: [{ skill: "pronunciation", slug: "ship-sheep", title: "Ship vs Sheep", accuracyPct: 20, attempts: 2 }],
+      })
+    );
+    const step = plan.steps.find((s) => s.kind === "weak-skill");
+    expect(step?.href).toBe("/pronunciation/ship-sheep");
+    expect(step?.reason).toContain("Ship vs Sheep");
+  });
+
   it("eases remediation down a level when accuracy is very low", () => {
     const plan = buildSmartPath(
       baseInput({

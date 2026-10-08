@@ -87,7 +87,7 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["daily_challenge_completions"]["Row"]>;
       };
       skill_attempts: {
-        Row: { id: string; user_id: string; skill: "grammar" | "reading" | "listening" | "dictation"; slug: string; score: number; total: number; xp_earned: number; created_at: string };
+        Row: { id: string; user_id: string; skill: "grammar" | "reading" | "listening" | "dictation" | "pronunciation" | "speaking" | "writing" | "spelling" | "vocabulary"; slug: string; score: number; total: number; xp_earned: number; created_at: string };
         Insert: Omit<Database["public"]["Tables"]["skill_attempts"]["Row"], "id" | "created_at">;
         Update: Partial<Database["public"]["Tables"]["skill_attempts"]["Row"]>;
       };

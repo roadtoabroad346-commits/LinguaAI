@@ -27,3 +27,9 @@ export const dictationSchema = z.object({
   index: z.number().int().min(0).max(30),
   text: z.string().trim().min(1).max(1000),
 });
+
+export const pronunciationCompleteSchema = z.object({
+  slug: z.string().trim().min(1).max(80),
+  /** Learner self-rating 1–5 (honest practice estimate, never fake precision). */
+  rating: z.number().int().min(1).max(5),
+});

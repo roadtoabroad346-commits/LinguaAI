@@ -110,6 +110,7 @@ export const SKILL_META: Record<string, { label: string; href: string }> = {
   grammar: { label: "Grammar", href: "/grammar" },
   reading: { label: "Reading", href: "/reading" },
   listening: { label: "Listening", href: "/listening" },
+  pronunciation: { label: "Pronunciation", href: "/pronunciation" },
   dictation: { label: "Dictation", href: "/listening" },
   spelling: { label: "Spelling", href: "/spelling" },
   writing: { label: "Writing", href: "/writing" },
@@ -117,7 +118,7 @@ export const SKILL_META: Record<string, { label: string; href: string }> = {
   "read-aloud": { label: "Read Aloud", href: "/speaking" },
 };
 
-export const SKILL_ORDER = ["vocabulary", "grammar", "reading", "listening", "dictation", "spelling", "writing", "speaking", "read-aloud"];
+export const SKILL_ORDER = ["vocabulary", "grammar", "reading", "listening", "pronunciation", "dictation", "spelling", "writing", "speaking", "read-aloud"];
 
 /**
  * Aggregate {skill, score, total} rows into per-skill accuracy.

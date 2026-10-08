@@ -14,6 +14,7 @@ export const NAV_ITEMS = [
   { href: "/grammar", key: "nav.grammar", icon: "PenLine" },
   { href: "/reading", key: "nav.reading", icon: "BookText" },
   { href: "/listening", key: "nav.listening", icon: "Headphones" },
+  { href: "/pronunciation", key: "nav.pronunciation", icon: "AudioLines" },
   { href: "/speaking", key: "nav.speaking", icon: "Mic" },
   { href: "/writing", key: "nav.writing", icon: "NotebookPen" },
   { href: "/spelling", key: "nav.spelling", icon: "SpellCheck" },

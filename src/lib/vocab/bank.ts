@@ -1,4 +1,4 @@
-/** Phase 3 — deterministic vocabulary bank (no AI, no I/O). 60 words, 12 per level A1–C1. */
+/** Phase 3 — deterministic vocabulary bank (no AI, no I/O). 100 words, 20 per level A1–C1, across 7 topics. */
 import type { Level } from "@/types/database";
 
 export interface VocabWord {
@@ -9,11 +9,63 @@ export interface VocabWord {
   definition: string;
   example: string;
   phonetic: string;
+  /** Content topic (stays English — it is learning content, not UI chrome). */
+  topic?: VocabTopic;
+}
+
+export type VocabTopic =
+  | "everyday"
+  | "travel"
+  | "business"
+  | "academic"
+  | "technology"
+  | "education"
+  | "culture";
+
+export const VOCAB_TOPICS: VocabTopic[] = [
+  "everyday",
+  "travel",
+  "business",
+  "academic",
+  "technology",
+  "education",
+  "culture",
+];
+
+/** Topics for the original 60 bank words (kept separate so history stays clean). */
+const LEGACY_TOPICS: Record<string, VocabTopic> = {
+  bright: "everyday", journey: "travel", kind: "everyday", family: "everyday",
+  water: "everyday", happy: "everyday", eat: "everyday", book: "education",
+  quickly: "everyday", house: "everyday", learn: "education", big: "everyday",
+  achieve: "education", brave: "everyday", habit: "everyday", borrow: "everyday",
+  weather: "travel", carefully: "everyday", invite: "everyday", loud: "culture",
+  reply: "business", choice: "everyday", often: "everyday", repair: "everyday",
+  curious: "education", opportunity: "business", reliable: "business", improve: "education",
+  experience: "business", suddenly: "everyday", suggest: "business", crowded: "travel",
+  decision: "business", expect: "everyday", widely: "culture", benefit: "business",
+  efficient: "business", insight: "academic", persist: "education", diverse: "culture",
+  consequence: "academic", accurately: "academic", interpret: "academic", inevitable: "academic",
+  phenomenon: "academic", acquire: "education", reluctantly: "everyday", controversy: "culture",
+  eloquent: "academic", meticulous: "business", resilience: "education", paradox: "academic",
+  scrutinize: "business", profoundly: "culture", ambiguous: "academic", deteriorate: "everyday",
+  serendipity: "culture", pragmatic: "business", exemplify: "academic", inevitably: "academic",
+};
+
+/** Topic for any bank word (inline field wins, legacy map covers the original 60). */
+export function wordTopic(w: Pick<VocabWord, "slug" | "topic">): VocabTopic {
+  return w.topic ?? LEGACY_TOPICS[w.slug] ?? "everyday";
+}
+
+/** Topics actually present in the bank (for filter chips). */
+export function listTopics(): VocabTopic[] {
+  const seen = new Set<VocabTopic>();
+  for (const w of VOCAB_BANK) seen.add(wordTopic(w));
+  return VOCAB_TOPICS.filter((t) => seen.has(t));
 }
 
 export const PARTS_OF_SPEECH = ["noun", "verb", "adjective", "adverb"] as const;
 
-export const VOCAB_BANK: VocabWord[] = [
+const VOCAB_BASE: VocabWord[] = [
   // A1
   { slug: "bright", word: "bright", partOfSpeech: "adjective", level: "A1", definition: "giving out light; intelligent", example: "The bright sun woke us up early.", phonetic: "/braɪt/" },
   { slug: "journey", word: "journey", partOfSpeech: "noun", level: "A1", definition: "travelling from one place to another", example: "The journey to the mountains took three hours.", phonetic: "/ˈdʒɜːrni/" },
@@ -81,6 +133,57 @@ export const VOCAB_BANK: VocabWord[] = [
   { slug: "inevitably", word: "inevitably", partOfSpeech: "adverb", level: "C1", definition: "in a way that cannot be avoided", example: "Studying daily inevitably leads to progress.", phonetic: "/ɪnˈevɪtəbli/" },
 ];
 
+/** Expansion set: 40 more words (8 per level) across travel / business / academic / technology / culture. */
+const VOCAB_EXTRA: VocabWord[] = [
+  // A1
+  { slug: "ticket", word: "ticket", partOfSpeech: "noun", level: "A1", topic: "travel", definition: "a small paper that lets you travel or enter", example: "I bought two tickets for the bus.", phonetic: "/ˈtɪkɪt/" },
+  { slug: "hungry", word: "hungry", partOfSpeech: "adjective", level: "A1", topic: "everyday", definition: "wanting food", example: "The children were hungry after school.", phonetic: "/ˈhʌŋɡri/" },
+  { slug: "late", word: "late", partOfSpeech: "adjective", level: "A1", topic: "everyday", definition: "after the right or planned time", example: "Hurry, we are late for class!", phonetic: "/leɪt/" },
+  { slug: "clean", word: "clean", partOfSpeech: "adjective", level: "A1", topic: "everyday", definition: "not dirty", example: "Please keep your room clean.", phonetic: "/kliːn/" },
+  { slug: "rain", word: "rain", partOfSpeech: "noun", level: "A1", topic: "everyday", definition: "water falling from clouds", example: "Take an umbrella; the rain is heavy.", phonetic: "/reɪn/" },
+  { slug: "song", word: "song", partOfSpeech: "noun", level: "A1", topic: "culture", definition: "music with words that you sing", example: "She sang a beautiful song.", phonetic: "/sɒŋ/" },
+  { slug: "map", word: "map", partOfSpeech: "noun", level: "A1", topic: "travel", definition: "a picture showing places and roads", example: "Look at the map before we leave.", phonetic: "/mæp/" },
+  { slug: "shop", word: "shop", partOfSpeech: "verb", level: "A1", topic: "everyday", definition: "to buy things in stores", example: "We shop at the market on Saturdays.", phonetic: "/ʃɒp/" },
+  // A2
+  { slug: "delay", word: "delay", partOfSpeech: "noun", level: "A2", topic: "travel", definition: "when something starts later than planned", example: "The flight delay was two hours.", phonetic: "/dɪˈleɪ/" },
+  { slug: "luggage", word: "luggage", partOfSpeech: "noun", level: "A2", topic: "travel", definition: "bags you carry when travelling", example: "Our luggage arrived late.", phonetic: "/ˈlʌɡɪdʒ/" },
+  { slug: "receipt", word: "receipt", partOfSpeech: "noun", level: "A2", topic: "business", definition: "paper proving you paid for something", example: "Keep the receipt for the headphones.", phonetic: "/rɪˈsiːt/" },
+  { slug: "polite", word: "polite", partOfSpeech: "adjective", level: "A2", topic: "everyday", definition: "having good manners", example: "It is polite to say thank you.", phonetic: "/pəˈlaɪt/" },
+  { slug: "save", word: "save", partOfSpeech: "verb", level: "A2", topic: "technology", definition: "to keep data on a device", example: "Save your work every ten minutes.", phonetic: "/seɪv/" },
+  { slug: "charge", word: "charge", partOfSpeech: "verb", level: "A2", topic: "technology", definition: "to put power into a battery", example: "Charge your phone before the trip.", phonetic: "/tʃɑːrdʒ/" },
+  { slug: "grade", word: "grade", partOfSpeech: "noun", level: "A2", topic: "education", definition: "a mark given for school work", example: "She got a good grade in English.", phonetic: "/ɡreɪd/" },
+  { slug: "cancel", word: "cancel", partOfSpeech: "verb", level: "A2", topic: "everyday", definition: "to stop something that was planned", example: "They cancelled the match because of rain.", phonetic: "/ˈkænsəl/" },
+  // B1
+  { slug: "deadline", word: "deadline", partOfSpeech: "noun", level: "B1", topic: "business", definition: "the date by which work must be finished", example: "We met the deadline on Friday.", phonetic: "/ˈdedlaɪn/" },
+  { slug: "budget", word: "budget", partOfSpeech: "noun", level: "B1", topic: "business", definition: "a plan for how to spend money", example: "Our travel budget is small.", phonetic: "/ˈbʌdʒɪt/" },
+  { slug: "upgrade", word: "upgrade", partOfSpeech: "verb", level: "B1", topic: "technology", definition: "to improve software or a device", example: "Upgrade the app to get new features.", phonetic: "/ˌʌpˈɡreɪd/" },
+  { slug: "essay", word: "essay", partOfSpeech: "noun", level: "B1", topic: "academic", definition: "a short piece of writing on one topic", example: "Write a 200-word essay about cities.", phonetic: "/ˈeseɪ/" },
+  { slug: "debate", word: "debate", partOfSpeech: "noun", level: "B1", topic: "academic", definition: "a formal discussion with two sides", example: "The debate about phones was lively.", phonetic: "/dɪˈbeɪt/" },
+  { slug: "neighbourhood", word: "neighbourhood", partOfSpeech: "noun", level: "B1", topic: "everyday", definition: "the area around your home", example: "Our neighbourhood is quiet and green.", phonetic: "/ˈneɪbərhʊd/" },
+  { slug: "bargain", word: "bargain", partOfSpeech: "noun", level: "B1", topic: "travel", definition: "something cheap for its value", example: "The tickets were a real bargain.", phonetic: "/ˈbɑːrɡɪn/" },
+  { slug: "fluent", word: "fluent", partOfSpeech: "adjective", level: "B1", topic: "education", definition: "speaking smoothly and easily", example: "Daily practice made her fluent.", phonetic: "/ˈfluːənt/" },
+  // B2
+  { slug: "startup", word: "startup", partOfSpeech: "noun", level: "B2", topic: "business", definition: "a new small company", example: "She joined a tech startup in Berlin.", phonetic: "/ˈstɑːrtʌp/" },
+  { slug: "algorithm", word: "algorithm", partOfSpeech: "noun", level: "B2", topic: "technology", definition: "a set of steps a computer follows", example: "The algorithm suggests new words to review.", phonetic: "/ˈælɡərɪðəm/" },
+  { slug: "thesis", word: "thesis", partOfSpeech: "noun", level: "B2", topic: "academic", definition: "a long research paper for a degree", example: "His thesis studied city traffic.", phonetic: "/ˈθiːsɪs/" },
+  { slug: "drawback", word: "drawback", partOfSpeech: "noun", level: "B2", topic: "business", definition: "a disadvantage of something", example: "One drawback of remote work is loneliness.", phonetic: "/ˈdrɔːbæk/" },
+  { slug: "itinerary", word: "itinerary", partOfSpeech: "noun", level: "B2", topic: "travel", definition: "a plan of a journey with places and times", example: "Our itinerary lists three cities.", phonetic: "/aɪˈtɪnərəri/" },
+  { slug: "mindset", word: "mindset", partOfSpeech: "noun", level: "B2", topic: "academic", definition: "a way of thinking about things", example: "A growth mindset helps learners persist.", phonetic: "/ˈmaɪndset/" },
+  { slug: "outage", word: "outage", partOfSpeech: "noun", level: "B2", topic: "technology", definition: "a time when power or service stops", example: "The outage lasted one hour.", phonetic: "/ˈaʊtɪdʒ/" },
+  { slug: "freelance", word: "freelance", partOfSpeech: "adjective", level: "B2", topic: "business", definition: "working for yourself, not one company", example: "He does freelance design work.", phonetic: "/ˈfriːlæns/" },
+  // C1
+  { slug: "nuanced", word: "nuanced", partOfSpeech: "adjective", level: "C1", topic: "academic", definition: "showing small but important differences", example: "Her nuanced essay impressed the judges.", phonetic: "/ˈnuːɑːnst/" },
+  { slug: "ubiquitous", word: "ubiquitous", partOfSpeech: "adjective", level: "C1", topic: "technology", definition: "found everywhere", example: "Phones are ubiquitous in modern schools.", phonetic: "/juːˈbɪkwɪtəs/" },
+  { slug: "dichotomy", word: "dichotomy", partOfSpeech: "noun", level: "C1", topic: "academic", definition: "a division into two opposite parts", example: "The work–life dichotomy keeps growing.", phonetic: "/daɪˈkɒtəmi/" },
+  { slug: "concierge", word: "concierge", partOfSpeech: "noun", level: "C1", topic: "travel", definition: "a hotel worker who helps guests", example: "Ask the concierge for a city map.", phonetic: "/ˌkɒnsiˈeərʒ/" },
+  { slug: "red-tape", word: "red tape", partOfSpeech: "noun", level: "C1", topic: "business", definition: "official rules that cause delay", example: "Visa red tape delayed the trip by weeks.", phonetic: "/ˌred ˈteɪp/" },
+  { slug: "corroborate", word: "corroborate", partOfSpeech: "verb", level: "C1", topic: "academic", definition: "to support a claim with evidence", example: "New data corroborates her claim.", phonetic: "/kəˈrɒbəreɪt/" },
+  { slug: "burnout", word: "burnout", partOfSpeech: "noun", level: "C1", topic: "business", definition: "extreme tiredness from too much work", example: "Regular rest prevents burnout.", phonetic: "/ˈbɜːrnaʊt/" },
+  { slug: "juxtapose", word: "juxtapose", partOfSpeech: "verb", level: "C1", topic: "academic", definition: "to place side by side to compare", example: "The report juxtaposes two crowded cities.", phonetic: "/ˌdʒʌkstəˈpoʊz/" },
+];
+
+export const VOCAB_BANK: VocabWord[] = [...VOCAB_BASE, ...VOCAB_EXTRA];
+
 const BY_SLUG = new Map(VOCAB_BANK.map((w) => [w.slug, w]));
 
 /** Case-insensitive lookup. Returns null for unknown words. */
@@ -92,6 +195,7 @@ export interface VocabFilter {
   q?: string;
   level?: Level | "all";
   pos?: VocabWord["partOfSpeech"] | "all";
+  topic?: VocabTopic | "all";
 }
 
 /** Deterministic in-memory search + filters. No I/O. */
@@ -100,6 +204,7 @@ export function searchWords(filter: VocabFilter = {}): VocabWord[] {
   return VOCAB_BANK.filter((w) => {
     if (filter.level && filter.level !== "all" && w.level !== filter.level) return false;
     if (filter.pos && filter.pos !== "all" && w.partOfSpeech !== filter.pos) return false;
+    if (filter.topic && filter.topic !== "all" && wordTopic(w) !== filter.topic) return false;
     if (!q) return true;
     return (
       w.word.includes(q) ||

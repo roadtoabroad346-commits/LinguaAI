@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { VOCAB_BANK, getWord, searchWords, relatedWords, countByLevel } from "./bank";
+import { VOCAB_BANK, getWord, searchWords, relatedWords, countByLevel, wordTopic, listTopics } from "./bank";
 import { masteryBand, applyReview, applyPracticeResult, reviewIntervalDays, nextReviewDate, isDue, reviewXp } from "./mastery";
 import { buildPracticeSet, toPublicPracticeSet, gradePracticeSet, gradePracticeByWord } from "./practice";
 
 describe("vocab bank", () => {
-  it("has 60 unique words, 12 per level", () => {
-    expect(VOCAB_BANK).toHaveLength(60);
-    expect(new Set(VOCAB_BANK.map((w) => w.slug)).size).toBe(60);
-    expect(countByLevel()).toEqual({ A1: 12, A2: 12, B1: 12, B2: 12, C1: 12 });
+  it("has 100 unique words, 20 per level", () => {
+    expect(VOCAB_BANK).toHaveLength(100);
+    expect(new Set(VOCAB_BANK.map((w) => w.slug)).size).toBe(100);
+    expect(countByLevel()).toEqual({ A1: 20, A2: 20, B1: 20, B2: 20, C1: 20 });
   });
   it("looks up case-insensitively and rejects unknown", () => {
     expect(getWord("Bright")?.definition).toContain("light");
@@ -15,11 +15,20 @@ describe("vocab bank", () => {
     expect(getWord("xyzzy")).toBeNull();
   });
   it("searches across word/definition/example", () => {
-    expect(searchWords({ q: "journey" })).toHaveLength(1);
+    expect(searchWords({ q: "journey" }).map((w) => w.slug)).toEqual(["journey", "itinerary"]);
     expect(searchWords({ q: "trust" })[0].word).toBe("reliable");
-    expect(searchWords({ level: "A1" })).toHaveLength(12);
+    expect(searchWords({ level: "A1" })).toHaveLength(20);
     expect(searchWords({ level: "B2", pos: "verb" }).every((w) => w.level === "B2" && w.partOfSpeech === "verb")).toBe(true);
     expect(searchWords({ q: "no-such-word-xyz" })).toHaveLength(0);
+  });
+  it("tags every word with a topic and filters by it", () => {
+    expect(listTopics()).toEqual(["everyday", "travel", "business", "academic", "technology", "education", "culture"]);
+    expect(wordTopic(getWord("bright")!)).toBe("everyday");
+    expect(wordTopic(getWord("ticket")!)).toBe("travel");
+    const travel = searchWords({ topic: "travel" });
+    expect(travel.length).toBeGreaterThanOrEqual(5);
+    expect(travel.every((w) => wordTopic(w) === "travel")).toBe(true);
+    expect(searchWords({ level: "A1", topic: "travel" }).map((w) => w.slug).sort()).toEqual(["journey", "map", "ticket"]);
   });
   it("returns same-level related words", () => {
     const w = getWord("bright")!;

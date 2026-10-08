@@ -11,6 +11,7 @@ import { isDue } from "@/lib/vocab/mastery";
 import { GRAMMAR_TOPICS } from "@/lib/grammar/topics";
 import { READING_PASSAGES } from "@/lib/reading/library";
 import { LISTENING_TRACKS } from "@/lib/listening/library";
+import { PRONUNCIATION_DRILLS } from "@/lib/pronunciation/drills";
 import {
   buildPreviewSmartPath,
   buildSmartPath,
@@ -26,11 +27,13 @@ export const dynamic = "force-dynamic";
 const GRAMMAR_TITLES = new Map(GRAMMAR_TOPICS.map((t) => [t.slug, t.title]));
 const READING_TITLES = new Map(READING_PASSAGES.map((p) => [p.slug, p.title]));
 const LISTENING_TITLES = new Map(LISTENING_TRACKS.map((t) => [t.slug, t.title]));
+const PRON_TITLES = new Map(PRONUNCIATION_DRILLS.map((t) => [t.slug, t.title]));
 
 function slugTitle(skill: string, slug: string): string {
   if (skill === "grammar") return GRAMMAR_TITLES.get(slug) ?? slug;
   if (skill === "reading") return READING_TITLES.get(slug) ?? slug;
   if (skill === "listening" || skill === "dictation") return LISTENING_TITLES.get(slug) ?? slug;
+  if (skill === "pronunciation") return PRON_TITLES.get(slug) ?? slug;
   return slug;
 }
 
