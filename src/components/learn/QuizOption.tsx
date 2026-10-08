@@ -49,7 +49,7 @@ export function QuizOption({
         state === "wrong" &&
           "border-red-400 bg-red-50 font-medium text-red-800 dark:bg-red-950 dark:text-red-100",
         state === "selected" &&
-          "border-brand-600 bg-brand-50 font-semibold shadow-[0_0_0_3px_rgb(99_102_241/0.16)] dark:border-brand-400 dark:bg-brand-950",
+          "border-brand-600 bg-brand-50 font-semibold text-brand-900 shadow-[0_0_0_3px_rgb(99_102_241/0.16)] dark:border-brand-400 dark:bg-brand-950 dark:text-brand-100",
         state === "idle" &&
           "border-ink-200 bg-white hover:border-brand-300 hover:bg-brand-50/50 dark:border-ink-700 dark:bg-ink-900 dark:hover:border-brand-600",
         disabled && state === "idle" && "opacity-70"

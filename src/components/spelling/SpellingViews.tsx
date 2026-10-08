@@ -180,7 +180,7 @@ export function SpellingViews() {
             role="tab"
             aria-selected={mode === m.id}
             onClick={() => setMode(m.id)}
-            className={`min-w-0 rounded-full border px-3 py-1.5 text-sm font-medium ${mode === m.id ? "border-brand-600 bg-brand-600 text-white" : "border-ink-200 bg-white text-ink-700 hover:border-ink-300"}`}
+            className={`min-w-0 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${mode === m.id ? "border-brand-600 bg-brand-600 text-white dark:border-brand-400 dark:bg-brand-500" : "border-ink-200 bg-white text-ink-700 hover:border-ink-300 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200 dark:hover:border-brand-500"}`}
           >
             {modeTitle(m.id)}
           </button>
@@ -247,7 +247,7 @@ export function SpellingViews() {
                         role="radio"
                         aria-checked={isSel}
                         onClick={() => setSelected((s) => ({ ...s, [item.slug]: ci }))}
-                        className={`rounded-xl border px-3 py-2 text-left text-sm ${isSel ? "border-brand-600 bg-brand-50 font-medium" : "border-ink-200 hover:border-ink-300 hover:bg-ink-50"}`}
+                        className={`rounded-xl border px-3 py-2 text-left text-sm transition-colors ${isSel ? "border-brand-600 bg-brand-50 font-medium text-brand-900 dark:border-brand-400 dark:bg-brand-950 dark:text-brand-100" : "border-ink-200 hover:border-ink-300 hover:bg-ink-50 dark:border-ink-700 dark:hover:border-brand-500 dark:hover:bg-ink-800"}`}
                       >
                         {c}
                       </button>

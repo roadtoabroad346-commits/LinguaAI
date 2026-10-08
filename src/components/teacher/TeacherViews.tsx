@@ -58,7 +58,7 @@ export function TeacherChat() {
         <div className="mt-2 flex flex-wrap gap-2">
           {QUICK_PROMPTS.slice(0, 4).map((q) => (
             <button key={q} type="button" onClick={() => send(q)} disabled={sending}
-              className="min-w-0 max-w-full truncate rounded-full border border-ink-200 bg-ink-50 px-3 py-1 text-xs font-medium text-ink-700 hover:border-brand-300 hover:bg-brand-50 disabled:opacity-50">{q}</button>
+              className="min-w-0 max-w-full truncate rounded-full border border-ink-200 bg-ink-50 px-3 py-1 text-xs font-medium text-ink-700 transition-colors hover:border-brand-300 hover:bg-brand-50 disabled:opacity-50 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200 dark:hover:border-brand-500 dark:hover:bg-ink-800">{q}</button>
           ))}
         </div>
       </Card>

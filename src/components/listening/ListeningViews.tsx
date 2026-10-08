@@ -287,8 +287,8 @@ export function ListeningRunner({ slug, lines, vocabFocus, questions, dictationI
                       aria-selected={dictIndex === i}
                       onClick={() => { setDictIndex(i); setDictText(""); setDictResult(null); setDictError(null); }}
                       className={cn(
-                        "touch-44 h-10 w-10 rounded-2xl border text-sm font-bold",
-                        dictIndex === i ? "border-brand-600 bg-brand-50 text-brand-800 dark:bg-brand-950" : "border-ink-200 hover:bg-ink-50 dark:border-ink-700"
+                        "touch-44 h-10 w-10 rounded-2xl border text-sm font-bold transition-colors",
+                        dictIndex === i ? "border-brand-600 bg-brand-50 text-brand-800 dark:border-brand-400 dark:bg-brand-950 dark:text-brand-100" : "border-ink-200 hover:bg-ink-50 dark:border-ink-700 dark:hover:bg-ink-800"
                       )}
                     >
                       {i + 1}

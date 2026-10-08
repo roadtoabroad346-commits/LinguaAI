@@ -145,7 +145,7 @@ export function ProgressViews() {
             {data.last7.map((d) => (
               <div key={d.date} className="min-w-0 flex-1 text-center">
                 <div
-                  className={`mx-auto w-full rounded-t-md ${d.xp > 0 ? "bg-brand-500" : "bg-ink-100"}`}
+                  className={`mx-auto w-full rounded-t-md ${d.xp > 0 ? "bg-brand-500" : "bg-ink-100 dark:bg-ink-800"}`}
                   style={{ height: `${Math.max(4, Math.round((d.xp / max7) * 48))}px` }}
                   title={`${formatChallengeDate(locale, d.date)}: ${formatXP(locale, d.xp)}`}
                 />
@@ -169,7 +169,7 @@ export function ProgressViews() {
                 role="radio"
                 aria-checked={goal === g}
                 onClick={() => setGoal(g)}
-                className={`rounded-full border px-2.5 py-1 text-xs font-medium ${goal === g ? "border-brand-600 bg-brand-600 text-white" : "border-ink-200 bg-white text-ink-700 hover:border-ink-300"}`}
+                className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${goal === g ? "border-brand-600 bg-brand-600 text-white dark:border-brand-400 dark:bg-brand-500" : "border-ink-200 bg-white text-ink-700 hover:border-ink-300 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200 dark:hover:border-brand-500"}`}
               >
                 {g}
               </button>

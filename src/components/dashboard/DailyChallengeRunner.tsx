@@ -166,7 +166,7 @@ export function DailyChallengeRunner() {
                   role="radio"
                   aria-checked={selected}
                   onClick={() => setAnswers((a) => ({ ...a, [q.id]: ci }))}
-                  className={`rounded-xl border px-3 py-2 text-left text-sm transition-colors ${selected ? "border-brand-600 bg-brand-50 font-medium" : "border-ink-200 hover:border-ink-300 hover:bg-ink-50"}`}
+                  className={`rounded-xl border px-3 py-2 text-left text-sm transition-colors ${selected ? "border-brand-600 bg-brand-50 font-medium text-brand-900 dark:border-brand-400 dark:bg-brand-950 dark:text-brand-100" : "border-ink-200 hover:border-ink-300 hover:bg-ink-50 dark:border-ink-700 dark:hover:border-brand-500 dark:hover:bg-ink-800"}`}
                 >
                   {c}
                 </button>

@@ -143,7 +143,7 @@ export function PlacementRunner({
                         : "border-ink-200 bg-white hover:border-ink-300 dark:border-ink-700 dark:bg-ink-900"
                     )}
                   >
-                    <span className="text-sm font-bold">{m === "guided" ? t("common.guidedPath") : t("common.freeLearning")}</span>
+                    <span className="text-sm font-bold text-ink-900 dark:text-ink-50">{m === "guided" ? t("common.guidedPath") : t("common.freeLearning")}</span>
                     <span className="mt-0.5 block text-xs leading-relaxed text-ink-500">
                       {m === "guided" ? t("onboarding.guidedDesc") : t("onboarding.freeDesc")}
                     </span>

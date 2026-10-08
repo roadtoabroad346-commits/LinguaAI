@@ -137,10 +137,10 @@ export function ProfileForm({ profile }: Props) {
               onClick={() => toggleGoal(g)}
               aria-pressed={goals.includes(g)}
               className={cn(
-                "min-w-0 rounded-full border px-3 py-1.5 text-sm font-medium",
+                "min-w-0 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
                 goals.includes(g)
-                  ? "border-brand-600 bg-brand-600 text-white"
-                  : "border-ink-200 bg-white text-ink-700 hover:border-ink-300"
+                  ? "border-brand-600 bg-brand-600 text-white dark:border-brand-400 dark:bg-brand-500"
+                  : "border-ink-200 bg-white text-ink-700 hover:border-ink-300 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200 dark:hover:border-brand-500"
               )}
             >
               {g}
@@ -168,10 +168,10 @@ export function ProfileForm({ profile }: Props) {
               aria-checked={learningMode === m}
               onClick={() => setLearningMode(m)}
               className={cn(
-                "min-w-0 rounded-xl border px-3 py-2.5 text-left text-sm",
+                "min-w-0 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors",
                 learningMode === m
-                  ? "border-brand-600 bg-brand-50"
-                  : "border-ink-200 bg-white hover:border-ink-300"
+                  ? "border-brand-600 bg-brand-50 dark:border-brand-400 dark:bg-brand-950"
+                  : "border-ink-200 bg-white hover:border-ink-300 dark:border-ink-700 dark:bg-ink-900 dark:hover:border-brand-500"
               )}
             >
               <span className="font-semibold">{m === "guided" ? t("common.guidedPath") : t("common.freeLearning")}</span>
