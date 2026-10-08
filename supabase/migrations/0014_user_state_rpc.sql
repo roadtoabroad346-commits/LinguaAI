@@ -1,5 +1,7 @@
 -- LinguaAI 0014 — atomic user-state RPC + RLS re-audit (idempotent).
--- Apply after 0013. SECURITY INVOKER where RLS is enough so auth.uid() enforces ownership.
+-- Run THIS WHOLE FILE in one go (SQL Editor -> New query -> paste all -> Run).
+-- Apply 0013, then 0014, then 0015 in order. Never edit earlier migrations.
+-- SECURITY INVOKER where RLS is enough so auth.uid() enforces ownership.
 
 -- 0. Preflight: fail fast with a clear message when 0013 was not applied.
 do $$
@@ -8,7 +10,7 @@ begin
     select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'profiles' and column_name = 'avatar_url'
   ) then
-    raise exception 'Apply supabase/migrations/0013_user_state_foundation.sql first (profiles.avatar_url is missing).';
+    raise exception 'Apply supabase/migrations/0013_user_state_columns.sql first (profiles.avatar_url is missing).';
   end if;
 end;
 $$;
@@ -203,3 +205,6 @@ create policy "own achievements" on public.achievements for all using (auth.uid(
 comment on function public.complete_onboarding(jsonb) is 'Atomic onboarding write: validates payload, upserts profile, marks onboarding complete.';
 comment on function public.save_placement_result(jsonb) is 'Atomic placement save: inserts history row and syncs profiles.level/flags; retakes append history.';
 comment on function public.get_user_bootstrap() is 'Single-document shell hydration: profile + xpToday + dictionary count + latest placement.';
+
+-- Proof this whole file ran (if you do not see OK-0014, the paste was truncated: re-copy the entire file).
+select 'OK-0014' as migration;

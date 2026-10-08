@@ -1,75 +1,21 @@
--- LinguaAI 0013 — user-state foundation (idempotent, safe to run more than once).
--- Never edit earlier migrations. Apply 0013 then 0014 in order.
--- Guarantees a profile for every auth user + typed onboarding/placement columns.
---
--- Order matters: columns FIRST (including prerequisites from 0001-0012,
--- re-declared here with IF NOT EXISTS so this file is self-sufficient),
--- then functions/triggers, then backfills. Nothing below references a
--- column that is not guaranteed to exist above it.
+-- LinguaAI 0015 — profile trigger + backfills + integrity (idempotent).
+-- Run THIS WHOLE FILE in one go (SQL Editor -> New query -> paste all -> Run).
+-- Apply 0013, then 0014, then 0015 in order. Never edit earlier migrations.
+-- The trailing result row proves the full file ran and shows profile coverage.
 
--- 0. Prerequisites from earlier migrations (no-op when 0001-0012 were applied).
-alter table public.profiles
-  add column if not exists email text,
-  add column if not exists display_name text,
-  add column if not exists level text check (level in ('A1','A2','B1','B2','C1')),
-  add column if not exists learning_mode text check (learning_mode in ('guided','free')),
-  add column if not exists daily_goal_xp int not null default 30,
-  add column if not exists timezone text not null default 'UTC',
-  add column if not exists preferred_language text not null default 'en',
-  add column if not exists total_xp int not null default 0,
-  add column if not exists current_streak int not null default 0,
-  add column if not exists longest_streak int not null default 0,
-  add column if not exists last_active_date date,
-  add column if not exists onboarding_completed boolean not null default false,
-  add column if not exists native_language text,
-  add column if not exists goals text[] not null default '{}',
-  add column if not exists placement_score int check (placement_score is null or (placement_score >= 0 and placement_score <= 100)),
-  add column if not exists placement_taken_at timestamptz,
-  add column if not exists created_at timestamptz not null default now(),
-  add column if not exists updated_at timestamptz not null default now();
-
--- 1. New typed profile columns (all IF NOT EXISTS, sensible defaults).
-alter table public.profiles
-  add column if not exists avatar_url text,
-  add column if not exists onboarding_completed_at timestamptz,
-  add column if not exists onboarding_step smallint not null default 0,
-  add column if not exists placement_completed boolean not null default false,
-  add column if not exists placement_completed_at timestamptz,
-  add column if not exists level_source text check (level_source in ('placement','self','manual','default')),
-  add column if not exists target_exam text,
-  add column if not exists target_score text,
-  add column if not exists target_date date,
-  add column if not exists daily_goal_minutes smallint check (daily_goal_minutes is null or (daily_goal_minutes >= 5 and daily_goal_minutes <= 240)),
-  add column if not exists daily_xp_goal integer check (daily_xp_goal is null or (daily_xp_goal >= 10 and daily_xp_goal <= 500)),
-  add column if not exists priority_skills text[] not null default '{}',
-  add column if not exists interests text[] not null default '{}',
-  add column if not exists study_time_preference text,
-  add column if not exists obstacles text[] not null default '{}',
-  add column if not exists last_seen_at timestamptz,
-  add column if not exists preferences jsonb not null default '{}'::jsonb;
-
--- 2. Placement history strengthening.
-alter table public.placement_results
-  add column if not exists skill_scores jsonb not null default '{}'::jsonb,
-  add column if not exists correct_answers int,
-  add column if not exists duration_seconds int check (duration_seconds is null or duration_seconds >= 0),
-  add column if not exists previous_level text check (previous_level is null or previous_level in ('A1','A2','B1','B2','C1')),
-  add column if not exists attempt_number int check (attempt_number is null or attempt_number >= 1),
-  add column if not exists test_version text not null default 'v1';
-
--- 3. Shared updated-at helper (explicit search_path for safety).
-create or replace function public.set_updated_at()
-returns trigger
-language plpgsql
-set search_path = public
-as $$
+-- 0. Preflight: fail fast with a clear message when 0013 was not applied.
+do $$
 begin
-  new.updated_at = now();
-  return new;
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'profiles' and column_name = 'avatar_url'
+  ) then
+    raise exception 'Apply supabase/migrations/0013_user_state_columns.sql first (profiles.avatar_url is missing).';
+  end if;
 end;
 $$;
 
--- 4. Profile auto-creation on signup (Google + email). SECURITY DEFINER with fixed search_path.
+-- 1. Profile auto-creation on signup (Google + email). SECURITY DEFINER with fixed search_path.
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -85,7 +31,7 @@ begin
       nullif(new.raw_user_meta_data ->> 'full_name', ''),
       nullif(new.raw_user_meta_data ->> 'name', ''),
       nullif(new.raw_user_meta_data ->> 'display_name', '')
-    ,
+    ),
     coalesce(
       nullif(new.raw_user_meta_data ->> 'avatar_url', ''),
       nullif(new.raw_user_meta_data ->> 'picture', '')
@@ -108,8 +54,7 @@ begin
 end;
 $$;
 
--- 5. Backfill profiles for existing auth users that lack one.
--- Safe: every referenced column is guaranteed by sections 0-1 above.
+-- 2. Backfill profiles for existing auth users that lack one.
 insert into public.profiles (id, email, display_name, avatar_url, preferred_language, timezone)
 select
   u.id,
@@ -130,7 +75,7 @@ left join public.profiles p on p.id = u.id
 where p.id is null
 on conflict (id) do nothing;
 
--- 6. Integrity constraints (idempotent DO blocks).
+-- 3. Integrity constraints (idempotent DO blocks).
 do $$
 begin
   if not exists (select 1 from pg_constraint where conname = 'profiles_xp_nonneg') then
@@ -145,7 +90,7 @@ begin
 end;
 $$;
 
--- 7. Placement index + attempt numbers for pre-existing rows.
+-- 4. Placement index + attempt numbers for pre-existing rows.
 create index if not exists placement_results_user_created_idx2
   on public.placement_results (user_id, created_at desc);
 
@@ -164,7 +109,7 @@ begin
 end;
 $$;
 
--- 8. Backfill completion flags from history (repairs existing accounts).
+-- 5. Backfill completion flags from history (repairs existing accounts).
 -- Users with any placement row get placement_completed + level from the latest row.
 with latest as (
   select distinct on (user_id) user_id, level, created_at
@@ -189,7 +134,7 @@ where onboarding_completed = false
   and level is not null
   and coalesce(array_length(goals, 1), 0) > 0;
 
--- 9. updated_at triggers on every table that has the column.
+-- 6. updated_at triggers on every table that has the column.
 do $$
 declare r record;
 begin
@@ -206,10 +151,15 @@ begin
 end;
 $$;
 
--- 10. Table / column documentation.
+-- 7. Table / column documentation.
 comment on table public.profiles is 'One row per auth user (auto-created by handle_new_user trigger); source of truth for onboarding, level, goals and settings.';
 comment on column public.profiles.onboarding_step is 'Furthest completed onboarding step (0-based) for resumable onboarding.';
 comment on column public.profiles.placement_completed is 'True once save_placement_result (or a backfilled history row) has set the level.';
 comment on column public.profiles.level_source is 'How the level was set: placement test, self pick, manual edit, or default.';
 comment on column public.profiles.preferences is 'Flexible per-user settings JSON (theme/motion overrides live locally, never here).';
 comment on table public.placement_results is 'Full placement history, newest last; profiles.level mirrors the latest row. Retakes never delete history.';
+
+-- Proof this whole file ran (if you do not see OK-0015, the paste was truncated: re-copy the entire file).
+select 'OK-0015' as migration,
+  (select count(*) from public.profiles) as profiles,
+  (select count(*) from auth.users) as auth_users;

@@ -27,7 +27,7 @@ Branch: `fix/auth-session-db-sync`.
 
 - Session: singleton browser client, `getCurrentUser()`, middleware protection, `AuthProvider` + `RequireAuth`, account menu in header, `force-dynamic` + `no-store` on user routes/APIs.
 - Callback/routing: rewritten `/auth/callback`, `sanitizeNext`/`resolveNextPath`, password + OAuth share the logic, `next` preserved safely.
-- DB: `0013_user_state_foundation.sql` (trigger, backfill, typed columns, placement history, constraints) + `0014_user_state_rpc.sql` (`complete_onboarding`, `save_placement_result`, `get_user_bootstrap`, RLS re-audit).
+- DB: `0013_user_state_columns.sql` + `0014_user_state_rpc.sql` (`complete_onboarding`, `save_placement_result`, `get_user_bootstrap`, RLS re-audit) + `0015_user_state_trigger_backfill.sql` (trigger, backfill).
 - Persistence: storage hygiene lib, guest migration endpoint, per-user flash favorites, sign-out cleanup, onboarding resume (`onboarding_step`), placement RPC with legacy fallback.
 - Observability: `/api/health` env booleans + phase/commit, `/api/me/status` (authed diagnostics), `/api/me/bootstrap` (shell hydration).
 - Tests: `routing.test.ts` (11), `storage.test.ts` (3), `schemas.test.ts` (5) — all new; 177 existing untouched.
