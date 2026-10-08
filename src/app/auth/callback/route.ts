@@ -1,28 +1,59 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getSiteUrl } from "@/lib/env";
+import { resolveNextPath, sanitizeNext } from "@/lib/auth/routing";
 
+/** Build the public origin correctly on Vercel (forwarded host/proto aware). */
 function siteUrl(request: NextRequest): string {
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  if (forwardedHost) {
+    const proto = forwardedProto === "http" || forwardedProto === "https" ? forwardedProto : "https";
+    try {
+      return new URL(`${proto}://${forwardedHost}`).toString().replace(/\/+$/, "");
+    } catch {
+      /* fall through */
+    }
+  }
   return getSiteUrl(request.nextUrl.origin);
 }
 
-/** OAuth / magic-link callback: exchanges `code` for a session, then routes by onboarding state. */
+/**
+ * OAuth / magic-link / email-confirmation callback.
+ * Exchanges `code` for a session, attaches cookies to the actual redirect
+ * response, then routes by onboarding/placement state (never blindly).
+ */
 export async function GET(request: NextRequest) {
-  const url = siteUrl(request);
-  const code = request.nextUrl.searchParams.get("code");
-  const next = request.nextUrl.searchParams.get("next") ?? "/onboarding";
+  const origin = siteUrl(request);
+  const params = request.nextUrl.searchParams;
+  const code = params.get("code");
+  const error = params.get("error");
+  const errorDescription = params.get("error_description");
+  const requestedNext = sanitizeNext(params.get("next"), "/onboarding");
+
+  if (error) {
+    const login = new URL("/login", origin);
+    login.searchParams.set("error", "oauth_failed");
+    if (errorDescription) login.searchParams.set("detail", errorDescription.slice(0, 200));
+    return NextResponse.redirect(login);
+  }
 
   if (!code) {
-    return NextResponse.redirect(new URL("/login?error=missing_code", url));
+    const login = new URL("/login", origin);
+    login.searchParams.set("error", "missing_code");
+    return NextResponse.redirect(login);
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseAnon) {
-    return NextResponse.redirect(new URL("/login?error=not_configured", url));
+    const login = new URL("/login", origin);
+    login.searchParams.set("error", "not_configured");
+    return NextResponse.redirect(login);
   }
 
-  const response = NextResponse.redirect(new URL(next, url));
+  // The redirect response that will carry the session cookies.
+  const response = NextResponse.redirect(new URL(requestedNext, origin));
   const supabase = createServerClient(supabaseUrl, supabaseAnon, {
     cookies: {
       getAll: () => request.cookies.getAll(),
@@ -34,15 +65,27 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error) {
-    return NextResponse.redirect(new URL("/login?error=oauth_failed", url));
+  const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+  if (exchangeError) {
+    // Structured server log without secrets.
+    console.error("[auth/callback] exchange failed", { message: exchangeError.message });
+    const login = new URL("/login", origin);
+    login.searchParams.set("error", "oauth_failed");
+    return NextResponse.redirect(login);
   }
 
-  // Ensure a profile row exists for Google sign-ins (email signups get one via trigger/signup route).
+  // Ensure a profile row exists (Google sign-ins especially).
   const { data: userData } = await supabase.auth.getUser();
   const user = userData.user;
-  if (user) {
+  if (!user) {
+    const login = new URL("/login", origin);
+    login.searchParams.set("error", "oauth_failed");
+    // Preserve any freshly set cookies on this redirect too.
+    for (const c of response.cookies.getAll()) login.searchParams.set(`_c_${c.name}`, "1");
+    return NextResponse.redirect(login);
+  }
+
+  try {
     await supabase.from("profiles").upsert(
       {
         id: user.id,
@@ -51,36 +94,54 @@ export async function GET(request: NextRequest) {
           (user.user_metadata?.full_name as string | undefined) ??
           (user.user_metadata?.name as string | undefined) ??
           null,
+        avatar_url:
+          (user.user_metadata?.avatar_url as string | undefined) ??
+          (user.user_metadata?.picture as string | undefined) ??
+          null,
       } as never,
       { onConflict: "id", ignoreDuplicates: false }
     );
-    // Route users who already finished onboarding straight to the dashboard.
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("onboarding_completed,preferred_language")
-      .eq("id", user.id)
-      .maybeSingle();
-    const p = profile as { onboarding_completed?: boolean; preferred_language?: string } | null;
-    // Language sync on login — priority: user setting → local preference → browser.
-    const cookieLang = request.cookies.get("linguaai_locale")?.value;
-    const isSupported = (v: unknown): v is "kk" | "ru" | "en" => v === "kk" || v === "ru" || v === "en";
-    if (isSupported(p?.preferred_language)) {
-      response.cookies.set("linguaai_locale", p.preferred_language, {
-        path: "/",
-        maxAge: 31536000,
-        sameSite: "lax",
-      });
-    } else if (isSupported(cookieLang)) {
+  } catch {
+    /* non-fatal: trigger/backfill covers missing rows */
+  }
+
+  // Language sync: profile setting wins, else adopt the local cookie.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("onboarding_completed,placement_completed,level,preferred_language")
+    .eq("id", user.id)
+    .maybeSingle();
+  const p = profile as {
+    onboarding_completed?: boolean;
+    placement_completed?: boolean;
+    level?: string | null;
+    preferred_language?: string;
+  } | null;
+  const cookieLang = request.cookies.get("linguaai_locale")?.value;
+  const isSupported = (v: unknown): v is "kk" | "ru" | "en" => v === "kk" || v === "ru" || v === "en";
+  if (isSupported(p?.preferred_language)) {
+    response.cookies.set("linguaai_locale", p.preferred_language, {
+      path: "/",
+      maxAge: 31536000,
+      sameSite: "lax",
+    });
+  } else if (isSupported(cookieLang)) {
+    try {
       await supabase.from("profiles").update({ preferred_language: cookieLang } as never).eq("id", user.id);
-    }
-    if (p?.onboarding_completed) {
-      const dash = NextResponse.redirect(new URL("/dashboard", url));
-      // Carry over any locale cookie set above.
-      const setLocale = response.cookies.get("linguaai_locale");
-      if (setLocale) dash.cookies.set("linguaai_locale", setLocale.value, { path: "/", maxAge: 31536000, sameSite: "lax" });
-      return dash;
+    } catch {
+      /* noop */
     }
   }
 
+  // Decide destination on the server — never blindly /onboarding.
+  const destination = resolveNextPath(p, requestedNext);
+  if (destination !== requestedNext) {
+    const final = NextResponse.redirect(new URL(destination, origin));
+    // Carry session + locale cookies onto the final redirect (the old code dropped them).
+    for (const c of response.cookies.getAll()) {
+      final.cookies.set(c.name, c.value);
+    }
+    return final;
+  }
   return response;
 }

@@ -6,6 +6,7 @@ import { I18nProvider } from "@/lib/i18n/I18nProvider";
 import { LOCALE_META } from "@/lib/i18n/config";
 import { getRequestLocale } from "@/lib/i18n/server";
 import { AppProviders } from "@/components/providers/AppProviders";
+import { getCurrentUser } from "@/lib/auth/session";
 
 const sans = Inter({ subsets: ["latin", "cyrillic"], variable: "--font-sans", display: "swap" });
 const display = Sora({ subsets: ["latin"], variable: "--font-display", display: "swap", weight: ["500", "600", "700", "800"] });
@@ -41,12 +42,33 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = getRequestLocale();
+  // Server-provided auth snapshot: no signed-out flash on first paint.
+  const session = await getCurrentUser().catch(() => null);
+  const initialAuth = session
+    ? {
+        status: "authenticated" as const,
+        userId: session.user.id,
+        email: session.user.email,
+        onboardingCompleted: session.profile?.onboarding_completed === true,
+        placementCompleted:
+          (session.profile as { placement_completed?: boolean } | null)?.placement_completed === true ||
+          (typeof session.profile?.level === "string" && session.profile.level.length > 0),
+        level: session.profile?.level ?? null,
+      }
+    : {
+        status: "anonymous" as const,
+        userId: null,
+        email: null,
+        onboardingCompleted: false,
+        placementCompleted: false,
+        level: null,
+      };
   return (
     <html lang={LOCALE_META[locale].htmlLang} suppressHydrationWarning>
       <body className={`${sans.variable} ${display.variable} min-h-dvh bg-ink-50 text-ink-900 dark:bg-ink-950 dark:text-ink-100`}>
-        <AppProviders>
+        <AppProviders initialAuth={initialAuth}>
           <I18nProvider initialLocale={locale}>{children}</I18nProvider>
         </AppProviders>
       </body>

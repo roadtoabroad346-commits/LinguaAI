@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { onboardingSchema } from "@/lib/auth/schemas";
 
-/** Completes onboarding: validates input, upserts the profile, marks it complete. */
+export const dynamic = "force-dynamic";
+
+/** Completes onboarding: validates input, writes atomically, marks it complete. */
 export async function POST(request: Request) {
   let supabase;
   try {
@@ -32,6 +34,41 @@ export async function POST(request: Request) {
   }
   const d = parsed.data;
 
+  // Prefer the atomic RPC (0014); fall back to a direct upsert on older backends.
+  try {
+    const { error: rpcError } = await supabase.rpc("complete_onboarding", {
+      payload: {
+        displayName: d.displayName,
+        nativeLanguage: d.nativeLanguage,
+        goals: d.goals,
+        dailyGoalXp: d.dailyGoalXp,
+        learningMode: d.learningMode,
+        preferredLanguage: d.preferredLanguage ?? "en",
+        onboardingStep: d.onboardingStep ?? 0,
+      },
+    } as never);
+    if (!rpcError) {
+      // Persist the extended personalization columns the RPC does not own yet.
+      const patch: Record<string, unknown> = {};
+      if (d.targetExam !== undefined) patch.target_exam = d.targetExam || null;
+      if (d.targetScore !== undefined) patch.target_score = d.targetScore || null;
+      if (d.targetDate !== undefined) patch.target_date = d.targetDate || null;
+      if (d.dailyGoalMinutes !== undefined) patch.daily_goal_minutes = d.dailyGoalMinutes ?? null;
+      if (d.prioritySkills !== undefined) patch.priority_skills = d.prioritySkills;
+      if (d.interests !== undefined) patch.interests = d.interests;
+      if (d.studyTimePreference !== undefined) patch.study_time_preference = d.studyTimePreference || null;
+      if (d.obstacles !== undefined) patch.obstacles = d.obstacles;
+      if (Object.keys(patch).length > 0) {
+        await supabase.from("profiles").update(patch as never).eq("id", user.id);
+      }
+      const res = NextResponse.json({ ok: true, next: "/placement" });
+      res.headers.set("Cache-Control", "no-store");
+      return res;
+    }
+  } catch {
+    /* fall through to direct upsert */
+  }
+
   const { error } = await supabase.from("profiles").upsert(
     {
       id: user.id,
@@ -43,11 +80,23 @@ export async function POST(request: Request) {
       learning_mode: d.learningMode,
       preferred_language: d.preferredLanguage ?? "en",
       onboarding_completed: true,
+      onboarding_completed_at: new Date().toISOString(),
+      onboarding_step: d.onboardingStep ?? 0,
+      target_exam: d.targetExam || null,
+      target_score: d.targetScore || null,
+      target_date: d.targetDate || null,
+      daily_goal_minutes: d.dailyGoalMinutes ?? null,
+      priority_skills: d.prioritySkills ?? [],
+      interests: d.interests ?? [],
+      study_time_preference: d.studyTimePreference || null,
+      obstacles: d.obstacles ?? [],
     } as never,
     { onConflict: "id" }
   );
   if (error) {
     return NextResponse.json({ error: "Could not save onboarding. Try again." }, { status: 500 });
   }
-  return NextResponse.json({ ok: true, next: "/placement" });
+  const res = NextResponse.json({ ok: true, next: "/placement" });
+  res.headers.set("Cache-Control", "no-store");
+  return res;
 }

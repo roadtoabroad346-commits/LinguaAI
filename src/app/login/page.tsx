@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { Header } from "@/components/layout/Header";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { AuthShell } from "@/components/learn/AuthShell";
 import { Alert } from "@/components/ui/feedback";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { ThemeToggle } from "@/components/providers/ThemeToggle";
-import { getSessionUser } from "@/lib/auth/session";
+import { getSessionProfile, getSessionUser } from "@/lib/auth/session";
+import { resolveNextPath, sanitizeNext } from "@/lib/auth/routing";
 import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
 
 export const metadata = { title: "Log in" };
@@ -20,10 +22,13 @@ const ERROR_KEYS: Record<string, string> = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: { error?: string; signed_out?: string };
+  searchParams: { error?: string; signed_out?: string; next?: string };
 }) {
   const user = await getSessionUser();
-  if (user) redirect("/onboarding");
+  if (user) {
+    const profile = await getSessionProfile().catch(() => null);
+    redirect(resolveNextPath(profile, sanitizeNext(searchParams.next, "/dashboard")));
+  }
 
   const t = getServerT(await getEffectiveLocale());
 
@@ -52,7 +57,9 @@ export default async function LoginPage({
               {t("auth.signedOutDesc")}
             </Alert>
           )}
-          <AuthForm mode="signin" />
+          <Suspense>
+            <AuthForm mode="signin" />
+          </Suspense>
           <p className="text-center text-sm text-ink-500">
             {t("auth.newTo")}{" "}
             <Link href="/signup" className="font-semibold text-brand-700 hover:underline">

@@ -50,6 +50,15 @@ export const onboardingSchema = z.object({
   dailyGoalXp: z.coerce.number().int().min(10, "Minimum 10 XP").max(200, "Maximum 200 XP"),
   learningMode: z.enum(["guided", "free"]),
   preferredLanguage: z.enum(["kk", "ru", "en"]).optional().default("en"),
+  onboardingStep: z.coerce.number().int().min(0).max(20).optional().default(0),
+  targetExam: z.string().trim().max(40).optional(),
+  targetScore: z.string().trim().max(20).optional(),
+  targetDate: z.string().trim().max(20).optional(),
+  dailyGoalMinutes: z.coerce.number().int().min(5).max(240).optional(),
+  prioritySkills: z.array(z.string().trim().min(1)).max(8).optional().default([]),
+  interests: z.array(z.string().trim().min(1)).max(12).optional().default([]),
+  studyTimePreference: z.string().trim().max(40).optional(),
+  obstacles: z.array(z.string().trim().min(1)).max(8).optional().default([]),
 });
 export type OnboardingInput = z.infer<typeof onboardingSchema>;
 
@@ -61,6 +70,15 @@ export const profileUpdateSchema = z.object({
   learningMode: z.enum(["guided", "free"]).optional(),
   preferredLanguage: z.enum(["kk", "ru", "en"]).optional(),
   timezone: z.string().trim().min(1).max(64).refine((tz) => isValidTimezone(tz), "Unknown timezone").optional(),
+  onboardingStep: z.coerce.number().int().min(0).max(20).optional(),
+  targetExam: z.string().trim().max(40).optional(),
+  targetScore: z.string().trim().max(20).optional(),
+  targetDate: z.string().trim().max(20).optional(),
+  dailyGoalMinutes: z.coerce.number().int().min(5).max(240).optional(),
+  prioritySkills: z.array(z.string().trim().min(1)).max(8).optional(),
+  interests: z.array(z.string().trim().min(1)).max(12).optional(),
+  studyTimePreference: z.string().trim().max(40).optional(),
+  obstacles: z.array(z.string().trim().min(1)).max(8).optional(),
 });
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
 
@@ -69,6 +87,8 @@ export const placementSubmitSchema = z.object({
     .array(z.object({ questionId: z.string().min(1), selected: z.number().int().min(0).max(3) }))
     .min(1, "Answer at least one question"),
   learningMode: z.enum(["guided", "free"]).optional(),
+  durationSeconds: z.coerce.number().int().min(0).max(7200).optional(),
+  testVersion: z.string().trim().max(20).optional(),
 });
 export type PlacementSubmitInput = z.infer<typeof placementSubmitSchema>;
 

@@ -8,13 +8,30 @@ export interface ProfileRow {
   email: string | null;
   display_name: string | null;
   level: Level | null;
+  level_source: "placement" | "self" | "manual" | "default" | null;
   learning_mode: LearningMode | null;
   preferred_language: InterfaceLanguage;
   daily_goal_xp: number;
+  daily_goal_minutes: number | null;
+  daily_xp_goal: number | null;
   timezone: string;
   onboarding_completed: boolean;
+  onboarding_completed_at: string | null;
+  onboarding_step: number;
+  placement_completed: boolean;
+  placement_completed_at: string | null;
   native_language: string | null;
   goals: string[];
+  target_exam: string | null;
+  target_score: string | null;
+  target_date: string | null;
+  priority_skills: string[];
+  interests: string[];
+  study_time_preference: string | null;
+  obstacles: string[];
+  avatar_url: string | null;
+  last_seen_at: string | null;
+  preferences: Record<string, unknown>;
   placement_score: number | null;
   placement_taken_at: string | null;
   total_xp: number;
@@ -32,6 +49,12 @@ export interface PlacementResultRow {
   total: number;
   level: Level;
   answers: Array<{ questionId: string; selected: number; correct: boolean }>;
+  skill_scores: Record<string, { correct: number; total: number }>;
+  correct_answers: number | null;
+  duration_seconds: number | null;
+  previous_level: Level | null;
+  attempt_number: number | null;
+  test_version: string;
   created_at: string;
 }
 

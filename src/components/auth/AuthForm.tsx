@@ -1,17 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/feedback";
 import { signInSchema, signUpSchema } from "@/lib/auth/schemas";
+import { resolveNextPath, sanitizeNext } from "@/lib/auth/routing";
+import { readGuestData } from "@/lib/auth/storage";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 
 export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
   const { t } = useTranslation();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedNext = sanitizeNext(searchParams?.get("next"), "/onboarding");
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,6 +28,49 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
   const configured = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   );
+
+  /** After any successful password auth: migrate guest data, then route by DB state. */
+  async function postAuthRedirect(): Promise<string> {
+    await migrateGuestOnce().catch(() => {});
+    await syncLanguageOnLogin().catch(() => {});
+    try {
+      const res = await fetch("/api/me/bootstrap", { cache: "no-store" });
+      if (res.ok) {
+        const json = await res.json().catch(() => null);
+        const profile = (json?.profile ?? null) as {
+          onboarding_completed?: boolean;
+          placement_completed?: boolean;
+          level?: string | null;
+        } | null;
+        return resolveNextPath(profile, requestedNext);
+      }
+    } catch {
+      /* fall through to requested next */
+    }
+    return requestedNext;
+  }
+
+  /** One-time guest -> account merge; server wins, never overwrites placement. */
+  async function migrateGuestOnce() {
+    try {
+      const guest = readGuestData(window.localStorage);
+      if (guest.savedWords.length === 0) return;
+      await fetch("/api/me/migrate-guest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ words: guest.savedWords }),
+      }).catch(() => {});
+      // Clear guest keys so the next user on this browser never sees them.
+      try {
+        window.localStorage.removeItem("linguaai:saved-words");
+        window.localStorage.removeItem("linguaai_flash_fav");
+      } catch {
+        /* noop */
+      }
+    } catch {
+      /* best-effort */
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,7 +97,7 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
           password,
           options: {
             data: { display_name: displayName || undefined },
-            emailRedirectTo: `${window.location.origin}/auth/callback?next=/onboarding`,
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(requestedNext)}`,
           },
         });
         if (error) {
@@ -71,7 +118,8 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
           setCheckInbox(true);
           return;
         }
-        router.push("/onboarding");
+        const dest = await postAuthRedirect();
+        router.push(dest);
         router.refresh();
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -79,8 +127,8 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
           setFormError(error.message);
           return;
         }
-        await syncLanguageOnLogin();
-        router.push("/onboarding");
+        const dest = await postAuthRedirect();
+        router.push(dest);
         router.refresh();
       }
     } catch (err) {
@@ -112,7 +160,9 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth/callback?next=/onboarding` },
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(requestedNext)}`,
+        },
       });
       if (error) {
         const msg = error.message.toLowerCase();

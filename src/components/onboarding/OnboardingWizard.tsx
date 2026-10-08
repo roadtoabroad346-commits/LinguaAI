@@ -28,10 +28,11 @@ const STEP_KEYS = [
   "onboarding.steps.path",
 ] as const;
 
-export function OnboardingWizard({ initial }: { initial: Omit<Partial<OnboardingInput>, "preferredLanguage"> & { preferredLanguage?: string } }) {
+export function OnboardingWizard({ initial }: { initial: Omit<Partial<OnboardingInput>, "preferredLanguage"> & { preferredLanguage?: string; onboardingStep?: number } }) {
   const { t, locale, setLocale } = useTranslation();
   const router = useRouter();
-  const [step, setStep] = useState(0);
+  const clampStep = (s: number) => Math.min(Math.max(0, s || 0), STEP_KEYS.length - 1);
+  const [step, setStep] = useState(() => clampStep(initial.onboardingStep ?? 0));
   const [interfaceLanguage, setInterfaceLanguage] = useState<Locale>(
     isLocale(initial.preferredLanguage) ? initial.preferredLanguage : locale
   );
@@ -46,6 +47,27 @@ export function OnboardingWizard({ initial }: { initial: Omit<Partial<Onboarding
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [direction, setDirection] = useState(1);
+
+  /** Best-effort per-step progress save so closing the tab never loses answers. */
+  function saveProgress(nextStep: number) {
+    try {
+      fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: displayName.trim() || undefined,
+          nativeLanguage: nativeLanguage || undefined,
+          goals: goals.length > 0 ? goals : undefined,
+          dailyGoalXp: Number.isFinite(dailyGoalXp) ? dailyGoalXp : undefined,
+          learningMode,
+          preferredLanguage: interfaceLanguage,
+          onboardingStep: nextStep,
+        }),
+      }).catch(() => {});
+    } catch {
+      /* non-blocking */
+    }
+  }
 
   function toggleGoal(g: string) {
     setGoals((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g].slice(0, 6)));
@@ -81,7 +103,9 @@ export function OnboardingWizard({ initial }: { initial: Omit<Partial<Onboarding
     if (validateStep(step)) {
       setErrors({});
       setDirection(1);
-      setStep((s) => Math.min(s + 1, STEP_KEYS.length - 1));
+      const nextStep = Math.min(step + 1, STEP_KEYS.length - 1);
+      setStep(nextStep);
+      saveProgress(nextStep);
     }
   }
 
@@ -94,6 +118,7 @@ export function OnboardingWizard({ initial }: { initial: Omit<Partial<Onboarding
       dailyGoalXp,
       learningMode,
       preferredLanguage: interfaceLanguage,
+      onboardingStep: STEP_KEYS.length - 1,
     });
     if (!parsed.success) {
       const flat: Record<string, string> = {};

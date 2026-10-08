@@ -1,0 +1,33 @@
+# Auth / Session / Database Sync — Root Causes (evidence-first)
+
+Baseline: `main` at Phase 12, `npm run typecheck` clean, `npm test` 177/177.
+Branch: `fix/auth-session-db-sync`.
+
+## Confirmed causes
+
+| # | Symptom | Cause | File:line (evidence) | Fix |
+|---|---------|-------|----------------------|-----|
+| 1 | `/smart-path` shows "Sign in to open" + header shows Sign in for a signed-in user | No shared auth source. `SmartPathViews` fetched `/api/smart-path` once on mount and treated any `signedIn:false` payload as signed-out (`src/components/smart-path/SmartPathViews.tsx:77-84`); `UserMenu` read auth once on mount with no `onAuthStateChange` and no `router.refresh()` (`src/components/auth/UserMenu.tsx:15-32`), so gates and header disagreed with the server session. | `SmartPathViews.tsx:61-95`, `UserMenu.tsx:10-32` | New `AuthProvider`/`useAuth` (`src/components/auth/AuthProvider.tsx`) initialized from server snapshot in `layout.tsx`, kept live with `onAuthStateChange` + `router.refresh()`; `SmartPathViews` gates only on `status === "anonymous"` with skeleton while loading |
+| 2 | Placement demanded again every sign-in; onboarding/placement not remembered | No `profiles` auto-creation trigger (only `touch_updated_at` triggers exist; grep for `handle_new_user` in `supabase/migrations` returns nothing). `update()` on a missing row affects 0 rows silently, reads return null, app treats the user as brand new. Login/signup/callback also upserted minimal rows as a workaround. | `supabase/migrations/0001_foundation.sql:30-33`, grep `handle_new_user` = no hits | `0013` adds `handle_new_user()` + `on_auth_user_created` trigger + backfill for existing `auth.users` |
+| 3 | OAuth returning users lose session (esp. completed users) | Callback created a **new** redirect to `/dashboard` for completed users and copied only the locale cookie — freshly set auth cookies on the first response were dropped (`src/app/auth/callback/route.ts:77-81` old code). | old `callback/route.ts:77-81` | Rewritten callback carries session cookies onto the final redirect; destination decided by `resolveNextPath` |
+| 4 | Post-login always lands on `/onboarding`, even when complete | `AuthForm` hardcoded `router.push("/onboarding")` for both signup and signin (`src/components/auth/AuthForm.tsx:74,83`); `/login`/`/signup` pages redirected any session to `/onboarding` (`login/page.tsx:26`, `signup/page.tsx:15`); `next` param was accepted by the callback but never sanitized or honored after password auth | `AuthForm.tsx:74,83`, `login/page.tsx:26` | `src/lib/auth/routing.ts` (`sanitizeNext`, `resolveNextPath`): no profile → `/onboarding`; onboarding done, placement pending → `/placement`; both done → safe `next` or `/dashboard`. Callback, AuthForm, login/signup all use it |
+| 5 | Stale "Your result: A2" before the test finishes | `PlacementRunner` rendered the saved `existingLevel` hint unconditionally above an untouched test (`PlacementRunner.tsx:189-193` old), so a previous attempt (or another account's level on a shared browser) showed as if it were the current result. No localStorage placement key existed, but the hint was visually indistinguishable from a result. | old `PlacementRunner.tsx:189-193` | Hint now renders only before the first answer and is labeled as the saved level (`retakeHint`); the result card still renders only from the current attempt's in-memory state |
+| 6 | Cross-user leakage on shared browsers | Global keys (`linguaai:saved-words`, `linguaai_flash_fav`) were shared by every account; sign-out never cleared them; `AuthForm` never migrated guest data | `SaveWordButton.tsx:9`, `FlashcardRunner.tsx:39`, old signout flow | `src/lib/auth/storage.ts` (namespaced keys, guest merge with server-wins, `clearUserScopedKeys`); `AuthProvider` clears on sign-out/user-switch; `AuthForm` migrates guest words once via `POST /api/me/migrate-guest`; flash favorites namespaced per user id |
+| 7 | No route protection / stale server HTML | `src/middleware.ts` only refreshed cookies, never protected routes; several user-dependent pages lacked `force-dynamic` | `src/middleware.ts:1-8` (old), `smart-path/page.tsx` (no dynamic) | Middleware now enforces protected prefixes → `/login?next=`, redirects authed users off `/login`/`/signup`; `smart-path` (and dashboard/onboarding/placement/profile) are `force-dynamic`; authenticated API responses send `Cache-Control: no-store` |
+| 8 | Preview masquerading as signed-in | `isSupabaseConfigured()` gates returned preview payloads; the dashboard rendered preview content that looked logged-in while the header (separate check) showed signed-out | `dashboard/page.tsx:18-20`, `queries.ts:49-67` | Single `getCurrentUser()` server helper (validated `getUser`, `cache`d); `GET /api/me/bootstrap` is the one hydration document; preview remains only as explicit guest mode on public pages (placement) and the dashboard missing-backend banner |
+
+## Rejected / nuanced
+
+- **H-A (invalid URL silently → preview):** partly true by design (`isSupabaseUrlValid` falls back instead of crashing). Kept, but `/api/health` now reports `urlValid`/`urlPresent` booleans and the dashboard keeps its honest preview banner.
+- **H-B (separate localStorage session):** no legacy `supabase-js` token store found — all clients already used `@supabase/ssr`. The split was not storage but *subscriptions*: one-shot reads with no shared provider.
+- **H-F (static caching of user pages):** dashboard already had `force-dynamic`; smart-path did not. Fixed.
+- **H-G (wrong OAuth origin):** old code used `request.nextUrl.origin`, wrong behind Vercel proxies. Fixed with `x-forwarded-host/proto` handling + `NEXT_PUBLIC_APP_URL` preference.
+
+## What changed (summary)
+
+- Session: singleton browser client, `getCurrentUser()`, middleware protection, `AuthProvider` + `RequireAuth`, account menu in header, `force-dynamic` + `no-store` on user routes/APIs.
+- Callback/routing: rewritten `/auth/callback`, `sanitizeNext`/`resolveNextPath`, password + OAuth share the logic, `next` preserved safely.
+- DB: `0013_user_state_foundation.sql` (trigger, backfill, typed columns, placement history, constraints) + `0014_user_state_rpc.sql` (`complete_onboarding`, `save_placement_result`, `get_user_bootstrap`, RLS re-audit).
+- Persistence: storage hygiene lib, guest migration endpoint, per-user flash favorites, sign-out cleanup, onboarding resume (`onboarding_step`), placement RPC with legacy fallback.
+- Observability: `/api/health` env booleans + phase/commit, `/api/me/status` (authed diagnostics), `/api/me/bootstrap` (shell hydration).
+- Tests: `routing.test.ts` (11), `storage.test.ts` (3), `schemas.test.ts` (5) — all new; 177 existing untouched.
