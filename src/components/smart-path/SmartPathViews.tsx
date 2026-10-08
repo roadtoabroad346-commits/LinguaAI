@@ -5,6 +5,7 @@ import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { Alert, Badge, Progress } from "@/components/ui/feedback";
 import { Button } from "@/components/ui/Button";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { formatChallengeDate } from "@/lib/i18n/format";
 
 interface SmartStep {
@@ -60,28 +61,32 @@ const KIND_LABEL_KEYS: Record<string, string> = {
 
 export function SmartPathViews() {
   const { t, locale } = useTranslation();
+  const { status } = useAuth();
   const [data, setData] = useState<PlanResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [signedOut, setSignedOut] = useState(false);
+  const [unauthorized, setUnauthorized] = useState(false);
 
-  // Load-once effect: error text uses the mount-time locale (no refetch on language switch).
   useEffect(() => {
+    if (status === "loading") return;
+    if (status === "anonymous") return; // gate below, no fetch
     let cancelled = false;
-    fetch("/api/smart-path")
+    fetch("/api/smart-path", { cache: "no-store", credentials: "same-origin" })
       .then(async (r) => {
+        if (r.status === 401) {
+          if (!cancelled) setUnauthorized(true);
+          return null;
+        }
         if (!r.ok) throw new Error("load");
-        return r.json();
+        const json = (await r.json()) as PlanResponse;
+        // Authenticated users must never be served a signed-out payload.
+        if (json.signedIn === false) {
+          if (!cancelled) setUnauthorized(true);
+          return null;
+        }
+        return json;
       })
-      .then((json: PlanResponse) => {
-        if (cancelled) return;
-        if (json.signedIn === false && !json.preview) {
-          setSignedOut(true);
-          return;
-        }
-        if (json.signedIn === false && json.preview && json.configured !== false) {
-          setSignedOut(true);
-          return;
-        }
+      .then((json) => {
+        if (cancelled || !json) return;
         setData(json);
       })
       .catch(() => {
@@ -90,11 +95,23 @@ export function SmartPathViews() {
     return () => {
       cancelled = true;
     };
-    // Load-once: no refetch on language switch (error text uses mount-time locale).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [status]);
 
-  if (signedOut) {
+  // Single source of truth: skeleton while auth resolves.
+  if (status === "loading") {
+    return (
+      <Card aria-busy="true" aria-label={t("smart.buildingTitle")}>
+        <CardTitle>{t("smart.building")}</CardTitle>
+        <div className="mt-4 space-y-3" aria-hidden>
+          {[0, 1, 2, 3].map((i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-ink-100" />)}
+        </div>
+      </Card>
+    );
+  }
+
+  // Sign-in gate ONLY for anonymous users (never for authenticated ones).
+  if (status === "anonymous" || unauthorized) {
     return (
       <Card>
         <CardTitle>{t("smart.unlock")}</CardTitle>
