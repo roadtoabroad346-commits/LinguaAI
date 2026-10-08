@@ -158,7 +158,7 @@ export function PopIn({ children, className }: { children: React.ReactNode; clas
   );
 }
 
-/** Animated integer counter. */
+/** Animated integer counter. Starts only when visible (no wasted offscreen work). */
 export function AnimatedNumber({
   value,
   className,
@@ -168,6 +168,43 @@ export function AnimatedNumber({
   className?: string;
   duration?: number;
 }) {
-  const v = useCountUp(value, { duration });
-  return <span className={cn("tabular-nums", className)}>{v.toLocaleString()}</span>;
+  const ref = React.useRef<HTMLSpanElement>(null);
+  const [started, setStarted] = React.useState(false);
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setStarted(true);
+      return;
+    }
+    const rect = el.getBoundingClientRect();
+    if (rect.top < window.innerHeight && rect.bottom > 0) {
+      setStarted(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            setStarted(true);
+            io.disconnect();
+          }
+        }
+      },
+      { threshold: 0.2 }
+    );
+    io.observe(el);
+    // Safety net: never leave the counter at 0 if the observer stays silent.
+    const fallback = window.setTimeout(() => setStarted(true), 2500);
+    return () => {
+      io.disconnect();
+      window.clearTimeout(fallback);
+    };
+  }, []);
+  const v = useCountUp(value, { duration, enabled: started });
+  return (
+    <span ref={ref} className={cn("tabular-nums", className)}>
+      {v.toLocaleString()}
+    </span>
+  );
 }

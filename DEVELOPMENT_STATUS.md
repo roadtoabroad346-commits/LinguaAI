@@ -1,6 +1,26 @@
 # LinguaAI — Development Status
 
-## Current phase: PHASE 10 — UI/UX MOBILE + MOTION (complete)
+## Current phase: PHASE 11 — HARDEN + OPTIMIZE (complete)
+
+### Completed work (Phase 11)
+- Env hardening (`src/lib/env.ts` + `src/lib/env.test.ts`, 4 tests): `isSupabaseUrlValid()` rejects pasted JWTs/keys/whitespace/non-URLs, so a misconfigured `NEXT_PUBLIC_SUPABASE_URL` falls back to the preview-mode warning instead of crashing every Supabase call at runtime. All 30+ `isSupabaseConfigured()` gates inherit the protection.
+- SEO: new `src/app/sitemap.ts` (8 public routes that render 200 signed-out) + `src/app/robots.ts` (allows public, disallows `/api/`, `/auth/`, app-private routes).
+- Cost/storage hygiene: AI-teacher chat prunes `ai_messages` older than 90 days best-effort after each insert (table otherwise grows 2 rows per exchange, forever).
+- Perf: `AnimatedNumber` starts its rAF count-up only when visible (IO-gated + fallback), so below-fold counters no longer burn frames or finish before the user scrolls to them.
+- Correctness: `/api/health` reports `phase: 10`; docs fixed to code truth (`GEMINI_MODEL` default is `gemini-3.5-flash-lite`; migrations `0001` → `0011` listed in README).
+- DB audit: all 15 tables have owner-only RLS + hot-path composite indexes (verified file-by-file, no new migration needed); smart-path 2000-row dictionary fetch intentionally kept (same rows feed avgMastery + due-word sort in one round trip).
+
+### Verification (Phase 11)
+- `npm run typecheck` / `lint` / `test` / `build` all clean (see final report).
+
+### Supabase actions for the owner (require dashboard access — keys never leave it)
+1. SQL editor → run `0001` → `0011` in order (all idempotent); **0011 is the critical one** — without `profiles.preferred_language`, language switching signed-in fails.
+2. Verify: `select indexname from pg_indexes where schemaname='public' order by tablename,indexname;` (expect ~25 rows incl. `dictionary_entries_user_review_idx`, `skill_attempts_user_slug_idx`) and `select * from pg_tables where schemaname='public';` (15 tables).
+3. Vercel → Project → Settings → Environment Variables → Production: `NEXT_PUBLIC_SUPABASE_URL` must be the `https://xxx.supabase.co` project URL (not a JWT), `NEXT_PUBLIC_APP_URL=https://lingua-ai-project.vercel.app`; others unchanged.
+
+---
+
+## Previous phase: PHASE 10 — UI/UX MOBILE + MOTION (complete)
 
 ### Completed work (Phase 10)
 - Landing fix + rich SaaS story (`a34a84f`): bulletproof `Reveal`/`Stagger` (SSR-visible by default via `initial={false}` + custom in-view hook + fallback timer — content can never stick at `opacity: 0`), full trilingual landing (~150 keys × EN/RU/KK, parity-tested): stats band, 4-step method, 6-card showcase, 4 deep dives with checklists, A1–C1 curriculum table, gamification, LinguaAI-vs-alternatives comparison, 6 testimonials, 8 FAQs, final CTA.
@@ -42,7 +62,7 @@
 - `0010_phase9_rls_audit.sql`: no schema change; hardening only (RLS on + owner policies). Apply `0001` → `0010` in order.
 
 ### Environment variables (Phase 9)
-- No new vars. Same contract: `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` (client-safe), `GEMINI_API_KEY` + `SUPABASE_SERVICE_ROLE_KEY` server-only, `GEMINI_MODEL` default `gemini-1.5-flash`.
+- No new vars. Same contract: `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` (client-safe), `GEMINI_API_KEY` + `SUPABASE_SERVICE_ROLE_KEY` server-only, `GEMINI_MODEL` default `gemini-3.5-flash-lite` (corrected — was misstated before).
 
 ### Tests (Phase 9)
 - `npm test`: 144/144 pass (was 141: +3 security tests — limit/429+Retry-After, per-IP isolation, forwarded-IP parsing).

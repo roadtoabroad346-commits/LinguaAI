@@ -60,6 +60,10 @@ export async function POST(request: Request) {
             { user_id: data.user.id, role: "user", content: lastUser.content.slice(0, 2000) },
             { user_id: data.user.id, role: "assistant", content: reply.slice(0, 2000) },
           ] as never);
+          // Retention hygiene: chat history older than 90 days is pruned
+          // best-effort so per-user tables stay small and fast.
+          const cutoff = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
+          await supabase.from("ai_messages").delete().eq("user_id", data.user.id).lt("created_at", cutoff);
         }
       } catch { /* non-blocking */ }
     }

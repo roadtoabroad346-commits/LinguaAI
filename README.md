@@ -30,6 +30,13 @@ Apply migrations in order in Supabase SQL editor (or `supabase db push`):
 - `supabase/migrations/0003_phase2_dashboard.sql` — profile XP/streak counters + `activity_events` + `daily_challenge_completions` with owner-only RLS.
 - `supabase/migrations/0004_phase3_vocab.sql` — `dictionary_entries` word metadata (definition, level, phonetic, example, translation, source), review stats (`review_count`, `correct_count`, `last/next_review_at`) + indexes.
 - `supabase/migrations/0005_phase4_skills.sql` — `skill_attempts` (skill, slug, score, total, xp_earned) with owner-only RLS for grammar/reading/listening/dictation history.
+- `supabase/migrations/0006_phase5_writing.sql` — `writing_submissions` + `writing_errors` + `ai_messages` with owner-only RLS and user indexes.
+- `supabase/migrations/0007_phase6_speaking.sql` — `speaking_attempts` + `read_aloud_attempts` with owner-only RLS and user/topic indexes.
+- `supabase/migrations/0008_phase7_spelling_gamification.sql` — `spelling_attempts` + `achievements` with owner-only RLS.
+- `supabase/migrations/0009_phase7_compliance.sql` — `profiles.timezone`, `spelling_sessions` (idempotent XP), unique `(session_id, word)`.
+- `supabase/migrations/0010_phase9_rls_audit.sql` — re-enables RLS on all 15 tables, recreates owner-only policies (idempotent).
+- `supabase/migrations/0011_i18n_preferred_language.sql` — `profiles.preferred_language` (kk/ru/en check).
+Apply `0001` → `0011` in order; every file is idempotent (`if not exists`).
 ## Auth + onboarding flow (Phase 1)
 `/signup` → `/onboarding` (profile, goals, Guided/Free) → `/placement` (20 questions, A1–C1) → `/dashboard`. `/login` for returning users; `/profile` to view/edit; `/auth/callback` handles OAuth code exchange.
 ## Dashboard (Phase 2)

@@ -41,7 +41,34 @@ export function getSiteUrl(requestOrigin?: string): string {
   return fromEnv;
 }
 export function isSupabaseConfigured(): boolean {
-  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) && Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  return isSupabaseUrlValid(process.env.NEXT_PUBLIC_SUPABASE_URL) && Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+}
+
+/**
+ * The URL must be a real http(s) URL with a dotted host.
+ * Catches the classic misconfiguration where a JWT/key gets pasted
+ * into the URL field (presence checks alone would pass, then every
+ * Supabase call would throw at runtime).
+ */
+export function isSupabaseUrlValid(raw: unknown): boolean {
+  if (typeof raw !== "string") return false;
+  const value = raw.trim();
+  if (!value) return false;
+  // A JWT (always starts with base64('{"') = "eyJ") or bare key is never a valid project URL.
+  if (/^eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(value)) return false;
+  if (/\s/.test(value)) return false;
+  try {
+    const url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
+    const host = url.hostname;
+    const isLocal = host === "localhost" || host === "127.0.0.1";
+    if (!isLocal && !host.includes(".")) return false;
+    if (url.protocol !== "https:" && !isLocal) return false;
+    // Bare "localhost" (no scheme, no port) is never a usable project URL.
+    if (isLocal && !/^https?:\/\//i.test(value) && !url.port) return false;
+    return true;
+  } catch {
+    return false;
+  }
 }
 export function isGeminiConfigured(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
