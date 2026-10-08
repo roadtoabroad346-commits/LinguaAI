@@ -1,6 +1,18 @@
 -- LinguaAI 0014 — atomic user-state RPC + RLS re-audit (idempotent).
 -- Apply after 0013. SECURITY INVOKER where RLS is enough so auth.uid() enforces ownership.
 
+-- 0. Preflight: fail fast with a clear message when 0013 was not applied.
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'profiles' and column_name = 'avatar_url'
+  ) then
+    raise exception 'Apply supabase/migrations/0013_user_state_foundation.sql first (profiles.avatar_url is missing).';
+  end if;
+end;
+$$;
+
 -- 1. complete_onboarding(payload jsonb): one-transaction onboarding write.
 create or replace function public.complete_onboarding(payload jsonb)
 returns jsonb
