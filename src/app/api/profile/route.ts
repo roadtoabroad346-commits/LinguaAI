@@ -18,7 +18,9 @@ export async function GET() {
     .eq("id", userData.user.id)
     .maybeSingle();
   if (error) return NextResponse.json({ error: "Could not load profile." }, { status: 500 });
-  return NextResponse.json({ profile: data });
+  const res = NextResponse.json({ profile: data });
+  res.headers.set("Cache-Control", "no-store");
+  return res;
 }
 
 /** Partial profile update (display name, goals, daily goal, learning mode). */
@@ -54,6 +56,15 @@ export async function PATCH(request: Request) {
   if (d.learningMode !== undefined) patch.learning_mode = d.learningMode;
   if (d.preferredLanguage !== undefined) patch.preferred_language = d.preferredLanguage;
   if (d.timezone !== undefined) patch.timezone = d.timezone;
+  if (d.onboardingStep !== undefined) patch.onboarding_step = d.onboardingStep;
+  if (d.targetExam !== undefined) patch.target_exam = d.targetExam || null;
+  if (d.targetScore !== undefined) patch.target_score = d.targetScore || null;
+  if (d.targetDate !== undefined) patch.target_date = d.targetDate || null;
+  if (d.dailyGoalMinutes !== undefined) patch.daily_goal_minutes = d.dailyGoalMinutes ?? null;
+  if (d.prioritySkills !== undefined) patch.priority_skills = d.prioritySkills;
+  if (d.interests !== undefined) patch.interests = d.interests;
+  if (d.studyTimePreference !== undefined) patch.study_time_preference = d.studyTimePreference || null;
+  if (d.obstacles !== undefined) patch.obstacles = d.obstacles;
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
   }
@@ -63,5 +74,7 @@ export async function PATCH(request: Request) {
     .update(patch as never)
     .eq("id", userData.user.id);
   if (error) return NextResponse.json({ error: "Could not save profile." }, { status: 500 });
-  return NextResponse.json({ ok: true });
+  const res = NextResponse.json({ ok: true });
+  res.headers.set("Cache-Control", "no-store");
+  return res;
 }

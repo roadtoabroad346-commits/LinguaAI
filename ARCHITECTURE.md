@@ -5,13 +5,14 @@ src/
   components/ui/ Button, Card, Input, feedback (Badge/Progress/Alert/EmptyState)
   components/layout/ Header, Sidebar, AppShell
   lib/ constants.ts, utils.ts (cn), env.ts, supabase/{client,server,middleware}.ts, gemini/client.ts (SERVER-ONLY)
-  middleware.ts (Supabase session refresh)
+  middleware.ts (Supabase session refresh + optimistic route protection)
   types/database.ts (minimal table types; replace with `supabase gen types` later)
+  lib/auth/{session (getCurrentUser), routing (resolveNextPath/sanitizeNext), storage (namespaced keys)} + components/auth/{AuthProvider (useAuth), RequireAuth}
 supabase/migrations/0001_foundation.sql (profiles, xp_events, dictionary_entries + RLS)
 ```
 ## Decisions
 - Next.js App Router: routing + API routes keep secrets server-side.
-- `@supabase/ssr` browser/server/middleware trio; middleware tolerates missing keys so landing boots without env.
+- `@supabase/ssr` cookie sessions everywhere (singleton browser client, cookie server client, service-role only server-side); middleware refreshes with `getUser()` and enforces protected routes; `AuthProvider` seeded from the root layout is the single client truth; `GET /api/me/bootstrap` hydrates the shell (no-store).
 - `GEMINI_API_KEY` only read in `src/lib/gemini/client.ts` (Route Handlers / Server Actions, never client).
 - Deterministic-first: `deterministicFallback()` for rule-based paths.
 - RLS deny-by-default, owner-only policies on all foundation tables.

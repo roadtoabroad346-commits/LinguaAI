@@ -223,5 +223,5 @@ export async function GET() {
       recentKinds,
     },
     reviewQueue: dueWords.slice(0, 8),
-  });
+  }, { headers: { "Cache-Control": "no-store" } });
 }

@@ -3,9 +3,13 @@ import { createClient } from "@/lib/supabase/server";
 import { placementSubmitSchema } from "@/lib/auth/schemas";
 import { gradePlacement } from "@/lib/placement/scoring";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Grades the placement test deterministically (no AI) and persists the result.
  * Works account-free for preview: without a session it returns the grade without saving.
+ * Authenticated writes go through the atomic save_placement_result RPC (0014)
+ * with a legacy insert+update fallback for backends that predate it.
  */
 export async function POST(request: Request) {
   let body: unknown;
@@ -23,18 +27,43 @@ export async function POST(request: Request) {
   }
 
   const grade = gradePlacement(parsed.data.answers);
+  const noStore = { "Cache-Control": "no-store" };
 
   let supabase;
   try {
     supabase = createClient();
   } catch {
     // Backend unconfigured: still return the deterministic grade for preview.
-    return NextResponse.json({ ...grade, saved: false });
+    return NextResponse.json({ ...grade, saved: false }, { headers: noStore });
   }
   const { data: userData } = await supabase.auth.getUser();
   const user = userData.user;
   if (!user) {
-    return NextResponse.json({ ...grade, saved: false });
+    return NextResponse.json({ ...grade, saved: false }, { headers: noStore });
+  }
+
+  // Atomic path: one transaction inserts history + syncs the profile.
+  try {
+    const { data: rpcData, error: rpcError } = await supabase.rpc("save_placement_result", {
+      payload: {
+        score: grade.score,
+        total: grade.total,
+        level: grade.level,
+        answers: grade.answers,
+        skillScores: grade.perBand ?? {},
+        learningMode: parsed.data.learningMode,
+        durationSeconds: parsed.data.durationSeconds,
+        testVersion: parsed.data.testVersion ?? "v2",
+      },
+    } as never);
+    if (!rpcError) {
+      return NextResponse.json(
+        { ...grade, saved: true, receipt: rpcData ?? null },
+        { headers: noStore }
+      );
+    }
+  } catch {
+    /* fall through to legacy write */
   }
 
   const { error: resultError } = await supabase.from("placement_results").insert({
@@ -45,11 +74,14 @@ export async function POST(request: Request) {
     answers: grade.answers,
   } as never);
   if (resultError) {
-    return NextResponse.json({ error: "Could not save placement result." }, { status: 500 });
+    return NextResponse.json({ error: "Could not save placement result." }, { status: 500, headers: noStore });
   }
 
   const profilePatch: Record<string, unknown> = {
     level: grade.level,
+    level_source: "placement",
+    placement_completed: true,
+    placement_completed_at: new Date().toISOString(),
     placement_score: grade.percent,
     placement_taken_at: new Date().toISOString(),
   };
@@ -60,8 +92,8 @@ export async function POST(request: Request) {
     .update(profilePatch as never)
     .eq("id", user.id);
   if (profileError) {
-    return NextResponse.json({ error: "Result saved, but profile update failed." }, { status: 500 });
+    return NextResponse.json({ error: "Result saved, but profile update failed." }, { status: 500, headers: noStore });
   }
 
-  return NextResponse.json({ ...grade, saved: true });
+  return NextResponse.json({ ...grade, saved: true }, { headers: noStore });
 }

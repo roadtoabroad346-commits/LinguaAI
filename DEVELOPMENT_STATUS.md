@@ -1,6 +1,36 @@
 # LinguaAI — Development Status
 
-## Current phase: PHASE 12 — LISTENING SPEED + PRONUNCIATION + FLASHCARD MODES + VOCAB TOPICS (complete)
+## Current phase: PHASE 13 — AUTH + SESSION + DATABASE SYNC (complete)
+
+### Root causes (evidence in `docs/AUTH_ROOT_CAUSE.md`)
+- No shared auth source: one-shot `getUser()` in `UserMenu` + one-shot fetch in `SmartPathViews` disagreed with the server session.
+- No `profiles` auto-create trigger → missing rows, silent 0-row updates, users treated as new every sign-in.
+- OAuth callback dropped session cookies on the completed-user redirect to `/dashboard`.
+- Post-login always pushed `/onboarding` (AuthForm + login/signup hardcoded); `next` unsanitized/unused.
+- Placement page rendered the saved level hint above an untouched test (stale-"A2" look); global storage keys leaked across users with no sign-out cleanup.
+- Middleware refreshed cookies but never protected routes; user pages/APIs missed `force-dynamic`/`no-store`.
+
+### Changes
+- Session: singleton browser client, `getCurrentUser()`, middleware protection (`/login?next=`, authed off auth pages), `AuthProvider`/`useAuth` seeded from layout + `onAuthStateChange` + `router.refresh()`, `RequireAuth`, account menu in header, `force-dynamic` + `Cache-Control: no-store` on user routes/APIs.
+- Routing: `lib/auth/routing.ts` (`sanitizeNext`/`resolveNextPath`) shared by callback/AuthForm/login/signup; rewritten `/auth/callback` (forwarded-host aware, cookies preserved, DB-driven destination).
+- DB: `0013_user_state_foundation.sql` (trigger, backfill, typed columns, history, constraints) + `0014_user_state_rpc.sql` (`complete_onboarding`, `save_placement_result`, `get_user_bootstrap`, RLS re-audit). Types + zod schemas extended (backwards compatible).
+- Persistence: `lib/auth/storage.ts`, `POST /api/me/migrate-guest` (server wins), per-user flash favorites, sign-out/switch cleanup, resumable onboarding (`onboarding_step` + per-step saves), atomic placement save with legacy fallback, `GET /api/me/bootstrap` + authed `GET /api/me/status`, extended `/api/health` (env booleans, phase 13, commit).
+- Profile: "Retake level test" (`/placement?retake=1`, history kept) + "Edit goals" (`/onboarding?edit=1`).
+
+### Verification (Phase 13)
+- `npm run typecheck`: clean. `npm run lint`: clean. `npm test`: 193/193 pass (177 existing + 16 new: routing 8, storage 3, schemas 5).
+- `npm run build`: clean (new routes `/api/me/bootstrap`, `/api/me/migrate-guest`, `/api/me/status` present).
+- i18n parity passes (`placement.retakeHint` added × en/ru/kk).
+
+### Supabase actions for the owner
+1. SQL editor → run `0013_user_state_foundation.sql` then `0014_user_state_rpc.sql` (idempotent; `0001` → `0014` in order for fresh projects).
+2. Verify: `select count(*) from auth.users;` vs `select count(*) from public.profiles;` (equal after backfill); trigger exists (`select tgname from pg_trigger where tgname='on_auth_user_created';`); RLS enabled on all 15 tables.
+3. Vercel Production env: `NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co` (project URL, not a JWT), `NEXT_PUBLIC_SUPABASE_ANON_KEY` (anon key), `NEXT_PUBLIC_APP_URL=https://lingua-ai-project.vercel.app`, plus `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`. Redeploy after env changes (NEXT_PUBLIC vars inline at build).
+4. Supabase Auth → URL Configuration: Site URL `https://lingua-ai-project.vercel.app`; Redirect URLs include `https://lingua-ai-project.vercel.app/auth/callback` + `http://localhost:3000/auth/callback`. Google provider enabled; Google Cloud redirect URI = Supabase `/auth/v1/callback`.
+
+---
+
+## Previous phase: PHASE 12 — LISTENING SPEED + PRONUNCIATION + FLASHCARD MODES + VOCAB TOPICS (complete)
 
 ### Completed work (Phase 12)
 - Listening speed (real): new `src/lib/audio/speed.ts` (0.5/0.75/1/1.25/1.5/1.75/2 ladder, clamp, localStorage persistence `linguaai_playback_speed`, cross-component sync event) + `SpeedMenu` component (`src/components/learn/SpeedMenu.tsx`, accessible listbox, current speed displayed). `speak()` now accepts `{ rate }` and defaults to the saved speed (backward-compatible with `speak(text, lang)`); `stopSpeaking()`/`canSpeak()` added. Listening runner: play button toggles stop, speed menu beside transcript, transcript hidden by default (progressive reveal: listen → answer → inspect) with a "listen first" hint. Same speed + slow-audio (0.6×) wired into flashcards and pronunciation.
