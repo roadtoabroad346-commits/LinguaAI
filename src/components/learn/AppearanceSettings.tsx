@@ -24,7 +24,7 @@ function Row({
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">{title}</p>
-        <p className="truncate text-xs text-ink-500">{desc}</p>
+        <p className="truncate text-xs text-ink-500 dark:text-ink-400">{desc}</p>
       </div>
       {control}
     </div>
@@ -72,7 +72,7 @@ export function AppearanceSettings() {
       onClick={onClick}
       className={cn(
         "touch-44 flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl text-xs font-bold transition-colors",
-        active ? "bg-brand-600 text-white shadow-pop" : "text-ink-500 hover:text-ink-900 dark:text-ink-400"
+        active ? "bg-brand-600 text-white shadow-pop" : "text-ink-500 hover:text-ink-900 dark:text-ink-400 dark:hover:text-ink-100"
       )}
     >
       {label}

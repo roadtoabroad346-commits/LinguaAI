@@ -1,10 +1,14 @@
+import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProgressViews } from "@/components/progress/ProgressViews";
 import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
+import { getSessionUser } from "@/lib/auth/session";
 
 export const metadata = { title: "Progress" };
 
 export default async function ProgressPage() {
+  const user = await getSessionUser();
+  if (!user) redirect("/login?next=/progress");
   const t = getServerT(await getEffectiveLocale());
   return (
     <AppShell>

@@ -82,7 +82,18 @@ export function AuthProvider({
 
   const refresh = React.useCallback(async () => {
     try {
-      const res = await fetch("/api/me/bootstrap", { cache: "no-store" });
+      let res = await fetch("/api/me/bootstrap", { cache: "no-store" });
+      // Post-login / OAuth cookies can lag one tick behind the client event
+      // (exchangeCodeForSession redirect, signInWithPassword flush). A single
+      // delayed retry prevents a transient 401 from wiping a valid session.
+      if (!res.ok && res.status === 401) {
+        await new Promise((r) => setTimeout(r, 700));
+        try {
+          res = await fetch("/api/me/bootstrap", { cache: "no-store" });
+        } catch {
+          /* keep original 401 below */
+        }
+      }
       if (!res.ok) {
         // 401 -> anonymous; other errors keep current state to avoid flashing gates.
         if (res.status === 401) {
@@ -106,6 +117,8 @@ export function AuthProvider({
                   level: null,
                 }
           );
+          // Reconcile server components with the demotion (avoids client/server split-brain loops).
+          router.refresh();
         }
         return;
       }
@@ -138,7 +151,7 @@ export function AuthProvider({
     } catch {
       /* keep current state on network failure */
     }
-  }, []);
+  }, [router]);
 
   React.useEffect(() => {
     let mounted = true;

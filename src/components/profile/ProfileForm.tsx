@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/feedback";
 import { LanguageOptions } from "@/components/i18n/LanguageSwitcher";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 import type { Locale } from "@/lib/i18n/config";
 import { isLocale } from "@/lib/i18n/config";
@@ -52,6 +53,7 @@ function detectedTimezone(): string {
 
 export function ProfileForm({ profile }: Props) {
   const { t, locale, setLocale } = useTranslation();
+  const { refresh } = useAuth();
   const router = useRouter();
   const [displayName, setDisplayName] = useState(profile.display_name ?? "");
   const [goals, setGoals] = useState<string[]>(profile.goals ?? []);
@@ -105,6 +107,8 @@ export function ProfileForm({ profile }: Props) {
         return;
       }
       setSuccess(true);
+      // Update header level/badges immediately.
+      refresh().catch(() => {});
       router.refresh();
     } catch {
       setError(t("common.networkError"));
@@ -116,7 +120,7 @@ export function ProfileForm({ profile }: Props) {
   return (
     <div className="space-y-4">
       <fieldset>
-        <legend className="text-sm font-medium text-ink-700">{t("language.interfaceLanguage")}</legend>
+        <legend className="text-sm font-medium text-ink-700 dark:text-ink-200">{t("language.interfaceLanguage")}</legend>
         <div className="mt-2">
           <LanguageOptions value={interfaceLanguage} onChange={pickLanguage} />
         </div>
@@ -128,7 +132,7 @@ export function ProfileForm({ profile }: Props) {
         maxLength={60}
       />
       <fieldset>
-        <legend className="text-sm font-medium text-ink-700">{t("profile.goals")}</legend>
+        <legend className="text-sm font-medium text-ink-700 dark:text-ink-200">{t("profile.goals")}</legend>
         <div className="mt-2 flex flex-wrap gap-2">
           {GOAL_OPTIONS.map((g) => (
             <button
@@ -158,7 +162,7 @@ export function ProfileForm({ profile }: Props) {
         onChange={(e) => setDailyGoalXp(Number(e.target.value))}
       />
       <fieldset>
-        <legend className="text-sm font-medium text-ink-700">{t("profile.learningPath")}</legend>
+        <legend className="text-sm font-medium text-ink-700 dark:text-ink-200">{t("profile.learningPath")}</legend>
         <div className="mt-2 grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label={t("profile.learningPath")}>
           {(["guided", "free"] as const).map((m) => (
             <button
@@ -180,7 +184,7 @@ export function ProfileForm({ profile }: Props) {
         </div>
       </fieldset>
       <div>
-        <label htmlFor="profile-timezone" className="text-sm font-medium text-ink-700">{t("profile.timezone")}</label>
+        <label htmlFor="profile-timezone" className="text-sm font-medium text-ink-700 dark:text-ink-200">{t("profile.timezone")}</label>
         <select
           id="profile-timezone"
           value={timezone}

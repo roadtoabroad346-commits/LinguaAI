@@ -25,10 +25,11 @@ export const GUEST_MIGRATABLE_KEYS = [
   "linguaai_flash_fav",
 ] as const;
 
-/** User-scoped keys (current + legacy) that must be wiped on sign-out / user switch. */
+/** User-scoped keys (current + legacy) that must be wiped on sign-out / user switch.
+ * NOTE: linguaai_locale stays device-local (theme/locale are device prefs,
+ * wiping them on every 401 made each kick look like a full reset). */
 export const USER_SCOPED_KEYS = [
   ...GUEST_MIGRATABLE_KEYS,
-  "linguaai_locale",
 ] as const;
 
 export interface GuestSnapshot {

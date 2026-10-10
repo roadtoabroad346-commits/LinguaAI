@@ -6,6 +6,7 @@ import { Alert, Badge, Progress } from "@/components/ui/feedback";
 import { Button } from "@/components/ui/Button";
 import { DAILY_GOAL_OPTIONS } from "@/lib/gamification/gamification";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { formatChallengeDate, formatXP } from "@/lib/i18n/format";
 
 interface Achievement {
@@ -34,6 +35,7 @@ interface Summary {
 
 export function ProgressViews() {
   const { t, locale } = useTranslation();
+  const { status } = useAuth();
   const [data, setData] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [signedOut, setSignedOut] = useState(false);
@@ -41,8 +43,14 @@ export function ProgressViews() {
   const [savingGoal, setSavingGoal] = useState(false);
   const [goalMsg, setGoalMsg] = useState<string | null>(null);
 
-  // Load-once effect: error text uses the mount-time locale (no refetch on language switch).
+  // Wait for auth to settle: never flash the signup card for a logged-in user
+  // on a slow cookie/network (that was the "Progress kicks to signup" bug).
   useEffect(() => {
+    if (status === "loading") return;
+    if (status === "anonymous") {
+      setSignedOut(true);
+      return;
+    }
     let cancelled = false;
     fetch("/api/gamification/summary")
       .then(async (r) => {
@@ -52,6 +60,12 @@ export function ProgressViews() {
       .then((json) => {
         if (cancelled) return;
         if (json.signedIn === false) {
+          // Server says anonymous but client holds a session (transient 401):
+          // show retry, not the signup wall.
+          if (status === "authenticated") {
+            setError(t("progress.couldNotLoad"));
+            return;
+          }
           setSignedOut(true);
           return;
         }
@@ -64,9 +78,8 @@ export function ProgressViews() {
     return () => {
       cancelled = true;
     };
-    // Load-once: no refetch on language switch (error text uses mount-time locale).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [status]);
 
   async function saveGoal() {
     setSavingGoal(true);
@@ -115,7 +128,7 @@ export function ProgressViews() {
       <Card aria-busy="true" aria-label={t("progress.loadingTitle")}>
         <CardTitle>{t("progress.loadingTitle")}</CardTitle>
         <div className="mt-4 space-y-3" aria-hidden>
-          {[0, 1, 2].map((i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-ink-100" />)}
+          {[0, 1, 2].map((i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-ink-100 dark:bg-ink-800" />)}
         </div>
       </Card>
     );
@@ -177,7 +190,7 @@ export function ProgressViews() {
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <Button size="sm" variant="secondary" onClick={saveGoal} loading={savingGoal}>{t("progress.saveGoal")}</Button>
-            {goalMsg && <span className="text-xs text-ink-500">{goalMsg}</span>}
+            {goalMsg && <span className="text-xs text-ink-500 dark:text-ink-400">{goalMsg}</span>}
           </div>
         </Card>
       </div>
@@ -193,7 +206,7 @@ export function ProgressViews() {
         ) : (
           <ul className="mt-3 grid gap-2 sm:grid-cols-3">
             {data.skills.map((s) => (
-              <li key={s.skill} className="min-w-0 rounded-xl border border-ink-200/70 px-3 py-2.5">
+              <li key={s.skill} className="min-w-0 rounded-xl border border-ink-200/70 bg-white px-3 py-2.5 dark:border-ink-700 dark:bg-ink-900">
                 <div className="flex min-w-0 items-center justify-between gap-2">
                   <p className="min-w-0 flex-1 truncate text-sm font-semibold">{s.label}</p>
                   {s.accuracyPct !== null ? (
@@ -225,10 +238,10 @@ export function ProgressViews() {
         ) : (
           <ul className="mt-3 space-y-2">
             {data.weakAreas.map((w) => (
-              <li key={w.skill} className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+              <li key={w.skill} className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-800 dark:bg-amber-950">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold">{w.label}</p>
-                  <p className="mt-0.5 text-xs text-ink-500">{w.reason}</p>
+                  <p className="text-sm font-semibold text-ink-900 dark:text-ink-50">{w.label}</p>
+                  <p className="mt-0.5 text-xs text-ink-500 dark:text-ink-300">{w.reason}</p>
                 </div>
                 <Link href={w.href as never} className="shrink-0 text-sm font-semibold text-brand-700 underline">{t("progress.practiceBtn")}</Link>
               </li>

@@ -140,7 +140,7 @@ export function ReadingRunner({ slug, paragraphs, vocabFocus, questions }: {
                   aria-pressed={fontSize === s}
                   className={cn(
                     "touch-44 flex h-8 w-9 items-center justify-center rounded-xl text-xs font-bold",
-                    fontSize === s ? "bg-white text-ink-900 shadow dark:bg-ink-700 dark:text-white" : "text-ink-500"
+                    fontSize === s ? "bg-white text-ink-900 shadow dark:bg-ink-700 dark:text-white" : "text-ink-500 dark:text-ink-400"
                   )}
                 >
                   {s === "sm" ? "S" : s === "md" ? "M" : "L"}

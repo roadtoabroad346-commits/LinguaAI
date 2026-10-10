@@ -7,16 +7,20 @@ import { AuthShell } from "@/components/learn/AuthShell";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { ThemeToggle } from "@/components/providers/ThemeToggle";
 import { getSessionProfile, getSessionUser } from "@/lib/auth/session";
-import { resolveNextPath } from "@/lib/auth/routing";
+import { resolveNextPath, sanitizeNext } from "@/lib/auth/routing";
 import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
 
 export const metadata = { title: "Sign up" };
 
-export default async function SignUpPage() {
+export default async function SignUpPage({
+  searchParams,
+}: {
+  searchParams?: { next?: string };
+}) {
   const user = await getSessionUser();
   if (user) {
     const profile = await getSessionProfile().catch(() => null);
-    redirect(resolveNextPath(profile, "/dashboard"));
+    redirect(resolveNextPath(profile, sanitizeNext(searchParams?.next, "/dashboard")));
   }
 
   const t = getServerT(await getEffectiveLocale());

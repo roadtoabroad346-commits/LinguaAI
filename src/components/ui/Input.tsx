@@ -74,7 +74,7 @@ export function Textarea({
           {error}
         </p>
       ) : hint ? (
-        <p className="mt-1.5 text-xs text-ink-500">{hint}</p>
+        <p className="mt-1.5 text-xs text-ink-500 dark:text-ink-400">{hint}</p>
       ) : null}
     </div>
   );

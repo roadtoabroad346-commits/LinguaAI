@@ -6,10 +6,13 @@ import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { ThemeToggle } from "@/components/providers/ThemeToggle";
 import { PageTransition } from "@/lib/motion/components";
 import { getRequestLocale, getServerT } from "@/lib/i18n/server";
+import { getSessionUser } from "@/lib/auth/session";
 
-export function AppShell({ children, title }: { children: React.ReactNode; title?: string }) {
+export async function AppShell({ children, title }: { children: React.ReactNode; title?: string }) {
   const locale = getRequestLocale();
   const t = getServerT(locale);
+  // Logo goes to the dashboard for signed-in users, landing for guests.
+  const user = await getSessionUser().catch(() => null);
   return (
     <div className="bg-mesh min-h-dvh">
       <a
@@ -20,6 +23,7 @@ export function AppShell({ children, title }: { children: React.ReactNode; title
       </a>
       <Header
         title={title}
+        homeHref={user ? "/dashboard" : "/"}
         right={
           <>
             <ThemeToggle />

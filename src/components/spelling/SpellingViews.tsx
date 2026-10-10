@@ -297,9 +297,9 @@ export function SpellingViews() {
             {set.items.map((item) => {
               const ok = result.correctSlugs.includes(item.slug);
               return (
-                <li key={item.slug} className={`rounded-xl border px-3 py-2 text-sm ${ok ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
+                <li key={item.slug} className={`rounded-xl border px-3 py-2 text-sm ${ok ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950" : "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950"}`}>
                   <span className="font-semibold">{ok ? "✓" : "✗"} {item.word}</span>
-                  <span className="text-ink-500"> {item.phonetic} · {item.definition}</span>
+                  <span className="text-ink-500 dark:text-ink-300"> {item.phonetic} · {item.definition}</span>
                   {!ok && mode !== "choice" && <span className="block text-xs">{t("learn.youTyped", { text: (typed[item.slug] ?? "").trim() || "—" })}</span>}
                 </li>
               );

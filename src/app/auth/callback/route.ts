@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   const code = params.get("code");
   const error = params.get("error");
   const errorDescription = params.get("error_description");
-  const requestedNext = sanitizeNext(params.get("next"), "/onboarding");
+  const requestedNext = sanitizeNext(params.get("next"), "/dashboard");
 
   if (error) {
     const login = new URL("/login", origin);
@@ -54,13 +54,15 @@ export async function GET(request: NextRequest) {
 
   // The redirect response that will carry the session cookies.
   const response = NextResponse.redirect(new URL(requestedNext, origin));
+  const carried: Array<{ name: string; value: string; options?: Record<string, unknown> }> = [];
   const supabase = createServerClient(supabaseUrl, supabaseAnon, {
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (cookiesToSet: Array<{ name: string; value: string; options: unknown }>) => {
-        cookiesToSet.forEach(({ name, value, options }) =>
-          response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2])
-        );
+        cookiesToSet.forEach(({ name, value, options }) => {
+          carried.push({ name, value, options: (options ?? {}) as Record<string, unknown> });
+          response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2]);
+        });
       },
     },
   });
@@ -137,9 +139,10 @@ export async function GET(request: NextRequest) {
   const destination = resolveNextPath(p, requestedNext);
   if (destination !== requestedNext) {
     const final = NextResponse.redirect(new URL(destination, origin));
-    // Carry session + locale cookies onto the final redirect (the old code dropped them).
-    for (const c of response.cookies.getAll()) {
-      final.cookies.set(c.name, c.value);
+    // Carry session + locale cookies onto the final redirect WITH attributes
+    // (httpOnly/secure/sameSite/maxAge/path) — dropping them logged users out.
+    for (const c of carried) {
+      final.cookies.set(c.name, c.value, c.options as Parameters<typeof final.cookies.set>[2]);
     }
     return final;
   }

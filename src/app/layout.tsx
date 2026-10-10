@@ -67,6 +67,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       };
   return (
     <html lang={LOCALE_META[locale].htmlLang} suppressHydrationWarning>
+      <head>
+        {/* Blocking theme init: paints .dark before first paint, no white flash. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("linguaai_theme");var d=t==="dark"||(t!=="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.documentElement.classList.add("dark");}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className={`${sans.variable} ${display.variable} min-h-dvh bg-ink-50 text-ink-900 dark:bg-ink-950 dark:text-ink-100`}>
         <AppProviders initialAuth={initialAuth}>
           <I18nProvider initialLocale={locale}>{children}</I18nProvider>

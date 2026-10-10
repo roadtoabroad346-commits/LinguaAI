@@ -263,7 +263,7 @@ export function SmartPathViews() {
               <p className="text-sm font-semibold">{t("smart.dueForReview")}</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {data.reviewQueue.map((w) => (
-                  <span key={w.word} className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium">
+                  <span key={w.word} className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-ink-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
                     {w.word} · {w.mastery}%
                   </span>
                 ))}

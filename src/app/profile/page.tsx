@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
-import { Badge, EmptyState } from "@/components/ui/feedback";
+import { Badge } from "@/components/ui/feedback";
 import { Button } from "@/components/ui/Button";
 import { ProfileForm } from "@/components/profile/ProfileForm";
 import { AppearanceSettings } from "@/components/learn/AppearanceSettings";
@@ -35,19 +35,9 @@ export default async function ProfilePage() {
 
   const profile = await getSessionProfile();
   if (!profile) {
-    return (
-      <AppShell>
-        <EmptyState
-          title={t("profile.notFound")}
-          description={t("profile.notFoundDesc")}
-          action={
-            <Link href="/auth/signout">
-              <Button variant="secondary">{t("auth.signout")}</Button>
-            </Link>
-          }
-        />
-      </AppShell>
-    );
+    // New account (e.g. Google) whose profile row is not readable yet:
+    // send to onboarding to create it — never to signout (that logged users out in a loop).
+    redirect("/onboarding");
   }
 
   return (
@@ -96,6 +86,11 @@ export default async function ProfilePage() {
               </div>
             </dl>
             <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/dashboard">
+                <Button size="sm">
+                  {t("nav.dashboard")}
+                </Button>
+              </Link>
               <Link href={profile.level ? "/placement?retake=1" : "/placement"}>
                 <Button variant="secondary" size="sm">
                   {profile.level ? t("profile.retake") : t("profile.takePlacement")}

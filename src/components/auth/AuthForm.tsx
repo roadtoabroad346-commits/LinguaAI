@@ -15,7 +15,7 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const requestedNext = sanitizeNext(searchParams?.get("next"), "/onboarding");
+  const requestedNext = sanitizeNext(searchParams?.get("next"), "/dashboard");
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
