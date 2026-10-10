@@ -15,6 +15,7 @@ import { Reveal, Stagger, StaggerItem, AnimatedNumber } from "@/lib/motion/compo
 import { celebrate } from "@/lib/motion/celebrate";
 import { haptic } from "@/lib/motion/hooks";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { cn } from "@/lib/utils";
 
 export function ScrollProgress() {
@@ -140,6 +141,10 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 
 export function LandingStory() {
   const { t } = useTranslation();
+  // Signed-in visitors must never hit auth pages (middleware would bounce
+  // them straight back to /dashboard, which felt like a broken redirect).
+  const { status } = useAuth();
+  const authed = status === "authenticated";
   const heroRef = React.useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const heroY = useTransform(scrollYProgress, [0, 1], [0, 90]);
@@ -198,11 +203,11 @@ export function LandingStory() {
             </h1>
             <p className="mt-4 max-w-lg text-pretty text-lg leading-relaxed text-ink-500 dark:text-ink-400">{t("landing.subtitle")}</p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <Link href="/signup" className="flex-1 sm:flex-none">
-                <Button size="xl" shine className="w-full sm:w-auto">{t("landing.getStarted")} <ArrowRight className="h-4 w-4" /></Button>
+              <Link href={authed ? "/dashboard" : "/signup"} className="flex-1 sm:flex-none">
+                <Button size="xl" shine className="w-full sm:w-auto">{authed ? t("placement.goDashboard") : t("landing.getStarted")} <ArrowRight className="h-4 w-4" /></Button>
               </Link>
-              <Link href="/placement" className="flex-1 sm:flex-none">
-                <Button size="xl" variant="secondary" className="w-full sm:w-auto"><Play className="h-4 w-4" /> {t("landing.tryPlacement")}</Button>
+              <Link href={authed ? "/placement?retake=1" : "/placement"} className="flex-1 sm:flex-none">
+                <Button size="xl" variant="secondary" className="w-full sm:w-auto"><Play className="h-4 w-4" /> {authed ? t("placement.retake") : t("landing.tryPlacement")}</Button>
               </Link>
             </div>
             <div className="mt-5 flex flex-wrap items-center gap-4 text-xs font-medium text-ink-500">
@@ -214,8 +219,8 @@ export function LandingStory() {
           <Reveal delay={0.1}><DemoQuiz /></Reveal>
         </div>
         <div className="sticky bottom-20 z-20 px-4 pb-2 md:hidden">
-          <Link href="/signup">
-            <Button size="lg" shine className="w-full shadow-pop">{t("landing.stickyCta")} <ArrowRight className="h-4 w-4" /></Button>
+          <Link href={authed ? "/dashboard" : "/signup"}>
+            <Button size="lg" shine className="w-full shadow-pop">{authed ? t("placement.goDashboard") : t("landing.stickyCta")} <ArrowRight className="h-4 w-4" /></Button>
           </Link>
         </div>
       </motion.section>
@@ -402,7 +407,7 @@ export function LandingStory() {
             <h2 className="font-display mt-2 text-2xl font-bold md:text-4xl">{t("landing.gamTitle")}</h2>
             <p className="mt-3 text-ink-300">{t("landing.gamDesc")}</p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <Link href="/signup"><Button variant="warm" size="lg" shine className="w-full sm:w-auto">{t("landing.gamCta1")}</Button></Link>
+              <Link href={authed ? "/dashboard" : "/signup"}><Button variant="warm" size="lg" shine className="w-full sm:w-auto">{authed ? t("placement.goDashboard") : t("landing.gamCta1")}</Button></Link>
               <Link href="/placement"><Button variant="secondary" size="lg" className="w-full border-white/20 bg-white/10 text-white hover:bg-white/20 sm:w-auto">{t("landing.gamCta2")}</Button></Link>
             </div>
           </Reveal>
@@ -509,8 +514,8 @@ export function LandingStory() {
           <h2 className="font-display relative mx-auto mt-3 max-w-xl text-balance text-3xl font-extrabold md:text-5xl">{t("landing.finTitle")}</h2>
           <p className="relative mx-auto mt-3 max-w-md text-white/85">{t("landing.finDesc")}</p>
           <div className="relative mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link href="/signup"><Button variant="secondary" size="xl" shine className="w-full sm:w-auto">{t("landing.getStarted")} <ArrowRight className="h-4 w-4" /></Button></Link>
-            <Link href="/login"><Button size="xl" variant="ghost" className="w-full text-white hover:bg-white/15 sm:w-auto">{t("landing.login")}</Button></Link>
+            <Link href={authed ? "/dashboard" : "/signup"}><Button variant="secondary" size="xl" shine className="w-full sm:w-auto">{authed ? t("placement.goDashboard") : t("landing.getStarted")} <ArrowRight className="h-4 w-4" /></Button></Link>
+            <Link href={authed ? "/auth/signout" : "/login"}><Button size="xl" variant="ghost" className="w-full text-white hover:bg-white/15 sm:w-auto">{authed ? t("auth.signout") : t("landing.login")}</Button></Link>
           </div>
         </Reveal>
       </section>
