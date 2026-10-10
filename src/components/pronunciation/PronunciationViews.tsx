@@ -158,7 +158,7 @@ export function PronunciationRunner({ drill }: { drill: PronunciationDrill }) {
           <Link href="/pronunciation" className="underline">{t("modules.pronunciationTitle")}</Link> / <span>{drill.title}</span>
         </nav>
 
-        <Card className="relative overflow-hidden">
+        <Card className="relative">
           <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">

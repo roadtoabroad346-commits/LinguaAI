@@ -11,12 +11,12 @@ type Size = "sm" | "md" | "lg" | "xl";
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-brand-gradient text-white shadow-pop hover:brightness-110 disabled:bg-ink-200 disabled:text-ink-400 disabled:shadow-none dark:disabled:bg-ink-800 dark:disabled:text-ink-500",
+    "bg-brand-gradient text-white shadow-pop hover:brightness-110 disabled:bg-none disabled:bg-ink-200 disabled:text-ink-500 disabled:shadow-none dark:disabled:bg-ink-800 dark:disabled:text-ink-300",
   secondary:
     "bg-white text-ink-800 border border-ink-200 hover:border-brand-300 hover:bg-brand-50/60 disabled:text-ink-300 dark:bg-ink-900 dark:text-ink-100 dark:border-ink-700 dark:hover:bg-ink-800",
   ghost: "text-ink-600 hover:bg-ink-100 disabled:text-ink-300 dark:text-ink-300 dark:hover:bg-ink-800",
   danger: "bg-red-600 text-white hover:bg-red-700 disabled:bg-ink-200 dark:disabled:bg-ink-800",
-  warm: "bg-warm-gradient text-white shadow-pop hover:brightness-110 disabled:bg-ink-200 disabled:text-ink-400",
+  warm: "bg-warm-gradient text-white shadow-pop hover:brightness-110 disabled:bg-none disabled:bg-ink-200 disabled:text-ink-500 dark:disabled:bg-ink-800 dark:disabled:text-ink-300",
 };
 
 const sizes: Record<Size, string> = {

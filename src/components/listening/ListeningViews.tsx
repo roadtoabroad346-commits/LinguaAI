@@ -197,7 +197,7 @@ export function ListeningRunner({ slug, lines, vocabFocus, questions, dictationI
   return (
     <PageTransition>
       <div className="mx-auto w-full max-w-2xl space-y-3">
-        <Card className="relative overflow-hidden">
+        <Card className="relative">
           <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
               <CardTitle>{t("learn.listenTitle")}</CardTitle>
