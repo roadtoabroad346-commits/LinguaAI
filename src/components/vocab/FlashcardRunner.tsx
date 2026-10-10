@@ -1,7 +1,7 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useMotionValue, useTransform } from "framer-motion";
 import { Volume2, RotateCcw, ArrowLeft, ArrowRight, Star, Turtle, Shuffle, Check } from "lucide-react";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { Alert, Badge, EmptyState, Progress, Chip } from "@/components/ui/feedback";
@@ -367,6 +367,7 @@ export function FlashcardRunner() {
             card={card} sides={sides} flipped={flipped} onFlip={() => { haptic(6); setFlipped((f) => !f); }}
             onKnown={() => review(true)} onReview={() => review(false)}
             bandLabel={bandLabel(card.band)} t={t} exitX={exitX} index={index}
+            disabled={busy}
           />
         )}
 
@@ -564,7 +565,7 @@ function ModeBar({ mode, onMode, t, direction, onDirection, shuffled, onShuffle,
   );
 }
 
-function FlipCard({ card, sides, flipped, onFlip, onKnown, onReview, bandLabel, t, exitX, index }: {
+function FlipCard({ card, sides, flipped, onFlip, onKnown, onReview, bandLabel, t, exitX, index, disabled }: {
   card: CardItem;
   sides: { front: string; frontHint: string; back: string; backHint: string };
   flipped: boolean;
@@ -575,85 +576,161 @@ function FlipCard({ card, sides, flipped, onFlip, onKnown, onReview, bandLabel, 
   t: (key: string, vars?: Record<string, string | number>) => string;
   exitX: number;
   index: number;
+  disabled?: boolean;
 }) {
+  // Swipe position drives tilt + edge badges. Reset per card (key remounts anyway).
+  const x = useMotionValue(0);
+  const tilt = useTransform(x, [-280, 280], [-9, 9]);
+  const knownOpacity = useTransform(x, [24, 110], [0, 1]);
+  const reviewOpacity = useTransform(x, [-110, -24], [1, 0]);
+  const badgeScale = useTransform(x, [0, 110, -110, 0], [0.9, 1, 1, 0.9]);
+  const draggedFar = useRef(false);
+
+  const SWIPE_OFFSET = 100;
+  const SWIPE_VELOCITY = 550;
+
+  function handleDrag(_: unknown, info: { offset: { x: number }; velocity: { x: number } }) {
+    if (Math.abs(info.offset.x) > 12) draggedFar.current = true;
+  }
+
+  function handleDragEnd(_: unknown, info: { offset: { x: number }; velocity: { x: number } }) {
+    const dx = info.offset.x;
+    const vx = info.velocity.x;
+    // Let the click-suppressor breathe, then allow taps again.
+    const wasDrag = draggedFar.current;
+    window.setTimeout(() => { draggedFar.current = false; }, 160);
+    if (disabled) return;
+    if (dx > SWIPE_OFFSET || vx > SWIPE_VELOCITY) {
+      onKnown();
+    } else if (dx < -SWIPE_OFFSET || vx < -SWIPE_VELOCITY) {
+      onReview();
+    } else if (!wasDrag) {
+      // tiny movement = treated as tap elsewhere; nothing to do here
+    }
+  }
+
+  function handleFlip() {
+    // A real drag just ended — don't accidentally flip the card.
+    if (draggedFar.current || Math.abs(x.get()) > 12 || disabled) return;
+    onFlip();
+  }
+
+  const faceBase =
+    "col-start-1 row-start-1 flex min-h-[320px] w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-[1.75rem] border border-ink-200/70 bg-white p-6 text-center shadow-card dark:border-ink-700 dark:bg-ink-900";
+
   return (
-    <div className="relative mt-3" style={{ perspective: 1200 }}>
-      <AnimatePresence mode="wait">
+    <div className="relative mt-3 select-none" style={{ perspective: 1400 }}>
+      <AnimatePresence mode="wait" initial={false}>
         <motion.div
-          key={card.slug + index}
+          key={card.slug + "-" + index}
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.7}
-          onDragEnd={(_, info) => {
-            if (!flipped && Math.abs(info.offset.x) > 90) {
-              if (info.offset.x > 0) onKnown();
-              else onReview();
-            }
-          }}
-          initial={{ opacity: 0, x: exitX || 60, rotate: 2 }}
+          dragElastic={0.55}
+          dragMomentum={false}
+          onDrag={handleDrag}
+          onDragEnd={handleDragEnd}
+          initial={{ opacity: 0, x: 36, rotate: 1.5 }}
           animate={{ opacity: 1, x: 0, rotate: 0 }}
-          exit={{ opacity: 0, x: exitX || 0 }}
-          transition={{ type: "spring", stiffness: 320, damping: 30 }}
-          className="touch-pan-y"
+          exit={{ opacity: 0, x: exitX || 0, transition: { duration: 0.17, ease: "easeIn" } }}
+          transition={{ type: "spring", stiffness: 340, damping: 32 }}
+          style={{ x, rotate: tilt, touchAction: "pan-y" }}
+          className="relative cursor-grab touch-pan-y active:cursor-grabbing"
         >
-          <motion.button
-            type="button"
-            onClick={onFlip}
+          {/* Swipe badges — appear while dragging, never intercept taps */}
+          <motion.div
+            aria-hidden
+            style={{ opacity: knownOpacity, scale: badgeScale }}
+            className="pointer-events-none absolute -top-1 right-3 z-10 rotate-6 rounded-xl border-2 border-emerald-500 bg-emerald-500/15 px-3 py-1 text-sm font-extrabold uppercase tracking-wide text-emerald-600 dark:text-emerald-300"
+          >
+            ✓ {t("learn.knowIt")}
+          </motion.div>
+          <motion.div
+            aria-hidden
+            style={{ opacity: reviewOpacity, scale: badgeScale }}
+            className="pointer-events-none absolute -top-1 left-3 z-10 -rotate-6 rounded-xl border-2 border-rose-500 bg-rose-500/15 px-3 py-1 text-sm font-extrabold uppercase tracking-wide text-rose-600 dark:text-rose-300"
+          >
+            ✗ {t("learn.stillLearning")}
+          </motion.div>
+
+          {/* Flip layer: both faces stay mounted so mid-flip is never grey/empty */}
+          <motion.div
+            role="button"
+            tabIndex={0}
+            aria-label={flipped ? card.word : t("learn.revealDefinition")}
+            onClick={handleFlip}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
-                onFlip();
+                handleFlip();
               }
             }}
-            aria-label={flipped ? card.word : t("learn.revealDefinition")}
             animate={{ rotateY: flipped ? 180 : 0 }}
-            transition={{ type: "spring", stiffness: 260, damping: 26 }}
+            transition={{ type: "spring", stiffness: 280, damping: 28 }}
             style={{ transformStyle: "preserve-3d" }}
-            className="relative flex min-h-[300px] w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-[1.75rem] border border-ink-200/70 bg-white p-6 text-center shadow-card dark:border-ink-700 dark:bg-ink-900"
+            className="relative grid w-full"
           >
-            {!flipped ? (
-              <span style={{ backfaceVisibility: "hidden" }} className="flex flex-col items-center gap-2">
-                <span className="font-display text-4xl font-extrabold tracking-tight">{sides.front}</span>
-                <span className="text-sm text-ink-500">{sides.frontHint}</span>
-                <span className="mt-2 flex items-center gap-2 text-sm">
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    aria-label={t("learn.pronounce", { word: card.word })}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      speak(card.word);
-                    }}
-                    onKeyDown={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-brand-50 px-3 py-2 font-semibold text-brand-700 dark:bg-brand-950 dark:text-brand-200"
-                  >
-                    <Volume2 className="h-4 w-4" /> {t("learn.listen")}
-                  </span>
-                  <button
-                    type="button"
-                    aria-label={t("learn.slow")}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      speak(card.word, { rate: SLOW_PLAYBACK_SPEED });
-                    }}
-                    className="inline-flex items-center gap-1 rounded-xl bg-ink-100 px-2.5 py-2 font-semibold text-ink-600 dark:bg-ink-800 dark:text-ink-300"
-                  >
-                    <Turtle className="h-4 w-4" />
-                  </button>
-                  <span className="text-xs text-ink-400">· {t("learn.tapReveal")}</span>
-                </span>
-                <span className="mt-1 flex items-center gap-1 text-xs font-medium text-ink-400">
-                  {bandLabel} · {card.mastery}% · <Check className="h-3 w-3" aria-hidden /> {t("learn.swipeHint")}
-                </span>
+            {/* FRONT */}
+            <div
+              aria-hidden={flipped}
+              style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}
+              className={faceBase}
+            >
+              <span className="font-display text-4xl font-extrabold tracking-tight text-ink-900 dark:text-ink-50">{sides.front}</span>
+              <span className="text-sm text-ink-500 dark:text-ink-400">{sides.frontHint}</span>
+              <span className="mt-2 flex flex-wrap items-center justify-center gap-2 text-sm">
+                <button
+                  type="button"
+                  aria-label={t("learn.pronounce", { word: card.word })}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    speak(card.word);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-brand-50 px-3 py-2 font-semibold text-brand-700 dark:bg-brand-950 dark:text-brand-200"
+                >
+                  <Volume2 className="h-4 w-4" /> {t("learn.listen")}
+                </button>
+                <button
+                  type="button"
+                  aria-label={t("learn.slow")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    speak(card.word, { rate: SLOW_PLAYBACK_SPEED });
+                  }}
+                  className="inline-flex items-center gap-1 rounded-xl bg-ink-100 px-2.5 py-2 font-semibold text-ink-600 dark:bg-ink-800 dark:text-ink-300"
+                >
+                  <Turtle className="h-4 w-4" />
+                </button>
+                <span className="text-xs text-ink-400">· {t("learn.tapReveal")}</span>
               </span>
-            ) : (
-              <span style={{ transform: "rotateY(180deg)", backfaceVisibility: "hidden" }} className="flex flex-col items-center gap-2">
-                <span className="text-lg font-bold leading-snug">{sides.back}</span>
-                <span className="text-sm italic leading-relaxed text-ink-500">“{sides.backHint}”</span>
-                <span className="mt-1 text-xs text-ink-400">{t("learn.tapReveal")} — {t("learn.flipButtonsHint")}</span>
+              <span className="mt-1 flex items-center gap-1 text-xs font-medium text-ink-400">
+                {bandLabel} · {card.mastery}% · <Check className="h-3 w-3" aria-hidden /> {t("learn.swipeHint")}
               </span>
-            )}
-          </motion.button>
+            </div>
+
+            {/* BACK (pre-rotated 180°, always mounted) */}
+            <div
+              aria-hidden={!flipped}
+              style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+              className={faceBase}
+            >
+              <span className="text-lg font-bold leading-snug text-ink-900 dark:text-ink-50">{sides.back}</span>
+              <span className="text-sm italic leading-relaxed text-ink-500 dark:text-ink-400">“{sides.backHint}”</span>
+              <span className="mt-1 text-xs text-ink-400">{t("learn.tapReveal")} — {t("learn.flipButtonsHint")}</span>
+              <span className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  aria-label={t("learn.pronounce", { word: card.word })}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    speak(card.word);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-700 dark:bg-brand-950 dark:text-brand-200"
+                >
+                  <Volume2 className="h-4 w-4" /> {t("learn.listen")}
+                </button>
+              </span>
+            </div>
+          </motion.div>
         </motion.div>
       </AnimatePresence>
     </div>
