@@ -5,6 +5,7 @@ import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { ThemeToggle } from "@/components/providers/ThemeToggle";
 import { APP_NAME } from "@/lib/constants";
 import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
+import { getSessionUser } from "@/lib/auth/session";
 import { LandingStory } from "@/components/landing/LandingStory";
 
 export const metadata = {
@@ -15,6 +16,9 @@ export const metadata = {
 export default async function LandingPage() {
   const locale = await getEffectiveLocale();
   const t = getServerT(locale);
+  // Signed-in visitors get dashboard + sign-out (the path to a new account),
+  // not login/signup buttons that would just bounce them back to /dashboard.
+  const user = await getSessionUser().catch(() => null);
   return (
     <div className="min-h-dvh">
       <Header
@@ -22,14 +26,30 @@ export default async function LandingPage() {
           <>
             <ThemeToggle />
             <LanguageSwitcher />
-            <Link href="/login">
-              <Button variant="ghost" size="sm">
-                {t("landing.login")}
-              </Button>
-            </Link>
-            <Link href="/signup">
-              <Button size="sm">{t("landing.signup")}</Button>
-            </Link>
+            {user ? (
+              <>
+                <Link href="/dashboard">
+                  <Button size="sm">{t("nav.dashboard")}</Button>
+                </Link>
+                <Link
+                  href="/auth/signout"
+                  className="touch-44 inline-flex min-h-[44px] items-center text-sm font-semibold text-ink-500 hover:underline dark:text-ink-400"
+                >
+                  {t("auth.signout")}
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/login">
+                  <Button variant="ghost" size="sm">
+                    {t("landing.login")}
+                  </Button>
+                </Link>
+                <Link href="/signup">
+                  <Button size="sm">{t("landing.signup")}</Button>
+                </Link>
+              </>
+            )}
           </>
         }
       />

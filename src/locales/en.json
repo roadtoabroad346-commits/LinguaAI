@@ -478,7 +478,8 @@
     "submit": "See my level",
     "start": "Start test",
     "loginToSave": "Log in to save your result",
-    "gradedError": "Could not grade the test. Try again."
+    "gradedError": "Could not grade the test. Try again.",
+    "switchAccountHint": "Want a new account? Sign out first, then sign up again."
   },
   "teacher": {
     "title": "AI Teacher",

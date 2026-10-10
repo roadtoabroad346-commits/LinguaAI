@@ -1,14 +1,15 @@
-import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProgressViews } from "@/components/progress/ProgressViews";
 import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
-import { getSessionUser } from "@/lib/auth/session";
 
 export const metadata = { title: "Progress" };
 
+// NOTE: no server-side redirect here on purpose. Middleware already guards
+// direct URL access, and a page-level guard can disagree with it on a single
+// stale-cookie request (false kick to /login for a signed-in user).
+// ProgressViews gates on the live client session instead — an in-app click
+// can never bounce a logged-in user to the login wall.
 export default async function ProgressPage() {
-  const user = await getSessionUser();
-  if (!user) redirect("/login?next=/progress");
   const t = getServerT(await getEffectiveLocale());
   return (
     <AppShell>
