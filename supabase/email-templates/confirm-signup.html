@@ -1,0 +1,68 @@
+<!doctype html>
+<!--
+  LinguaAI · Confirm signup (Supabase Auth → Emails → "Confirm signup" → Message HTML)
+  Subject: Подтвердите почту — LinguaAI
+  ВАЖНО: замените https://lingua-ai-project.vercel.app на свой прод-домен (2 места: logo + ссылка сайта).
+  Ссылка {{ .ConfirmationURL }} уже содержит redirect в /auth/callback — не меняйте её.
+-->
+<html lang="ru">
+<body style="margin:0;padding:0;background-color:#f1f5f9;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+    Подтвердите почту, чтобы начать учить английский с LinguaAI — это займёт 10 секунд.
+  </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1f5f9;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+          <!-- Header / banner -->
+          <tr>
+            <td align="center" style="background-color:#4f46e5;border-radius:20px 20px 0 0;padding:28px 24px 24px;">
+              <img src="https://lingua-ai-project.vercel.app/icons/email-logo.png" width="64" height="64" alt="LinguaAI" style="display:block;border:0;width:64px;height:64px;" />
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:bold;color:#ffffff;margin-top:12px;">LinguaAI</div>
+              <div style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#c7d2fe;margin-top:4px;">Английский A1–C1 с личным ИИ-наставником</div>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="background-color:#ffffff;border-radius:0 0 20px 20px;padding:32px 28px;font-family:Arial,Helvetica,sans-serif;">
+              <div style="font-size:20px;font-weight:bold;color:#0f172a;">Подтвердите вашу почту 👋</div>
+              <p style="font-size:15px;line-height:1.6;color:#334155;margin:14px 0 0;">
+                Здравствуйте! Вы зарегистрировались в LinguaAI на адрес <strong>{{ .Email }}</strong>.
+                Нажмите кнопку ниже, чтобы подтвердить почту и перейти к онбордингу и тесту на уровень (A1–C1).
+              </p>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0 8px;">
+                <tr>
+                  <td align="center" bgcolor="#4f46e5" style="border-radius:14px;">
+                    <a href="{{ .ConfirmationURL }}" style="display:inline-block;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;padding:15px 40px;border-radius:14px;">Подтвердить почту</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="font-size:12px;line-height:1.6;color:#94a3b8;margin:16px 0 0;">
+                Кнопка не работает? Вставьте эту ссылку в браузер:<br />
+                <a href="{{ .ConfirmationURL }}" style="color:#4f46e5;word-break:break-all;">{{ .ConfirmationURL }}</a>
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;background-color:#eef1ff;border-radius:12px;">
+                <tr>
+                  <td style="padding:14px 16px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.6;color:#3730a3;">
+                    🔥 После подтверждения вас ждёт: тест на уровень (~6 минут) → Smart Path на сегодня → XP и streak с первого дня.
+                  </td>
+                </tr>
+              </table>
+              <p style="font-size:12px;line-height:1.6;color:#94a3b8;margin:18px 0 0;">
+                Если это были не вы — просто проигнорируйте письмо, аккаунт не активируется.
+              </p>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding:18px 12px 4px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#94a3b8;">
+              © LinguaAI · A1–C1 · Smart Path · XP и streaks<br />
+              <a href="https://lingua-ai-project.vercel.app" style="color:#4f46e5;text-decoration:none;">lingua-ai-project.vercel.app</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
