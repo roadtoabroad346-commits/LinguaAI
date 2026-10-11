@@ -70,7 +70,7 @@ export function TeacherChat() {
           {messages.map((m, i) => (
             <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
               <div className={cn("max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-                m.role === "user" ? "bg-brand-600 text-white" : "border border-ink-200 bg-white text-ink-800")}>
+                m.role === "user" ? "bg-brand-600 text-white" : "border border-ink-200 bg-white text-ink-800 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-100")}>
                 <p className="whitespace-pre-wrap break-words">{m.content}</p>
               </div>
             </div>
