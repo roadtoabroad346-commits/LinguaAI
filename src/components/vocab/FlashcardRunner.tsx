@@ -164,6 +164,13 @@ export function FlashcardRunner() {
     async (known: boolean) => {
       if (!cards || busy || index >= cards.length) return;
       const card = cards[index];
+      const slug = card.slug;
+      // Optimistic XP matches the server rule exactly (reviewXp: known 3, review 1),
+      // so the preview is virtually always correct; the background save reconciles any diff.
+      const optimisticXp = known ? 3 : 1;
+      // 1. React INSTANTLY: exit animation + counters. Never wait for the network —
+      // gating the card advance on the POST is what made the first swipe feel "stuck"
+      // on mobile networks (and the impatient second swipe was swallowed by `busy`).
       setBusy(true);
       setError(null);
       setExitX(known ? 320 : -320);
@@ -173,21 +180,18 @@ export function FlashcardRunner() {
       } else {
         haptic(16);
       }
-      const done = () =>
-        window.setTimeout(() => {
-          setFlipped(false);
-          setTyped("");
-          setPicked(null);
-          setRevealed(false);
-          setExitX(0);
-          setIndex((i) => i + 1);
-          setBusy(false);
-        }, 180);
-      if (!signedIn) {
-        setXpSum((x) => x + (known ? 3 : 1));
-        done();
-        return;
-      }
+      setXpSum((x) => x + optimisticXp);
+      window.setTimeout(() => {
+        setFlipped(false);
+        setTyped("");
+        setPicked(null);
+        setRevealed(false);
+        setExitX(0);
+        setIndex((i) => i + 1);
+        setBusy(false);
+      }, 200);
+      // 2. Persist in the background: reconcile XP, refresh mastery, celebrate.
+      if (!signedIn) return;
       try {
         const res = await fetch("/api/flashcards/review", {
           method: "POST",
@@ -196,20 +200,18 @@ export function FlashcardRunner() {
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || "review failed");
-        setXpSum((x) => x + (json.xpAwarded ?? 0));
+        const awarded = typeof json.xpAwarded === "number" ? json.xpAwarded : optimisticXp;
+        if (awarded !== optimisticXp) setXpSum((x) => x - optimisticXp + awarded);
         setAllCards((list) =>
-          (list ?? []).map((c, i) =>
-            cards[index] && c.slug === cards[index].slug
-              ? { ...c, mastery: json.mastery, band: json.band }
+          (list ?? []).map((c) =>
+            c.slug === slug
+              ? { ...c, mastery: json.mastery ?? c.mastery, band: json.band ?? c.band }
               : c
           )
         );
-        if (known && json.mastery >= 80) celebrate();
+        if (known && (json.mastery ?? 0) >= 80) celebrate();
       } catch {
         setError(t("learn.reviewNotSavedDesc"));
-        setXpSum((x) => x + (known ? 3 : 1));
-      } finally {
-        done();
       }
     },
     [cards, busy, index, signedIn, t]
@@ -586,8 +588,8 @@ function FlipCard({ card, sides, flipped, onFlip, onKnown, onReview, bandLabel, 
   const badgeScale = useTransform(x, [0, 110, -110, 0], [0.9, 1, 1, 0.9]);
   const draggedFar = useRef(false);
 
-  const SWIPE_OFFSET = 100;
-  const SWIPE_VELOCITY = 550;
+  const SWIPE_OFFSET = 90;
+  const SWIPE_VELOCITY = 500;
 
   function handleDrag(_: unknown, info: { offset: { x: number }; velocity: { x: number } }) {
     if (Math.abs(info.offset.x) > 12) draggedFar.current = true;
@@ -629,10 +631,10 @@ function FlipCard({ card, sides, flipped, onFlip, onKnown, onReview, bandLabel, 
           dragMomentum={false}
           onDrag={handleDrag}
           onDragEnd={handleDragEnd}
-          initial={{ opacity: 0, x: 36, rotate: 1.5 }}
+          initial={{ opacity: 0, x: 24, rotate: 1 }}
           animate={{ opacity: 1, x: 0, rotate: 0 }}
-          exit={{ opacity: 0, x: exitX || 0, transition: { duration: 0.17, ease: "easeIn" } }}
-          transition={{ type: "spring", stiffness: 340, damping: 32 }}
+          exit={{ opacity: 0, x: exitX || 0, transition: { duration: 0.16, ease: "easeIn" } }}
+          transition={{ type: "spring", stiffness: 420, damping: 34 }}
           style={{ x, rotate: tilt, touchAction: "pan-y" }}
           className="relative cursor-grab touch-pan-y active:cursor-grabbing"
         >
