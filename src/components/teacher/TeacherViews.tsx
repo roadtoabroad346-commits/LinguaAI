@@ -87,7 +87,7 @@ export function TeacherChat() {
           <label htmlFor="teacher-input" className="sr-only">{t("teacher.messageLabel")}</label>
           <input id="teacher-input" value={input} onChange={(e) => setInput(e.target.value)} maxLength={2000}
             placeholder={t("teacher.messagePlaceholder")} disabled={sending}
-            className="h-11 min-w-0 flex-1 rounded-xl border border-ink-200 bg-white px-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-ink-50" />
+            className="h-11 min-w-0 flex-1 rounded-xl border border-ink-200 bg-white px-3 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-ink-50 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-50 dark:placeholder:text-ink-500 dark:disabled:bg-ink-800" />
           <Button type="submit" loading={sending} disabled={!input.trim() || sending}>{t("common.send")}</Button>
         </form>
         <CardDescription>{t("teacher.historyHint")} <Button variant="ghost" size="sm" className="ml-1 h-auto px-1 py-0 text-xs" onClick={() => { setMessages([]); setUsedAi(null); setError(null); }}>{t("teacher.clearChat")}</Button></CardDescription>

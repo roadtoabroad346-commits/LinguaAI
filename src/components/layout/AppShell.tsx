@@ -17,7 +17,7 @@ export async function AppShell({ children, title }: { children: React.ReactNode;
     <div className="bg-mesh min-h-dvh">
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-2 focus:z-50 focus:rounded-xl focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-medium"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-2 focus:z-50 focus:rounded-xl focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-ink-900 dark:focus:bg-ink-900 dark:focus:text-ink-50"
       >
         {t("common.skipToContent")}
       </a>

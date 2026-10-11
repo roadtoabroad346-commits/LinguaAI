@@ -7,6 +7,7 @@ import { APP_NAME } from "@/lib/constants";
 import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { LandingStory } from "@/components/landing/LandingStory";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 
 export const metadata = {
   title: "Learn English A1–C1 with AI",
@@ -31,12 +32,7 @@ export default async function LandingPage() {
                 <Link href="/dashboard">
                   <Button size="sm">{t("nav.dashboard")}</Button>
                 </Link>
-                <Link
-                  href="/auth/signout"
-                  className="touch-44 inline-flex min-h-[44px] items-center text-sm font-semibold text-ink-500 hover:underline dark:text-ink-400"
-                >
-                  {t("auth.signout")}
-                </Link>
+                <SignOutButton variant="ghost" size="sm" />
               </>
             ) : (
               <>

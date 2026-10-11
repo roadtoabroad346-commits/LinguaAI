@@ -17,7 +17,7 @@ export default function NotFound() {
         </Link>
         <Link
           href="/"
-          className="inline-flex h-10 items-center rounded-xl border border-ink-200 bg-white px-4 text-sm font-medium text-ink-800 hover:bg-ink-50"
+          className="inline-flex h-10 items-center rounded-xl border border-ink-200 bg-white px-4 text-sm font-medium text-ink-800 hover:bg-ink-50 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-100 dark:hover:bg-ink-800"
         >
           {t("nav.home")}
         </Link>

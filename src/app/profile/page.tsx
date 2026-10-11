@@ -6,10 +6,11 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/feedback";
 import { Button } from "@/components/ui/Button";
 import { ProfileForm } from "@/components/profile/ProfileForm";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 import { AppearanceSettings } from "@/components/learn/AppearanceSettings";
 import { PageTransition } from "@/lib/motion/components";
 import { PageHero } from "@/components/learn/PageHero";
-import { getSessionProfile, getSessionUser } from "@/lib/auth/session";
+import { getSessionProfile, getSessionUserResilient } from "@/lib/auth/session";
 import { isSupabaseConfigured } from "@/lib/env";
 import { Alert } from "@/components/ui/feedback";
 import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
@@ -30,7 +31,7 @@ export default async function ProfilePage() {
       </AppShell>
     );
   }
-  const user = await getSessionUser();
+  const user = await getSessionUserResilient();
   if (!user) redirect("/login?next=/profile");
 
   const profile = await getSessionProfile();
@@ -102,11 +103,7 @@ export default async function ProfilePage() {
               <Link href="/progress">
                 <Button variant="ghost" size="sm">{t("nav.progress")}</Button>
               </Link>
-              <Link href="/auth/signout">
-                <Button variant="ghost" size="sm">
-                  {t("auth.signout")}
-                </Button>
-              </Link>
+              <SignOutButton variant="ghost" size="sm" />
             </div>
           </Card>
           <Card>

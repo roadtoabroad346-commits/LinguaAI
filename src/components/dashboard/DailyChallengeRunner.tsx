@@ -78,7 +78,7 @@ export function DailyChallengeRunner() {
         <CardTitle>{t("learn.loadingChallenge")}</CardTitle>
         <div className="mt-4 space-y-3" aria-hidden>
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-16 animate-pulse rounded-xl bg-ink-100" />
+            <div key={i} className="h-16 animate-pulse rounded-xl bg-ink-100 dark:bg-ink-800" />
           ))}
         </div>
       </Card>

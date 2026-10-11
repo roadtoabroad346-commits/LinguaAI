@@ -2,7 +2,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
-import { getSessionProfile, getSessionUser } from "@/lib/auth/session";
+import { getSessionProfile, getSessionUserResilient } from "@/lib/auth/session";
 import { todayKey, todayKeyTz, startOfDayUtc } from "./streak";
 import { getWordOfDay } from "./words";
 import { buildRecommendations } from "./recommendations";
@@ -38,7 +38,7 @@ export interface DashboardData {
 
 export const getDashboardData = cache(async (now = new Date()): Promise<DashboardData> => {
   const configured = isSupabaseConfigured();
-  const user = configured ? await getSessionUser() : null;
+  const user = configured ? await getSessionUserResilient() : null;
   const profile = user ? await getSessionProfile() : null;
   // All "today" boundaries follow the learner's timezone (UTC by default).
   const timezone = profile?.timezone ?? "UTC";

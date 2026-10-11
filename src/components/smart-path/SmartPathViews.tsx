@@ -104,7 +104,7 @@ export function SmartPathViews() {
       <Card aria-busy="true" aria-label={t("smart.buildingTitle")}>
         <CardTitle>{t("smart.building")}</CardTitle>
         <div className="mt-4 space-y-3" aria-hidden>
-          {[0, 1, 2, 3].map((i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-ink-100" />)}
+          {[0, 1, 2, 3].map((i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-ink-100 dark:bg-ink-800" />)}
         </div>
       </Card>
     );
@@ -140,7 +140,7 @@ export function SmartPathViews() {
       <Card aria-busy="true" aria-label={t("smart.buildingTitle")}>
         <CardTitle>{t("smart.building")}</CardTitle>
         <div className="mt-4 space-y-3" aria-hidden>
-          {[0, 1, 2, 3].map((i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-ink-100" />)}
+          {[0, 1, 2, 3].map((i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-ink-100 dark:bg-ink-800" />)}
         </div>
       </Card>
     );

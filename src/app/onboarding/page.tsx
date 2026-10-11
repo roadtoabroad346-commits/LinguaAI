@@ -4,7 +4,7 @@ import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { AuthShell } from "@/components/learn/AuthShell";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { ThemeToggle } from "@/components/providers/ThemeToggle";
-import { getSessionProfile, getSessionUser } from "@/lib/auth/session";
+import { getSessionProfile, getSessionUserResilient } from "@/lib/auth/session";
 import { isSupabaseConfigured } from "@/lib/env";
 import { Alert } from "@/components/ui/feedback";
 import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
@@ -33,7 +33,7 @@ export default async function OnboardingPage({
     );
   }
 
-  const user = await getSessionUser();
+  const user = await getSessionUserResilient();
   if (!user) redirect("/login?next=/onboarding");
 
   const profile = await getSessionProfile();

@@ -16,6 +16,7 @@ import { celebrate } from "@/lib/motion/celebrate";
 import { haptic } from "@/lib/motion/hooks";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 import { useAuth } from "@/components/auth/AuthProvider";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 import { cn } from "@/lib/utils";
 
 export function ScrollProgress() {
@@ -515,7 +516,11 @@ export function LandingStory() {
           <p className="relative mx-auto mt-3 max-w-md text-white/85">{t("landing.finDesc")}</p>
           <div className="relative mt-6 flex flex-col justify-center gap-3 sm:flex-row">
             <Link href={authed ? "/dashboard" : "/signup"}><Button variant="secondary" size="xl" shine className="w-full sm:w-auto">{authed ? t("placement.goDashboard") : t("landing.getStarted")} <ArrowRight className="h-4 w-4" /></Button></Link>
-            <Link href={authed ? "/auth/signout" : "/login"}><Button size="xl" variant="ghost" className="w-full text-white hover:bg-white/15 sm:w-auto">{authed ? t("auth.signout") : t("landing.login")}</Button></Link>
+            {authed ? (
+              <SignOutButton variant="ghost" size="xl" className="w-full text-white hover:bg-white/15 sm:w-auto" />
+            ) : (
+              <Link href="/login"><Button size="xl" variant="ghost" className="w-full text-white hover:bg-white/15 sm:w-auto">{t("landing.login")}</Button></Link>
+            )}
           </div>
         </Reveal>
       </section>

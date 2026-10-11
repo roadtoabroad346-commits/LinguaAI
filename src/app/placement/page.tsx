@@ -4,6 +4,7 @@ import { PlacementRunner } from "@/components/placement/PlacementRunner";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 import { getSessionProfile, getSessionUser } from "@/lib/auth/session";
 import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
 
@@ -47,9 +48,7 @@ export default async function PlacementPage({
               <Link href="/dashboard">
                 <Button variant="secondary">{t("placement.goDashboard")}</Button>
               </Link>
-              <Link href="/auth/signout">
-                <Button variant="ghost">{t("auth.signout")}</Button>
-              </Link>
+              <SignOutButton variant="ghost" />
             </div>
             <p className="mt-3 text-xs text-ink-500 dark:text-ink-400">{t("placement.switchAccountHint")}</p>
           </Card>

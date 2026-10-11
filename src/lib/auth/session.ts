@@ -17,6 +17,27 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   }
 });
 
+/**
+ * Resilient variant for page guards: a single getUser() can transiently miss
+ * (slow Auth, cookie rotation mid-request) and a bare null would redirect a
+ * signed-in user to /login. One short retry avoids the false kick; a truly
+ * signed-out user just waits ~400ms longer before the (correct) redirect.
+ */
+export async function getSessionUserResilient(): Promise<SessionUser | null> {
+  const first = await getSessionUser();
+  if (first) return first;
+  await new Promise((r) => setTimeout(r, 400));
+  try {
+    const supabase = createClient();
+    const { data } = await supabase.auth.getUser();
+    const u = data.user;
+    if (!u) return null;
+    return { id: u.id, email: u.email ?? null };
+  } catch {
+    return null;
+  }
+}
+
 /** Returns the caller's profile row, or null if signed out / missing / unconfigured. */
 export const getSessionProfile = cache(async (): Promise<ProfileRow | null> => {
   try {
