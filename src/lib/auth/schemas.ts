@@ -20,6 +20,22 @@ export const signInSchema = z.object({
 });
 export type SignInInput = z.infer<typeof signInSchema>;
 
+export const forgotPasswordSchema = z.object({
+  email: emailSchema,
+});
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+export const resetPasswordSchema = z
+  .object({
+    password: passwordSchema,
+    confirm: z.string().min(1, "Repeat your new password"),
+  })
+  .refine((v) => v.password === v.confirm, {
+    message: "Passwords do not match",
+    path: ["confirm"],
+  });
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
 export const GOAL_OPTIONS = [
   "Everyday conversation",
   "Work & career",

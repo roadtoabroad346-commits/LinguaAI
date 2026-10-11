@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Alert } from "@/components/ui/feedback";
+import { PasswordInput } from "./PasswordInput";
 import { signInSchema, signUpSchema } from "@/lib/auth/schemas";
+import { friendlyAuthError } from "@/lib/auth/errors";
 import { resolveNextPath, sanitizeNext } from "@/lib/auth/routing";
 import { readGuestData } from "@/lib/auth/storage";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
@@ -24,6 +27,9 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
   const [checkInbox, setCheckInbox] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
+  const [emailNotConfirmed, setEmailNotConfirmed] = useState(false);
 
   const configured = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -76,6 +82,7 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
     e.preventDefault();
     setFormError(null);
     setErrors({});
+    setEmailNotConfirmed(false);
     const schema = mode === "signup" ? signUpSchema : signInSchema;
     const parsed = schema.safeParse(
       mode === "signup" ? { displayName, email, password } : { email, password }
@@ -101,7 +108,7 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
           },
         });
         if (error) {
-          setFormError(error.message);
+          setFormError(friendlyAuthError(error.message, t));
           return;
         }
         // Ensure a profile row (in case the DB trigger is not installed yet).
@@ -124,7 +131,9 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
-          setFormError(error.message);
+          const friendly = friendlyAuthError(error.message, t);
+          setFormError(friendly);
+          if (/not confirmed/i.test(error.message)) setEmailNotConfirmed(true);
           return;
         }
         const dest = await postAuthRedirect();
@@ -132,9 +141,31 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
         router.refresh();
       }
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : t("auth.errors.generic"));
+      setFormError(friendlyAuthError(err, t));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResendConfirmation() {
+    if (!email || resending) return;
+    setResending(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(requestedNext)}` },
+      });
+      if (error) {
+        setFormError(friendlyAuthError(error.message, t));
+        return;
+      }
+      setResent(true);
+    } catch (err) {
+      setFormError(friendlyAuthError(err, t));
+    } finally {
+      setResending(false);
     }
   }
 
@@ -170,11 +201,11 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
         if (msg.includes("provider is not enabled") || msg.includes("unsupported provider")) {
           setFormError(t("auth.errors.oauthFailed"));
         } else {
-          setFormError(error.message);
+          setFormError(friendlyAuthError(error.message, t));
         }
       }
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : t("auth.errors.googleFailed"));
+      setFormError(friendlyAuthError(err, t));
     } finally {
       setOauthLoading(false);
     }
@@ -191,9 +222,29 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
 
   if (checkInbox) {
     return (
-      <Alert tone="success" title={t("auth.checkInbox")}>
-        {t("auth.checkInboxDesc", { email })}
-      </Alert>
+      <div className="space-y-3">
+        <Alert tone="success" title={t("auth.checkInbox")}>
+          {t("auth.checkInboxDesc", { email })}
+        </Alert>
+        {resent && (
+          <Alert tone="success" title={t("auth.resentConfirmation")} >
+            {t("auth.resentConfirmation")}
+          </Alert>
+        )}
+        <Button
+          variant="secondary"
+          className="touch-44 min-h-[44px] w-full"
+          onClick={handleResendConfirmation}
+          loading={resending}
+        >
+          {t("auth.resendConfirmation")}
+        </Button>
+        <p className="text-center text-sm text-ink-500">
+          <Link href="/login" className="touch-44 inline-flex min-h-[44px] items-center font-semibold text-brand-700 hover:underline">
+            {t("auth.forgotBack")}
+          </Link>
+        </p>
+      </div>
     );
   }
 
@@ -201,7 +252,7 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
     <div>
       <Button
         variant="secondary"
-        className="w-full"
+        className="touch-44 min-h-[48px] w-full"
         onClick={handleGoogle}
         loading={oauthLoading}
         disabled={loading}
@@ -222,6 +273,7 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             error={errors.displayName}
+            disabled={loading || oauthLoading}
           />
         )}
         <Input
@@ -229,26 +281,62 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
           type="email"
           placeholder="you@example.com"
           autoComplete="email"
+          inputMode="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           error={errors.email}
+          disabled={loading || oauthLoading}
         />
-        <Input
+        <PasswordInput
           label={t("auth.password")}
-          type="password"
           placeholder={mode === "signup" ? t("auth.passwordSignupPlaceholder") : t("auth.passwordLoginPlaceholder")}
           autoComplete={mode === "signup" ? "new-password" : "current-password"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           error={errors.password}
           hint={mode === "signup" ? t("auth.passwordHint") : undefined}
+          disabled={loading || oauthLoading}
         />
+        {mode === "signin" && (
+          <div className="flex justify-end">
+            <Link
+              href={`/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+              className="touch-44 inline-flex min-h-[44px] items-center text-sm font-semibold text-brand-700 hover:underline"
+            >
+              {t("auth.forgotPassword")}
+            </Link>
+          </div>
+        )}
         {formError && (
           <Alert tone="danger" title={mode === "signup" ? t("auth.signupFailed") : t("auth.signinFailed")}>
             {formError}
           </Alert>
         )}
-        <Button type="submit" className="w-full" loading={loading} disabled={oauthLoading}>
+        {emailNotConfirmed && email && (
+          <Button
+            type="button"
+            variant="secondary"
+            className="touch-44 min-h-[44px] w-full"
+            onClick={handleResendConfirmation}
+            loading={resending}
+          >
+            {t("auth.resendConfirmation")}
+          </Button>
+        )}
+        {resent && (
+          <Alert tone="success" title={t("auth.resentConfirmation")}>
+            {t("auth.resentConfirmation")}
+          </Alert>
+        )}
+        <Button
+          type="submit"
+          className="touch-44 min-h-[48px] w-full"
+          loading={loading}
+          disabled={oauthLoading}
+        >
           {mode === "signup" ? t("auth.signupCta") : t("auth.loginCta")}
         </Button>
       </form>
@@ -260,6 +348,8 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
 function localizeZodError(raw: string, t: (key: string) => string): string {
   if (/valid email/i.test(raw)) return t("auth.errors.invalidEmail");
   if (/at least 8 characters/i.test(raw)) return t("auth.errors.passwordMin");
+  if (/do not match/i.test(raw)) return t("auth.passwordMismatch");
+  if (/repeat/i.test(raw)) return t("auth.confirmRequired");
   if (/password/i.test(raw)) return t("auth.errors.passwordRequired");
   return raw;
 }

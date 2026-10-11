@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { onboardingSchema, placementSubmitSchema, profileUpdateSchema } from "./schemas";
+import { forgotPasswordSchema, onboardingSchema, placementSubmitSchema, profileUpdateSchema, resetPasswordSchema } from "./schemas";
 
 describe("auth payload validation", () => {
   it("accepts a complete onboarding payload with new personalization fields", () => {
@@ -45,5 +45,14 @@ describe("auth payload validation", () => {
     const r = profileUpdateSchema.safeParse({ onboardingStep: 2, prioritySkills: ["reading"] });
     expect(r.success).toBe(true);
     expect(profileUpdateSchema.safeParse({ timezone: "Not/AZone" }).success).toBe(false);
+  });
+  it("accepts a valid recovery email", () => {
+    expect(forgotPasswordSchema.safeParse({ email: "a@b.com" }).success).toBe(true);
+    expect(forgotPasswordSchema.safeParse({ email: "nope" }).success).toBe(false);
+  });
+  it("requires matching 8+ char passwords on reset", () => {
+    expect(resetPasswordSchema.safeParse({ password: "longenough1", confirm: "longenough1" }).success).toBe(true);
+    expect(resetPasswordSchema.safeParse({ password: "longenough1", confirm: "other1234" }).success).toBe(false);
+    expect(resetPasswordSchema.safeParse({ password: "short", confirm: "short" }).success).toBe(false);
   });
 });

@@ -81,11 +81,62 @@ export function AuthProvider({
   stateRef.current = state;
 
   const refresh = React.useCallback(async () => {
+    let supabase: ReturnType<typeof createClient> | null = null;
+    try {
+      supabase = createClient();
+    } catch {
+      supabase = null;
+    }
+    // Never demote to anonymous while the browser still holds a session:
+    // on flaky mobile networks bootstrap can 401 transiently (cookie flush
+    // lag, slow Auth). Demoting then looks like "Progress logged me out".
+    async function hasLocalSession(): Promise<boolean> {
+      if (!supabase) return false;
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data.session?.user) return true;
+      } catch {
+        /* ignore */
+      }
+      try {
+        const { data } = await supabase.auth.getUser();
+        return Boolean(data.user);
+      } catch {
+        return false;
+      }
+    }
+    async function demoteIfTrulyAnonymous() {
+      // Double-check the browser session before wiping client state.
+      if (await hasLocalSession()) return;
+      const prev = stateRef.current;
+      if (prev.userId) {
+        try {
+          clearUserScopedKeys(window.localStorage);
+        } catch {
+          /* noop */
+        }
+      }
+      setState((s) =>
+        s.status === "anonymous"
+          ? s
+          : {
+              status: "anonymous",
+              userId: null,
+              email: null,
+              onboardingCompleted: false,
+              placementCompleted: false,
+              level: null,
+            }
+      );
+      // Reconcile server components with the demotion (avoids client/server split-brain loops).
+      router.refresh();
+    }
     try {
       let res = await fetch("/api/me/bootstrap", { cache: "no-store" });
       // Post-login / OAuth cookies can lag one tick behind the client event
-      // (exchangeCodeForSession redirect, signInWithPassword flush). A single
-      // delayed retry prevents a transient 401 from wiping a valid session.
+      // (exchangeCodeForSession redirect, signInWithPassword flush). Delayed
+      // retries prevent a transient 401 from wiping a valid session — this
+      // was the mobile "Progress kicks to signup" bug.
       if (!res.ok && res.status === 401) {
         await new Promise((r) => setTimeout(r, 700));
         try {
@@ -94,57 +145,26 @@ export function AuthProvider({
           /* keep original 401 below */
         }
       }
+      if (!res.ok && res.status === 401) {
+        await new Promise((r) => setTimeout(r, 1500));
+        try {
+          res = await fetch("/api/me/bootstrap", { cache: "no-store" });
+        } catch {
+          /* fall through to demotion check */
+        }
+      }
       if (!res.ok) {
-        // 401 -> anonymous; other errors keep current state to avoid flashing gates.
+        // 401 -> anonymous only when the browser session is really gone;
+        // other errors keep current state to avoid flashing gates.
         if (res.status === 401) {
-          const prev = stateRef.current;
-          if (prev.userId) {
-            try {
-              clearUserScopedKeys(window.localStorage);
-            } catch {
-              /* noop */
-            }
-          }
-          setState((s) =>
-            s.status === "anonymous"
-              ? s
-              : {
-                  status: "anonymous",
-                  userId: null,
-                  email: null,
-                  onboardingCompleted: false,
-                  placementCompleted: false,
-                  level: null,
-                }
-          );
-          // Reconcile server components with the demotion (avoids client/server split-brain loops).
-          router.refresh();
+          await demoteIfTrulyAnonymous();
         }
         return;
       }
       const json = await res.json().catch(() => null);
       const snap = snapshotFromBootstrap(json);
       if (!snap) {
-        const prev = stateRef.current;
-        if (prev.userId) {
-          try {
-            clearUserScopedKeys(window.localStorage);
-          } catch {
-            /* noop */
-          }
-        }
-        setState((s) =>
-          s.status === "anonymous"
-            ? s
-            : {
-                status: "anonymous",
-                userId: null,
-                email: null,
-                onboardingCompleted: false,
-                placementCompleted: false,
-                level: null,
-              }
-        );
+        await demoteIfTrulyAnonymous();
         return;
       }
       setState({ ...snap, status: "authenticated" });
@@ -204,9 +224,19 @@ export function AuthProvider({
     });
     // Reconcile once on mount (covers hard reload with a valid cookie).
     void refresh();
+    // Mobile networks drop and come back (tunnel, elevator, tab sleep):
+    // revalidate when the page becomes visible or the browser goes online.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    const onOnline = () => void refresh();
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onOnline);
     return () => {
       mounted = false;
       sub.subscription.unsubscribe();
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onOnline);
     };
   }, [refresh, router]);
 

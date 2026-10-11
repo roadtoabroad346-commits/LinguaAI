@@ -39,6 +39,9 @@ export function sanitizeNext(raw: unknown, fallback = DEFAULT_DASHBOARD): string
   if (value === "/login" || value === "/signup" || value.startsWith("/login?") || value.startsWith("/signup?")) {
     return fallback;
   }
+  if (value === "/forgot-password" || value.startsWith("/forgot-password?")) {
+    return fallback;
+  }
   if (value.startsWith("/auth/")) return fallback;
   return value;
 }

@@ -9,17 +9,30 @@ export const dynamic = "force-dynamic";
 /** Full gamification snapshot: XP, streak, goal, level, achievements. Auto-unlocks newly earned badges. */
 export async function GET() {
   if (!isSupabaseConfigured()) {
-    return NextResponse.json({ configured: false, signedIn: false });
+    return NextResponse.json(
+      { configured: false, signedIn: false },
+      { status: 503, headers: { "Cache-Control": "no-store" } }
+    );
   }
   let supabase;
   try {
     supabase = createClient();
   } catch {
-    return NextResponse.json({ configured: false, signedIn: false });
+    return NextResponse.json(
+      { configured: false, signedIn: false },
+      { status: 503, headers: { "Cache-Control": "no-store" } }
+    );
   }
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id ?? null;
-  if (!userId) return NextResponse.json({ configured: true, signedIn: false });
+  // 401 (not 200) when anonymous: clients treat it as "retry, not signup wall"
+  // when they still hold a browser session (flaky mobile networks).
+  if (!userId) {
+    return NextResponse.json(
+      { configured: true, signedIn: false },
+      { status: 401, headers: { "Cache-Control": "no-store" } }
+    );
+  }
 
   const { data: profile } = await supabase.from("profiles").select("total_xp,current_streak,longest_streak,daily_goal_xp,level,timezone").eq("id", userId).maybeSingle();
   const p = (profile ?? {}) as { total_xp?: number; current_streak?: number; longest_streak?: number; daily_goal_xp?: number; level?: string | null; timezone?: string | null };

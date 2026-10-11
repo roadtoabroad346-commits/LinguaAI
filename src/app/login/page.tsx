@@ -17,12 +17,19 @@ const ERROR_KEYS: Record<string, string> = {
   oauth_failed: "auth.errors.oauthFailed",
   missing_code: "auth.errors.missingCode",
   not_configured: "auth.errors.notConfigured",
+  expired_link: "auth.errors.expiredLink",
+};
+
+const MESSAGE_KEYS: Record<string, string> = {
+  password_updated: "auth.passwordUpdated",
+  reset_link_sent: "auth.resetLinkSent",
+  email_verified: "auth.emailVerified",
 };
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: { error?: string; signed_out?: string; next?: string };
+  searchParams: { error?: string; signed_out?: string; next?: string; message?: string };
 }) {
   const user = await getSessionUser();
   if (user) {
@@ -50,6 +57,11 @@ export default async function LoginPage({
           {searchParams.error && (
             <Alert tone="danger" title={t("auth.signinProblem")}>
               {t(ERROR_KEYS[searchParams.error] ?? "auth.errors.generic")}
+            </Alert>
+          )}
+          {searchParams.message && MESSAGE_KEYS[searchParams.message] && (
+            <Alert tone="success" title={t(MESSAGE_KEYS[searchParams.message])}>
+              {t(MESSAGE_KEYS[searchParams.message])}
             </Alert>
           )}
           {searchParams.signed_out && (

@@ -23,7 +23,7 @@ const PROTECTED_PREFIXES = [
   "/ai-teacher",
 ];
 
-const AUTH_PAGES = ["/login", "/signup"];
+const AUTH_PAGES = ["/login", "/signup", "/forgot-password"];
 
 function isProtected(pathname: string): boolean {
   if (pathname === "/placement") return false; // deliberate guest preview mode

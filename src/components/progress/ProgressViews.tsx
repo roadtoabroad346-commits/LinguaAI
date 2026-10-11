@@ -35,35 +35,49 @@ interface Summary {
 
 export function ProgressViews() {
   const { t, locale } = useTranslation();
-  const { status } = useAuth();
+  const { status, refresh } = useAuth();
   const [data, setData] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [signedOut, setSignedOut] = useState(false);
   const [goal, setGoal] = useState<number>(30);
   const [savingGoal, setSavingGoal] = useState(false);
   const [goalMsg, setGoalMsg] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [retrying, setRetrying] = useState(false);
 
   // Wait for auth to settle: never flash the signup card for a logged-in user
   // on a slow cookie/network (that was the "Progress kicks to signup" bug).
+  // On phones the first bootstrap often 401s transiently — retry in place
+  // instead of showing the signup wall or forcing a full page reload.
   useEffect(() => {
     if (status === "loading") return;
     if (status === "anonymous") {
       setSignedOut(true);
       return;
     }
+    const ctrl = new AbortController();
     let cancelled = false;
-    fetch("/api/gamification/summary")
-      .then(async (r) => {
-        if (!r.ok) throw new Error("load");
-        return r.json();
-      })
-      .then((json) => {
+    setError(null);
+    if (attempt > 0) setRetrying(true);
+    (async () => {
+      try {
+        const r = await fetch("/api/gamification/summary", {
+          cache: "no-store",
+          signal: ctrl.signal,
+        });
+        if (!r.ok) throw new Error(`http-${r.status}`);
+        const json = await r.json();
         if (cancelled) return;
         if (json.signedIn === false) {
           // Server says anonymous but client holds a session (transient 401):
-          // show retry, not the signup wall.
+          // show retry, not the signup wall. Reconcile auth once, then retry.
           if (status === "authenticated") {
             setError(t("progress.couldNotLoad"));
+            try {
+              await refresh();
+            } catch {
+              /* retry button covers it */
+            }
             return;
           }
           setSignedOut(true);
@@ -71,15 +85,21 @@ export function ProgressViews() {
         }
         setData(json);
         setGoal(json.dailyGoalXp);
-      })
-      .catch(() => {
-        if (!cancelled) setError(t("progress.couldNotLoad"));
-      });
+        setError(null);
+      } catch (e) {
+        if (cancelled) return;
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        setError(t("progress.couldNotLoad"));
+      } finally {
+        if (!cancelled) setRetrying(false);
+      }
+    })();
     return () => {
       cancelled = true;
+      ctrl.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  }, [status, attempt]);
 
   async function saveGoal() {
     setSavingGoal(true);
@@ -118,7 +138,19 @@ export function ProgressViews() {
     return (
       <Card>
         <Alert tone="danger" title={t("progress.couldNotLoadTitle")}>{error}</Alert>
-        <div className="mt-3"><Button variant="secondary" onClick={() => window.location.reload()}>{t("common.retry")}</Button></div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => setAttempt((a) => a + 1)}
+            loading={retrying}
+            className="touch-44 min-h-[44px]"
+          >
+            {t("common.retry")}
+          </Button>
+          <Link href="/dashboard" prefetch={false}>
+            <Button variant="ghost" className="touch-44 min-h-[44px]">{t("nav.dashboard")}</Button>
+          </Link>
+        </div>
       </Card>
     );
   }

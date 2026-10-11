@@ -30,18 +30,21 @@ export async function GET(request: NextRequest) {
   const error = params.get("error");
   const errorDescription = params.get("error_description");
   const requestedNext = sanitizeNext(params.get("next"), "/dashboard");
+  // Password recovery must never be gated by onboarding/placement:
+  // the user needs to reach /reset-password even with an incomplete profile.
+  const isRecovery = requestedNext === "/reset-password" || requestedNext.startsWith("/reset-password?");
 
   if (error) {
-    const login = new URL("/login", origin);
-    login.searchParams.set("error", "oauth_failed");
-    if (errorDescription) login.searchParams.set("detail", errorDescription.slice(0, 200));
-    return NextResponse.redirect(login);
+    const dest = new URL(isRecovery ? "/forgot-password" : "/login", origin);
+    if (!isRecovery) dest.searchParams.set("error", "oauth_failed");
+    if (errorDescription) dest.searchParams.set("detail", errorDescription.slice(0, 200));
+    return NextResponse.redirect(dest);
   }
 
   if (!code) {
-    const login = new URL("/login", origin);
-    login.searchParams.set("error", "missing_code");
-    return NextResponse.redirect(login);
+    const dest = new URL(isRecovery ? "/forgot-password" : "/login", origin);
+    if (!isRecovery) dest.searchParams.set("error", "missing_code");
+    return NextResponse.redirect(dest);
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -71,9 +74,9 @@ export async function GET(request: NextRequest) {
   if (exchangeError) {
     // Structured server log without secrets.
     console.error("[auth/callback] exchange failed", { message: exchangeError.message });
-    const login = new URL("/login", origin);
-    login.searchParams.set("error", "oauth_failed");
-    return NextResponse.redirect(login);
+    const dest = new URL(isRecovery ? "/forgot-password" : "/login", origin);
+    if (!isRecovery) dest.searchParams.set("error", "oauth_failed");
+    return NextResponse.redirect(dest);
   }
 
   // Ensure a profile row exists (Google sign-ins especially).
@@ -136,7 +139,8 @@ export async function GET(request: NextRequest) {
   }
 
   // Decide destination on the server — never blindly /onboarding.
-  const destination = resolveNextPath(p, requestedNext);
+  // Recovery always lands on /reset-password (no onboarding gate).
+  const destination = isRecovery ? "/reset-password" : resolveNextPath(p, requestedNext);
   if (destination !== requestedNext) {
     const final = NextResponse.redirect(new URL(destination, origin));
     // Carry session + locale cookies onto the final redirect WITH attributes

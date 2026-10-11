@@ -100,6 +100,18 @@ export function BottomTabBar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [moreOpen]);
 
+  // Lock background scroll while the sheet is open (phones): without this a
+  // swipe inside the sheet scrolls the page behind, the tab bar hides/shows
+  // mid-tap and the tap can land on the wrong target ("Progress logs me out").
+  React.useEffect(() => {
+    if (!moreOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [moreOpen]);
+
   const moreActive =
     pathname !== null &&
     !MAIN_TABS.some((tab) => pathname === tab.href || pathname.startsWith(tab.href + "/"));
@@ -120,6 +132,7 @@ export function BottomTabBar() {
               <Link
                 key={tab.href}
                 href={tab.href as never}
+                prefetch={false}
                 aria-current={active ? "page" : undefined}
                 onClick={() => haptic(6)}
                 className={cn(
@@ -147,6 +160,7 @@ export function BottomTabBar() {
               setMoreOpen((v) => !v);
             }}
             aria-expanded={moreOpen}
+            aria-haspopup="dialog"
             aria-label={t("nav.more")}
             className={cn(
               "relative flex min-h-[56px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 text-[11px] font-semibold transition-colors",
@@ -212,13 +226,14 @@ export function BottomTabBar() {
                     <Link
                       key={item.href}
                       href={item.href as never}
+                      prefetch={false}
                       aria-current={active ? "page" : undefined}
                       onClick={() => {
                         haptic(6);
                         setMoreOpen(false);
                       }}
                       className={cn(
-                        "flex min-w-0 items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm font-medium",
+                        "touch-44 flex min-h-[44px] min-w-0 items-center gap-2.5 rounded-2xl px-3 py-2.5 text-sm font-medium",
                         active
                           ? "bg-brand-100 text-brand-800 dark:bg-brand-950 dark:text-brand-100"
                           : "text-ink-600 hover:bg-ink-100 dark:text-ink-300 dark:hover:bg-ink-800"
