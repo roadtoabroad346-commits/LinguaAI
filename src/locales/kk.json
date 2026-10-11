@@ -774,6 +774,15 @@
     "xpSavedShort": "+{xp} XP сақталды",
     "xpPreviewShort": "+{xp} XP (алдын ала қарау)",
     "writingScore": "Жазу бағасы",
+    "criteriaTitle": "Критерийлер бойынша баға",
+    "criteriaDesc": "Критерийлер бойынша адал талдау — ең төмен баған ең жылдам прогресс береді.",
+    "critTask": "Мазмұн және тапсырма",
+    "critCoherence": "Байланыстылық",
+    "critVocab": "Лексика",
+    "critMechanics": "Грамматика және рәсімдеу",
+    "critFluency": "Еркіндік",
+    "critDelivery": "Жеткізу",
+    "priorityFix": "Бірінші түзет",
     "corrections": "Түзетулер ({n})",
     "noIssues": "Қате табылмады — тамаша!",
     "improvedVersion": "Жақсартылған нұсқа",
@@ -1039,6 +1048,8 @@
     "noAchievements": "Әзірге жетістік жоқ.",
     "keepEarning": "Жинауды жалғастырыңыз",
     "keepEarningDesc": "Әр модуль XP, серия және жетістік береді.",
-    "practiceSpelling": "Емлені жаттықтыру"
+    "practiceSpelling": "Емлені жаттықтыру",
+    "newBadges": "Жаңа белгілер: {n} дәл қазір ашылды!",
+    "newBadgesDesc": "Соңғы белсенділіктен жаңа жетістіктер. Серияны үзбе."
   }
 }

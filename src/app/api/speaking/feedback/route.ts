@@ -3,11 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured, isGeminiConfigured } from "@/lib/env";
 import { getSpeakingTopic, countWords } from "@/lib/speaking/topics";
 import { analyzeSpeaking, xpForSpeaking } from "@/lib/speaking/analyze";
+import { blendAiScore } from "@/lib/gamification/xp-rules";
 import { speakingFeedbackSchema } from "@/lib/speaking/schemas";
 import { generateText } from "@/lib/gemini/client";
 import { awardXp } from "@/lib/dashboard/award";
 
-function safeParseAiJson(text: string): { score?: number; strengths?: string[]; fixes?: Array<{ issue?: string; example?: string }>; tip?: string; modelAnswer?: string } | null {
+function safeParseAiJson(text: string): { score?: number; strengths?: string[]; fixes?: Array<{ issue?: string; example?: string }>; tip?: string; modelAnswer?: string; criteria?: Array<{ key?: string; score?: number; note?: string }>; priorityFix?: string; feedback?: string[] } | null {
   try {
     const cleaned = text.replace(/```json|```/g, "").trim();
     const start = cleaned.indexOf("{");
@@ -15,6 +16,24 @@ function safeParseAiJson(text: string): { score?: number; strengths?: string[]; 
     if (start < 0 || end <= start) return null;
     return JSON.parse(cleaned.slice(start, end + 1));
   } catch { return null; }
+}
+
+/** Honest AI guard lives in xp-rules (blendAiScore) — route files must export only handlers. */
+
+const CRITERION_KEYS = ["task", "fluency", "delivery", "vocabulary"] as const;
+
+function validAiCriteria(list: Array<{ key?: string; score?: number; note?: string }> | undefined): Array<{ key: string; score: number; note: string }> | null {
+  if (!Array.isArray(list) || list.length !== 4) return null;
+  const out: Array<{ key: string; score: number; note: string }> = [];
+  for (const c of list) {
+    const key = String(c.key ?? "");
+    const score = Number(c.score);
+    if (!CRITERION_KEYS.includes(key as (typeof CRITERION_KEYS)[number])) return null;
+    if (!Number.isFinite(score) || score < 0 || score > 100) return null;
+    out.push({ key, score: Math.round(score), note: String(c.note ?? "").slice(0, 160) });
+  }
+  if (new Set(out.map((c) => c.key)).size !== 4) return null;
+  return out;
 }
 
 export async function POST(request: Request) {
@@ -28,29 +47,38 @@ export async function POST(request: Request) {
 
   const base = analyzeSpeaking(parsed.data.transcript, { minWords: topic.minWords, durationSecs: parsed.data.durationSecs, level: topic.level });
 
-  // Gemini enhancement: compact prompt, small completion. Deterministic base always returned.
+  // Gemini enhancement: criterion-graded prompt, bounded completion. Deterministic base always returned.
   let ai = false;
   let score = base.score;
   let strengths: string[] = [];
   let modelAnswer = "";
   let feedback = base.feedback;
+  let criteria: Array<{ key: string; score: number; note: string }> = base.criteria.map((c) => ({ key: c.key, score: c.score, note: c.note }));
+  let priorityFix: string | null = null;
 
   if (isGeminiConfigured()) {
     const prompt = [
       `Level ${topic.level}. Topic: ${topic.title} — ${topic.prompt}`,
-      `Transcript (${base.wordCount} words, ~${parsed.data.durationSecs}s):`,
+      `Transcript (${base.wordCount} words, ~${parsed.data.durationSecs}s, rule score ${base.score}/100):`,
       parsed.data.transcript.slice(0, 1500),
-      `Reply ONLY with JSON: {"score":0-100,"strengths":["<=2 short"],"fixes":[{"issue":"<=12 words","example":"short example"}],"tip":"<=20 words","modelAnswer":"2-3 sentence model answer at this level"}. Max 3 fixes.`,
+      `Grade HONESTLY at this level: a weak answer must score low, do not inflate. Reply ONLY with JSON: {"score":0-100,"criteria":[{"key":"task|fluency|delivery|vocabulary","score":0-100,"note":"<=15 words"} x4],"strengths":["<=2 short"],"fixes":[{"issue":"<=15 words","example":"short example"}],"priorityFix":"the single highest-impact fix, <=20 words","tip":"<=20 words","modelAnswer":"2-3 sentence model answer at this level"}. Max 3 fixes, ordered by impact.`,
     ].join("\n");
     try {
-      const raw = await generateText(prompt, { systemPrompt: "You are LinguaAI speaking coach. Encourage, correct gently at the student's level. JSON only.", maxOutputTokens: 550, temperature: 0.5 });
+      const raw = await generateText(prompt, { systemPrompt: "You are LinguaAI speaking coach. Strict but encouraging examiner at the student's level: honest scores, concrete fixes. JSON only.", maxOutputTokens: 900, temperature: 0.5 });
       const aiJson = safeParseAiJson(raw);
       if (aiJson) {
         ai = true;
-        if (typeof aiJson.score === "number" && aiJson.score >= 0 && aiJson.score <= 100) score = Math.round(aiJson.score);
-        if (Array.isArray(aiJson.strengths)) strengths = aiJson.strengths.map(String).slice(0, 2);
+        if (typeof aiJson.score === "number" && aiJson.score >= 0 && aiJson.score <= 100) score = blendAiScore(base.score, Math.round(aiJson.score));
+        const aiCriteria = validAiCriteria(aiJson.criteria);
+        if (aiCriteria) criteria = aiCriteria;
+        if (Array.isArray(aiJson.strengths)) strengths = aiJson.strengths.map(String).map((s) => s.slice(0, 200)).filter(Boolean).slice(0, 2);
         if (typeof aiJson.modelAnswer === "string" && aiJson.modelAnswer.trim().length > 10) modelAnswer = aiJson.modelAnswer.trim().slice(0, 600);
-        if (typeof aiJson.tip === "string" && aiJson.tip.trim()) feedback = [aiJson.tip.trim().slice(0, 200), ...base.feedback].slice(0, 4);
+        if (typeof aiJson.priorityFix === "string" && aiJson.priorityFix.trim().length > 5) priorityFix = aiJson.priorityFix.trim().slice(0, 220);
+        const tips = [
+          ...(priorityFix ? [`Fix first: ${priorityFix}`] : []),
+          ...(typeof aiJson.tip === "string" && aiJson.tip.trim() ? [aiJson.tip.trim().slice(0, 200)] : []),
+        ];
+        if (tips.length > 0) feedback = [...tips, ...base.feedback].slice(0, 5);
         if (Array.isArray(aiJson.fixes)) {
           const aiIssues = aiJson.fixes.slice(0, 3).map((f) => ({
             category: "fluency" as const,
@@ -100,6 +128,7 @@ export async function POST(request: Request) {
     fillerCount: base.fillerCount, repetitionCount: base.repetitionCount, uniqueRatio: base.uniqueRatio,
     score, issues: base.issues, strengths, modelAnswer,
     feedback, recommendations: base.recommendations,
+    criteria, verdict: base.verdict, priorityFix, timingKnown: base.timingKnown,
     xpEarned, saved, streak, xpToday, ai,
   });
 }

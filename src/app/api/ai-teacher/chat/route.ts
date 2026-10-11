@@ -46,9 +46,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ reply: fallbackTeacherReply(lastUser.content, interfaceLanguage), ai: false, reason: "GEMINI_API_KEY is not set." });
   }
 
-  const prompt = `Conversation (latest last):\n${buildHistorySlice(messages)}\n\nReply as Teacher (under 120 words, end with one follow-up question or task).`;
+  const prompt = `Conversation (latest last):\n${buildHistorySlice(messages)}\n\nReply as Teacher: full useful answer (150–220 words) — direct answer, 2–4 short English examples, one typical mistake to avoid, one practice task. End with one follow-up question or task.`;
   try {
-    const reply = await generateText(prompt, { systemPrompt: buildTeacherSystemPrompt({ level, goals, interfaceLanguage }), maxOutputTokens: 280, temperature: 0.7 });
+    const reply = await generateText(prompt, { systemPrompt: buildTeacherSystemPrompt({ level, goals, interfaceLanguage }), maxOutputTokens: 600, temperature: 0.7 });
 
     // Persist history best-effort (last exchange only).
     if (isSupabaseConfigured()) {

@@ -171,6 +171,20 @@ export function ProgressViews() {
 
   return (
     <div className="space-y-4">
+      {data.newlyEarned.length > 0 && (
+        <Card className="border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 dark:border-amber-800 dark:from-amber-950 dark:to-orange-950">
+          <CardTitle>🏆 {t("progress.newBadges", { n: data.newlyEarned.length })}</CardTitle>
+          <CardDescription>{t("progress.newBadgesDesc")}</CardDescription>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {data.newlyEarned.map((key) => {
+              const a = data.achievements.find((x) => x.key === key);
+              return (
+                <Badge key={key} tone="warning" className="shrink-0">🏆 {a?.title ?? key}</Badge>
+              );
+            })}
+          </div>
+        </Card>
+      )}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <div className="flex min-w-0 items-center justify-between gap-2">

@@ -41,6 +41,23 @@ describe("analyzeWriting", () => {
     expect(xpForWriting(75)).toBe(17);
     expect(xpForWriting(95)).toBe(22);
   });
+  it("grades four honest criteria with a verdict", () => {
+    const a = analyzeWriting("In my opinion, phones should stay silent at school. For example, students focus better without notifications. However, they can use them after class.", { minWords: 20, level: "B1" });
+    expect(a.criteria).toHaveLength(4);
+    expect(a.criteria.map((c) => c.key)).toEqual(["task", "coherence", "vocabulary", "mechanics"]);
+    for (const c of a.criteria) {
+      expect(c.score).toBeGreaterThanOrEqual(0);
+      expect(c.score).toBeLessThanOrEqual(100);
+      expect(c.note.length).toBeGreaterThan(0);
+    }
+    expect(a.verdict).toContain("/100");
+  });
+  it("caps criteria honestly for short texts", () => {
+    const a = analyzeWriting("I like apples.", { minWords: 50, level: "B1" });
+    const task = a.criteria.find((c) => c.key === "task")!;
+    expect(task.score).toBeLessThan(95);
+    expect(a.verdict.length).toBeGreaterThan(0);
+  });
 });
 
 describe("ai teacher", () => {

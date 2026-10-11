@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { LEVELS } from "@/lib/constants";
 import { countWords, type WritingTask } from "@/lib/writing/tasks";
+import { CriteriaBars } from "@/components/learn/CriteriaBars";
+import type { Criterion } from "@/components/learn/CriteriaBars";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 
 type TaskSummary = Pick<WritingTask, "slug" | "level" | "title" | "kind" | "prompt" | "minWords" | "maxWords">;
@@ -83,6 +85,7 @@ export function WritingExplorer({ initialTasks }: { initialTasks: TaskSummary[] 
 interface CheckResult {
   score: number; wordCount: number; corrections: Array<{ original: string; corrected: string; explanation: string; category: string }>;
   improvedText: string; feedback: string[]; recommendations: string[]; xpEarned: number; saved: boolean; ai: boolean;
+  criteria?: Criterion[]; verdict?: string; strengths?: string[]; priorityFix?: string | null;
 }
 
 export function WritingEditor({ task, onBack }: { task: TaskSummary; onBack: () => void }) {
@@ -117,10 +120,18 @@ export function WritingEditor({ task, onBack }: { task: TaskSummary; onBack: () 
             </div>
           </div>
           <div className="mt-2"><Progress value={result.score} label={t("learn.writingScore")} /></div>
+          {result.verdict && <p className="mt-2 text-sm font-medium text-ink-800 dark:text-ink-100">{result.verdict}</p>}
+          {result.priorityFix && (
+            <div className="mt-2"><Alert tone="warning" title={t("learn.priorityFix")}>{result.priorityFix}</Alert></div>
+          )}
+          {result.strengths && result.strengths.length > 0 && (
+            <ul className="mt-2 space-y-1">{result.strengths.map((s, i) => <li key={i} className="text-sm text-ink-700">✓ {s}</li>)}</ul>
+          )}
           <div className="mt-3 space-y-1">
             {result.feedback.map((f, i) => <p key={i} className="text-sm text-ink-700">• {f}</p>)}
           </div>
         </Card>
+        {result.criteria && <CriteriaBars criteria={result.criteria} />}
         <Card>
           <CardTitle>{t("learn.corrections", { n: result.corrections.length })}</CardTitle>
           {result.corrections.length === 0 ? <CardDescription>{t("learn.noIssues")}</CardDescription> : (

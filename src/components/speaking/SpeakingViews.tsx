@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { LEVELS } from "@/lib/constants";
 import { countWords, type SpeakingTopic } from "@/lib/speaking/topics";
+import { CriteriaBars } from "@/components/learn/CriteriaBars";
 import type { ReadAloudPassage } from "@/lib/readaloud/passages";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 
@@ -156,6 +157,8 @@ interface SpeakResult {
   issues: Array<{ category: string; message: string; example?: string }>;
   strengths: string[]; modelAnswer: string; feedback: string[]; recommendations: string[];
   xpEarned: number; saved: boolean; ai: boolean;
+  criteria?: Array<{ key: string; score: number; note: string }>;
+  verdict?: string; priorityFix?: string | null; timingKnown?: boolean;
 }
 
 function TopicPractice({ topic, onBack }: { topic: TopicSummary; onBack: () => void }) {
@@ -215,10 +218,17 @@ function TopicPractice({ topic, onBack }: { topic: TopicSummary; onBack: () => v
           </div>
           <div className="mt-2"><Progress value={result.score} label={t("learn.speakingScore")} /></div>
           <p className="mt-2 text-xs text-ink-500">{t("learn.wordsWpm", { w: result.wordCount, wpm: result.wpm, f: result.fillerCount })}</p>
+          {result.verdict && <p className="mt-2 text-sm font-medium text-ink-800 dark:text-ink-100">{result.verdict}</p>}
+          {result.priorityFix && (
+            <div className="mt-2"><Alert tone="warning" title={t("learn.priorityFix")}>{result.priorityFix}</Alert></div>
+          )}
           <div className="mt-3 space-y-1">
             {result.feedback.map((f, i) => <p key={i} className="text-sm text-ink-700">• {f}</p>)}
           </div>
         </Card>
+        {result.criteria && result.criteria.length > 0 && (
+          <CriteriaBars criteria={result.criteria} />
+        )}
         {result.strengths.length > 0 && (
           <Card><CardTitle>{t("learn.strengths")}</CardTitle>
             <ul className="mt-2 space-y-1">{result.strengths.map((s, i) => <li key={i} className="text-sm text-ink-700">✓ {s}</li>)}</ul>

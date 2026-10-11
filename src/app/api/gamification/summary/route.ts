@@ -70,6 +70,33 @@ export async function GET() {
   let spellingPerfectSessions = 0;
   for (const g of Array.from(bySession.values())) if (g.total > 0 && g.correct === g.total) spellingPerfectSessions += 1;
 
+  // Achievement inputs from already-fetched rows (zero extra queries).
+  // Per-skill accuracy from graded quiz attempts (grammar/reading/listening/…).
+  const quizAcc = new Map<string, { score: number; total: number; n: number }>();
+  for (const r of ((skillRes.data ?? []) as Array<{ skill: string; score: number; total: number }>)) {
+    if (!Number.isFinite(r.score) || !Number.isFinite(r.total) || r.total <= 0) continue;
+    const g = quizAcc.get(r.skill) ?? { score: 0, total: 0, n: 0 };
+    g.score += Math.max(0, r.score);
+    g.total += r.total;
+    g.n += 1;
+    quizAcc.set(r.skill, g);
+  }
+  const bestOf = (vals: number[]) => vals.reduce((m, v) => (Number.isFinite(v) ? Math.max(m, Math.min(100, Math.round(v))) : m), 0);
+  const writingTop = bestOf(((writeRes.data ?? []) as Array<{ score: number }>).map((w) => w.score));
+  const speakingTop = bestOf(((speakRes.data ?? []) as Array<{ score: number }>).map((s) => s.score));
+  const readAloudTop = bestOf(((aloudRes.data ?? []) as Array<{ accuracy: number }>).map((r) => r.accuracy));
+  const productiveStrong = [
+    ["writing", writingTop],
+    ["speaking", speakingTop],
+    ["read-aloud", readAloudTop],
+  ].filter(([, top]) => (top as number) >= 80).length;
+  const quizStrong = Array.from(quizAcc.values()).filter(
+    (g) => g.n >= 2 && g.total > 0 && (g.score / g.total) * 100 >= 80
+  ).length;
+  const skillsTried =
+    quizAcc.size + (writingTop > 0 ? 1 : 0) + (speakingTop > 0 ? 1 : 0) + (readAloudTop > 0 ? 1 : 0);
+  const skillsStrong = quizStrong + productiveStrong;
+
   const stats: GamStats = {
     totalXp: p.total_xp ?? 0,
     streakCurrent: p.current_streak ?? 0,
@@ -79,6 +106,11 @@ export async function GET() {
     spellingCorrect,
     spellingPerfectSessions,
     dictionaryCount: typeof dictRes.count === "number" ? dictRes.count : 0,
+    skillsTried,
+    skillsStrong,
+    writingTop,
+    speakingTop,
+    readAloudTop,
   };
 
   const owned = ((achRes.data ?? []) as Array<{ key: string; unlocked_at: string }>);

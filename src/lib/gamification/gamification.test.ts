@@ -14,6 +14,8 @@ describe("getXpLevel", () => {
   it("steps up at thresholds", () => {
     expect(getXpLevel(100).name).toBe("Explorer");
     expect(getXpLevel(1000).name).toBe("Pathfinder");
+    expect(getXpLevel(1600).name).toBe("Scholar");
+    expect(getXpLevel(4000).name).toBe("Grandmaster");
     expect(getXpLevel(9999).name).toBe("Legend");
   });
   it("reports progress toward next level", () => {
@@ -40,6 +42,29 @@ describe("achievements", () => {
     expect(evaluateAchievements({ ...BASE, longestStreak: 7 }, [])).toContain("streak-7");
     expect(evaluateAchievements({ ...BASE, longestStreak: 7 }, [])).toContain("streak-3");
     expect(evaluateAchievements({ ...BASE, longestStreak: 7 }, [])).not.toContain("streak-14");
+  });
+  it("unlocks late-game streak and XP milestones", () => {
+    expect(evaluateAchievements({ ...BASE, longestStreak: 100 }, [])).toEqual(
+      expect.arrayContaining(["streak-60", "streak-100"])
+    );
+    expect(evaluateAchievements({ ...BASE, totalXp: 10000 }, [])).toEqual(
+      expect.arrayContaining(["xp-250", "xp-2500", "xp-10000"])
+    );
+  });
+  it("unlocks skill and productive achievements without new schema", () => {
+    expect(evaluateAchievements({ ...BASE, skillsTried: 5 }, [])).toContain("skill-explorer");
+    expect(evaluateAchievements({ ...BASE, skillsStrong: 3 }, [])).toContain("triple-star");
+    expect(evaluateAchievements({ ...BASE, skillsStrong: 5 }, [])).toContain("grand-scholar");
+    expect(evaluateAchievements({ ...BASE, writingTop: 90 }, [])).toContain("wordsmith");
+    expect(evaluateAchievements({ ...BASE, speakingTop: 90 }, [])).toContain("confident-speaker");
+    expect(evaluateAchievements({ ...BASE, readAloudTop: 95 }, [])).toContain("clear-voice");
+    expect(evaluateAchievements(BASE, [])).not.toContain("wordsmith");
+  });
+  it("unlocks volume achievements", () => {
+    expect(evaluateAchievements({ ...BASE, challengePerfect: 5 }, [])).toContain("perfectionist");
+    expect(evaluateAchievements({ ...BASE, challengeCompletions: 30 }, [])).toContain("habit-builder");
+    expect(evaluateAchievements({ ...BASE, dictionaryCount: 200 }, [])).toContain("word-collector-200");
+    expect(evaluateAchievements({ ...BASE, spellingCorrect: 200 }, [])).toContain("spelling-master");
   });
   it("skips already-unlocked keys", () => {
     expect(evaluateAchievements({ ...BASE, totalXp: 50 }, ["first-steps"])).not.toContain("first-steps");

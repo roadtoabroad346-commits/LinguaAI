@@ -778,6 +778,15 @@
     "xpSavedShort": "+{xp} XP сохранено",
     "xpPreviewShort": "+{xp} XP (предпросмотр)",
     "writingScore": "Оценка письма",
+    "criteriaTitle": "Оценка по критериям",
+    "criteriaDesc": "Честный разбор по критериям — самая низкая шкала даёт быстрейший прогресс.",
+    "critTask": "Содержание и задача",
+    "critCoherence": "Связность",
+    "critVocab": "Лексика",
+    "critMechanics": "Грамматика и оформление",
+    "critFluency": "Беглость",
+    "critDelivery": "Подача",
+    "priorityFix": "Исправь первым",
     "corrections": "Исправления ({n})",
     "noIssues": "Ошибок не найдено — отлично!",
     "improvedVersion": "Улучшенный вариант",
@@ -1045,6 +1054,8 @@
     "noAchievements": "Достижений пока нет.",
     "keepEarning": "Продолжайте зарабатывать",
     "keepEarningDesc": "Каждый модуль даёт XP, серию и достижения.",
-    "practiceSpelling": "Тренировать орфографию"
+    "practiceSpelling": "Тренировать орфографию",
+    "newBadges": "Новые бейджи: {n} только что открыто!",
+    "newBadgesDesc": "Свежие достижения за последнюю активность. Не гаси streak."
   }
 }

@@ -56,6 +56,19 @@ describe("analyzeSpeaking", () => {
     expect(xpForSpeaking(80)).toBe(17);
     expect(xpForSpeaking(95)).toBe(22);
   });
+  it("grades four honest criteria with a verdict", () => {
+    const a = analyzeSpeaking("Last weekend I went to the lake with my family. First we walked around the water because the weather was beautiful. For example, we saw ducks and small boats. It was a wonderful day and I enjoyed it a lot.", { minWords: 45, durationSecs: 45 });
+    expect(a.criteria).toHaveLength(4);
+    expect(a.criteria.map((c) => c.key)).toEqual(["task", "fluency", "delivery", "vocabulary"]);
+    expect(a.timingKnown).toBe(true);
+    expect(a.verdict).toContain("/100");
+  });
+  it("is honest about delivery limits and missing timing", () => {
+    const a = analyzeSpeaking("I like football because it is fun and exciting for example when we play together.", { minWords: 10, durationSecs: 0 });
+    expect(a.timingKnown).toBe(false);
+    const delivery = a.criteria.find((c) => c.key === "delivery")!;
+    expect(delivery.note).toMatch(/cannot hear|text-based/i);
+  });
 });
 
 describe("analyzeReadAloud", () => {

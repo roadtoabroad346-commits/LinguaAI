@@ -19,6 +19,21 @@ export interface SpeakingAnalysis {
   issues: SpeakingIssue[];
   recommendations: string[];
   modelAnswer: string;
+  /** Per-criterion breakdown — zero AI tokens. */
+  criteria: SpeakingCriterion[];
+  /** Honest overall verdict + single most important fix. */
+  verdict: string;
+  /** False when duration is unknown — pace-based criteria are then skipped honestly. */
+  timingKnown: boolean;
+}
+
+export type SpeakingCriterionKey = "fluency" | "delivery" | "vocabulary" | "task";
+
+export interface SpeakingCriterion {
+  key: SpeakingCriterionKey;
+  /** 0–100, honestly scaled. */
+  score: number;
+  note: string;
 }
 
 export interface ReadAloudAnalysis {
@@ -71,6 +86,9 @@ export function analyzeSpeaking(
       issues: [],
       recommendations: ["Pick an easier topic and aim for its minimum word count."],
       modelAnswer: "",
+      criteria: emptySpeakingCriteria(),
+      verdict: "Too short to grade — give at least a few sentences.",
+      timingKnown: durationSecs >= 5,
     };
   }
 
@@ -103,6 +121,7 @@ export function analyzeSpeaking(
     issues.push({ category: "vocabulary", message: "Many repeated words — reuse a synonym or a useful phrase from the topic.", example: "good → great / enjoyable / useful" });
   }
   const hasLinker = LINKERS.some((l) => lower.includes(l));
+  const linkerCount = LINKERS.filter((l) => lower.includes(l)).length;
   if (!hasLinker && wordCount >= 40) {
     issues.push({ category: "grammar", message: "No linking words — join ideas with and / because / for example.", example: "I like it because…" });
   }
@@ -144,12 +163,113 @@ export function analyzeSpeaking(
   if (score >= 80) recommendations.push("Challenge: answer the next follow-up question without stopping.");
   if (recommendations.length === 0) recommendations.push("Try the next topic one level up, or Read Aloud for pronunciation.");
 
+  const criteria = gradeSpeakingCriteria({
+    wordCount, sentenceCount, wpm, fillerCount, repetitionCount, uniqueRatio,
+    minWords: opts.minWords, hasLinker, linkerCount, timingKnown: durationSecs >= 5,
+  });
+  const verdict = speakingVerdict(score, criteria);
+
   return {
     wordCount, sentenceCount, wpm, fillerCount, repetitionCount,
     uniqueRatio: Math.round(uniqueRatio * 100) / 100,
     score, feedback: feedback.slice(0, 4), issues: issues.slice(0, 6),
     recommendations: recommendations.slice(0, 3), modelAnswer: "",
+    criteria, verdict, timingKnown: durationSecs >= 5,
   };
+}
+
+const clamp100 = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+
+function emptySpeakingCriteria(): SpeakingCriterion[] {
+  return (["fluency", "delivery", "vocabulary", "task"] as SpeakingCriterionKey[]).map((key) => ({
+    key,
+    score: 0,
+    note: key === "delivery" ? "Needs a real recording with timing." : "Too short to judge.",
+  }));
+}
+
+/**
+ * Honest per-criterion scores from measurable signals only.
+ * Delivery is a TEXT-BASED proxy (pauses, fillers, run-ons) — it can never
+ * judge real pronunciation, and says so in its note. Pace criteria apply
+ * only when recording duration is known.
+ */
+export function gradeSpeakingCriteria(signals: {
+  wordCount: number;
+  sentenceCount: number;
+  wpm: number;
+  fillerCount: number;
+  repetitionCount: number;
+  uniqueRatio: number;
+  minWords: number;
+  hasLinker: boolean;
+  linkerCount: number;
+  timingKnown: boolean;
+}): SpeakingCriterion[] {
+  const { wordCount, sentenceCount, wpm, fillerCount, repetitionCount, uniqueRatio, minWords, hasLinker, linkerCount, timingKnown } = signals;
+
+  // — Task: length vs target —
+  let task = 100;
+  const ratio = minWords > 0 ? wordCount / minWords : 1;
+  if (ratio < 1) task = 40 + 55 * Math.max(0, ratio);
+  if (wordCount >= 40 && sentenceCount < 2) task -= 8;
+  const taskNote =
+    ratio < 0.5 ? `Too short (${wordCount}/${minWords} words) — add one more reason or example.`
+    : ratio < 1 ? `Almost there (${wordCount}/${minWords} words) — one more sentence.`
+    : `Full answer (${wordCount} words in ${sentenceCount} sentence${sentenceCount === 1 ? "" : "s"}).`;
+
+  // — Fluency: pace + fillers + repetitions + linkers —
+  let fluency = 70;
+  if (timingKnown) {
+    if (wpm >= 90 && wpm <= 170) fluency += 14;
+    else if (wpm >= 70 && wpm < 90) fluency += 6;
+    else if (wpm > 0 && wpm < 50) fluency -= 10;
+    else if (wpm > 190) fluency -= 8;
+  }
+  fluency -= Math.min(18, fillerCount * 4);
+  fluency -= Math.min(12, repetitionCount * 4);
+  fluency += Math.min(10, linkerCount * 3);
+  if (sentenceCount <= 1 && wordCount > 30) fluency -= 12;
+  const fluencyNote = !timingKnown
+    ? "Typed answer — pace unknown. Record yourself to grade rhythm."
+    : fillerCount >= 3 ? `${fillerCount} fillers — pause silently instead of um/uh.`
+    : fillerCount > 0 ? "Nearly fluent — just a filler or two."
+    : wpm >= 90 && wpm <= 170 ? "Smooth, natural pace with clean delivery."
+    : "Steady speech — keep pausing between ideas, not inside them.";
+
+  // — Delivery (text proxy — honest about its limits) —
+  let delivery = 68;
+  delivery -= Math.min(16, fillerCount * 4);
+  delivery -= Math.min(10, repetitionCount * 3);
+  if (sentenceCount <= 1 && wordCount > 25) delivery -= 10;
+  if (timingKnown && wpm >= 90 && wpm <= 170) delivery += 12;
+  if (timingKnown && wpm > 0 && (wpm < 60 || wpm > 190)) delivery -= 8;
+  const deliveryNote = "Text-based estimate only — it cannot hear pronunciation. For real feedback, record aloud and compare with the transcript.";
+
+  // — Vocabulary: variety + linkers, capped by evidence —
+  let vocabulary = 55 + Math.round(Math.min(1, uniqueRatio) * 30);
+  vocabulary += Math.min(8, linkerCount * 2);
+  if (wordCount < 30) vocabulary = Math.min(vocabulary, 72);
+  if (wordCount < 15) vocabulary = Math.min(vocabulary, 55);
+  const vocabularyNote =
+    uniqueRatio < 0.45 && wordCount >= 30 ? "Many repeated words — reuse a synonym or a topic phrase."
+    : hasLinker ? "Good connectors and varied words for this level."
+    : "Simple words, clearly used — add one linker (because / for example).";
+
+  return [
+    { key: "task", score: clamp100(task), note: taskNote },
+    { key: "fluency", score: clamp100(fluency), note: fluencyNote },
+    { key: "delivery", score: clamp100(delivery), note: deliveryNote },
+    { key: "vocabulary", score: clamp100(vocabulary), note: vocabularyNote },
+  ];
+}
+
+/** Honest overall verdict: band + weakest criterion + single most important fix. */
+export function speakingVerdict(score: number, criteria: SpeakingCriterion[]): string {
+  const weakest = [...criteria].sort((a, b) => a.score - b.score)[0];
+  const band = score >= 85 ? "Confident performance" : score >= 70 ? "Solid, with room to grow" : score >= 40 ? "Developing — keep talking" : "A start — every speaker begins here";
+  const name = weakest.key === "task" ? "content" : weakest.key;
+  return `${band} (${score}/100). Work on ${name} first (${weakest.score}/100) — ${weakest.note}`;
 }
 
 export function xpForSpeaking(score: number): number {

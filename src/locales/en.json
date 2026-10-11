@@ -774,6 +774,15 @@
     "xpSavedShort": "+{xp} XP saved",
     "xpPreviewShort": "+{xp} XP (preview)",
     "writingScore": "Writing score",
+    "criteriaTitle": "Score by criteria",
+    "criteriaDesc": "Honest per-criterion breakdown — the lowest bar is your fastest win.",
+    "critTask": "Task & content",
+    "critCoherence": "Coherence",
+    "critVocab": "Vocabulary",
+    "critMechanics": "Grammar & mechanics",
+    "critFluency": "Fluency",
+    "critDelivery": "Delivery",
+    "priorityFix": "Fix first",
     "corrections": "Corrections ({n})",
     "noIssues": "No issues found — excellent!",
     "improvedVersion": "Improved version",
@@ -1039,6 +1048,8 @@
     "noAchievements": "No achievements yet.",
     "keepEarning": "Keep earning",
     "keepEarningDesc": "Every module feeds XP, streak and achievements.",
-    "practiceSpelling": "Practice spelling"
+    "practiceSpelling": "Practice spelling",
+    "newBadges": "New badges: {n} just unlocked!",
+    "newBadgesDesc": "Fresh achievements from your latest activity. Keep the streak alive."
   }
 }

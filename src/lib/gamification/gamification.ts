@@ -13,8 +13,12 @@ const LEVEL_STEPS: Array<{ name: string; min: number }> = [
   { name: "Builder", min: 300 },
   { name: "Achiever", min: 600 },
   { name: "Pathfinder", min: 1000 },
-  { name: "Master", min: 2000 },
-  { name: "Legend", min: 5000 },
+  // Late-game milestones: a 30-XP/day learner reaches Scholar in ~2 months,
+  // Grandmaster in ~4–5 months and Legend in ~7 months of daily practice.
+  { name: "Scholar", min: 1600 },
+  { name: "Master", min: 2500 },
+  { name: "Grandmaster", min: 4000 },
+  { name: "Legend", min: 6000 },
 ];
 
 /** XP level for a lifetime total. Progress is 0–100 toward the next level. */
@@ -39,6 +43,14 @@ export interface GamStats {
   spellingCorrect: number;
   spellingPerfectSessions: number;
   dictionaryCount: number;
+  /** Distinct quiz skills with at least one graded attempt (grammar/reading/…). */
+  skillsTried?: number;
+  /** Skills with ≥80% accuracy over ≥2 attempts. */
+  skillsStrong?: number;
+  /** Best productive scores 0–100 (null-safe: 0 when no attempts yet). */
+  writingTop?: number;
+  speakingTop?: number;
+  readAloudTop?: number;
 }
 
 export interface AchievementDef {
@@ -56,14 +68,30 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { key: "streak-7", title: "Week Warrior", description: "Practice 7 days in a row.", check: (s) => s.longestStreak >= 7 || s.streakCurrent >= 7 },
   { key: "streak-14", title: "Fortnight Focus", description: "Practice 14 days in a row.", check: (s) => s.longestStreak >= 14 || s.streakCurrent >= 14 },
   { key: "streak-30", title: "Monthly Master", description: "Practice 30 days in a row.", check: (s) => s.longestStreak >= 30 || s.streakCurrent >= 30 },
+  { key: "streak-60", title: "Two-Month Flame", description: "Practice 60 days in a row.", check: (s) => s.longestStreak >= 60 || s.streakCurrent >= 60 },
+  { key: "streak-100", title: "Century of Fire", description: "Practice 100 days in a row.", check: (s) => s.longestStreak >= 100 || s.streakCurrent >= 100 },
   { key: "xp-100", title: "Century Club", description: "Reach 100 total XP.", check: (s) => s.totalXp >= 100 },
+  { key: "xp-250", title: "Rising Star", description: "Reach 250 total XP.", check: (s) => s.totalXp >= 250 },
   { key: "xp-500", title: "High Five Hundred", description: "Reach 500 total XP.", check: (s) => s.totalXp >= 500 },
   { key: "xp-1000", title: "XP Thousand", description: "Reach 1,000 total XP.", check: (s) => s.totalXp >= 1000 },
+  { key: "xp-2500", title: "Overachiever", description: "Reach 2,500 total XP.", check: (s) => s.totalXp >= 2500 },
   { key: "xp-5000", title: "XP Legend", description: "Reach 5,000 total XP.", check: (s) => s.totalXp >= 5000 },
+  { key: "xp-10000", title: "Immortal", description: "Reach 10,000 total XP.", check: (s) => s.totalXp >= 10000 },
   { key: "word-collector-10", title: "Word Collector", description: "Save 10 words to your dictionary.", check: (s) => s.dictionaryCount >= 10 },
   { key: "word-collector-50", title: "Word Hoarder", description: "Save 50 words to your dictionary.", check: (s) => s.dictionaryCount >= 50 },
+  { key: "word-collector-100", title: "Librarian", description: "Save 100 words to your dictionary.", check: (s) => s.dictionaryCount >= 100 },
+  { key: "word-collector-200", title: "Walking Dictionary", description: "Save 200 words to your dictionary.", check: (s) => s.dictionaryCount >= 200 },
   { key: "spelling-bee", title: "Spelling Bee", description: "Score 100% on a spelling session.", check: (s) => s.spellingPerfectSessions >= 1 },
   { key: "spelling-grinder", title: "Spelling Grinder", description: "Spell 50 words correctly.", check: (s) => s.spellingCorrect >= 50 },
+  { key: "spelling-master", title: "Spelling Master", description: "Spell 200 words correctly.", check: (s) => s.spellingCorrect >= 200 },
+  { key: "perfectionist", title: "Perfectionist", description: "Score 100% on 5 Daily Challenges.", check: (s) => s.challengePerfect >= 5 },
+  { key: "habit-builder", title: "Habit Builder", description: "Complete 30 Daily Challenges.", check: (s) => s.challengeCompletions >= 30 },
+  { key: "skill-explorer", title: "Skill Explorer", description: "Try 5 different skills.", check: (s) => (s.skillsTried ?? 0) >= 5 },
+  { key: "triple-star", title: "Triple Star", description: "Reach 80%+ accuracy in 3 skills.", check: (s) => (s.skillsStrong ?? 0) >= 3 },
+  { key: "grand-scholar", title: "Grand Scholar", description: "Reach 80%+ accuracy in 5 skills.", check: (s) => (s.skillsStrong ?? 0) >= 5 },
+  { key: "wordsmith", title: "Wordsmith", description: "Score 85+ on a writing task.", check: (s) => (s.writingTop ?? 0) >= 85 },
+  { key: "confident-speaker", title: "Confident Speaker", description: "Score 85+ on a speaking topic.", check: (s) => (s.speakingTop ?? 0) >= 85 },
+  { key: "clear-voice", title: "Clear Voice", description: "Reach 90%+ read-aloud accuracy.", check: (s) => (s.readAloudTop ?? 0) >= 90 },
 ];
 
 /** Keys of newly earned achievements given stats + already unlocked keys. */
