@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { WRITING_TASKS, getWritingTask, listWritingTasks, countWords } from "./tasks";
-import { analyzeWriting, xpForWriting } from "./analyze";
+import { analyzeWriting, pickRewriteVariants, xpForWriting } from "./analyze";
 import { buildTeacherSystemPrompt, fallbackTeacherReply, buildHistorySlice } from "@/lib/teacher/teacher";
 
 describe("writing tasks", () => {
@@ -57,6 +57,24 @@ describe("analyzeWriting", () => {
     const task = a.criteria.find((c) => c.key === "task")!;
     expect(task.score).toBeLessThan(95);
     expect(a.verdict.length).toBeGreaterThan(0);
+  });
+  it("picks up to 3 valid rewrite variants with fallback", () => {
+    expect(pickRewriteVariants(undefined, "Fallback corrected text here.")).toEqual([
+      { text: "Fallback corrected text here." },
+    ]);
+    expect(pickRewriteVariants("nope", "short")).toEqual([]);
+    const vs = pickRewriteVariants(
+      [{ text: "First variant text here." }, { text: "x" }, { text: "Third variant text here ok." }, { text: "Fourth variant text here ok." }],
+      "Fallback corrected text here."
+    );
+    // Slice-then-validate: only the first 3 raw items are considered, "x" is dropped.
+    expect(vs).toHaveLength(2);
+    expect(vs[0]).toEqual({ text: "First variant text here." });
+    const three = pickRewriteVariants(
+      [{ text: "Variant one is fine." }, { text: "Variant two is fine." }, { text: "Variant three is fine." }],
+      "Fallback corrected text here."
+    );
+    expect(three).toHaveLength(3);
   });
 });
 

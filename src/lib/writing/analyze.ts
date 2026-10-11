@@ -262,6 +262,32 @@ function criterionName(key: CriterionKey): string {
   return key === "task" ? "content" : key === "coherence" ? "coherence" : key === "vocabulary" ? "vocabulary" : "mechanics";
 }
 
+/** One rewrite style of the improved text (fixed order: faithful → fluent → ambitious). */
+export interface RewriteVariant {
+  text: string;
+}
+
+/**
+ * Pick up to 3 valid rewrite variants from AI JSON, falling back to the
+ * deterministic corrected text. Pure — unit-tested.
+ */
+export function pickRewriteVariants(aiVariants: unknown, fallbackText: string): RewriteVariant[] {
+  const out: RewriteVariant[] = [];
+  if (Array.isArray(aiVariants)) {
+    for (const v of aiVariants.slice(0, 3)) {
+      const text =
+        typeof v === "object" && v !== null
+          ? String((v as { text?: unknown }).text ?? "").trim().slice(0, 3000)
+          : "";
+      if (text.length > 10) out.push({ text });
+    }
+  }
+  if (out.length === 0 && fallbackText.trim().length > 10) {
+    out.push({ text: fallbackText.trim().slice(0, 3000) });
+  }
+  return out;
+}
+
 export function xpForWriting(score: number): number {
   return xpFromBands(XP_RULES.bands.productive, score);
 }

@@ -8,6 +8,9 @@ import { LEVELS } from "@/lib/constants";
 import { countWords, type WritingTask } from "@/lib/writing/tasks";
 import { CriteriaBars } from "@/components/learn/CriteriaBars";
 import type { Criterion } from "@/components/learn/CriteriaBars";
+import { copyText } from "@/lib/clipboard";
+import { haptic } from "@/lib/motion/hooks";
+import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 
 type TaskSummary = Pick<WritingTask, "slug" | "level" | "title" | "kind" | "prompt" | "minWords" | "maxWords">;
@@ -84,8 +87,79 @@ export function WritingExplorer({ initialTasks }: { initialTasks: TaskSummary[] 
 
 interface CheckResult {
   score: number; wordCount: number; corrections: Array<{ original: string; corrected: string; explanation: string; category: string }>;
-  improvedText: string; feedback: string[]; recommendations: string[]; xpEarned: number; saved: boolean; ai: boolean;
+  improvedText: string; improvedVariants?: Array<{ text: string }>;
+  feedback: string[]; recommendations: string[]; xpEarned: number; saved: boolean; ai: boolean;
   criteria?: Criterion[]; verdict?: string; strengths?: string[]; priorityFix?: string | null;
+}
+
+const REWRITE_STYLES = [
+  { titleKey: "learn.rewriteFaithful", descKey: "learn.rewriteFaithfulDesc" },
+  { titleKey: "learn.rewriteFluent", descKey: "learn.rewriteFluentDesc" },
+  { titleKey: "learn.rewriteAmbitious", descKey: "learn.rewriteAmbitiousDesc" },
+] as const;
+
+/** Rewrite style picker: up to 3 variants (faithful → fluent → ambitious) + working copy button. */
+export function RewriteVariants({ variants, fallbackText }: { variants?: Array<{ text: string }>; fallbackText: string }) {
+  const { t } = useTranslation();
+  const list = variants && variants.length > 0 ? variants.slice(0, 3) : [{ text: fallbackText }];
+  const [sel, setSel] = useState(0);
+  const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
+  const safeSel = Math.min(sel, list.length - 1);
+  const current = list[safeSel]?.text ?? fallbackText;
+
+  async function copy() {
+    setCopyError(false);
+    const ok = await copyText(current);
+    if (ok) {
+      setCopied(true);
+      haptic(10);
+      window.setTimeout(() => setCopied(false), 2000);
+    } else {
+      setCopyError(true);
+    }
+  }
+
+  return (
+    <Card>
+      <CardTitle>{t("learn.improvedVersion")}</CardTitle>
+      {list.length > 1 && (
+        <div className="mt-2 flex flex-wrap gap-1.5" role="radiogroup" aria-label={t("learn.improvedVersion")}>
+          {list.map((_, i) => {
+            const meta = REWRITE_STYLES[i] ?? REWRITE_STYLES[0];
+            const active = i === safeSel;
+            return (
+              <button
+                key={i}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => { setSel(i); setCopied(false); setCopyError(false); haptic(6); }}
+                className={cn(
+                  "touch-44 min-h-[44px] rounded-xl border px-3 py-2 text-left text-sm transition-colors",
+                  active
+                    ? "border-brand-600 bg-brand-50 dark:border-brand-400 dark:bg-brand-950"
+                    : "border-ink-200 bg-white hover:border-ink-300 dark:border-ink-700 dark:bg-ink-900"
+                )}
+              >
+                <span className={cn("font-semibold", active ? "text-brand-800 dark:text-brand-100" : "text-ink-700 dark:text-ink-200")}>
+                  {t(meta.titleKey)}
+                </span>
+                <span className="block text-xs font-normal text-ink-500 dark:text-ink-400">{t(meta.descKey)}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-ink-800 dark:text-ink-100">{current}</p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="secondary" onClick={copy} success={copied} className="touch-44 min-h-[44px]">
+          {copied ? t("learn.copied") : t("learn.copyImproved")}
+        </Button>
+        {copyError && <span className="text-xs text-red-600 dark:text-red-400">{t("learn.copyFailed")}</span>}
+      </div>
+    </Card>
+  );
 }
 
 export function WritingEditor({ task, onBack }: { task: TaskSummary; onBack: () => void }) {
@@ -128,7 +202,7 @@ export function WritingEditor({ task, onBack }: { task: TaskSummary; onBack: () 
             <ul className="mt-2 space-y-1">{result.strengths.map((s, i) => <li key={i} className="text-sm text-ink-700">✓ {s}</li>)}</ul>
           )}
           <div className="mt-3 space-y-1">
-            {result.feedback.map((f, i) => <p key={i} className="text-sm text-ink-700">• {f}</p>)}
+            {result.feedback.map((f, i) => <p key={i} className="text-sm text-ink-700 dark:text-ink-200">• {f}</p>)}
           </div>
         </Card>
         {result.criteria && <CriteriaBars criteria={result.criteria} />}
@@ -137,27 +211,21 @@ export function WritingEditor({ task, onBack }: { task: TaskSummary; onBack: () 
           {result.corrections.length === 0 ? <CardDescription>{t("learn.noIssues")}</CardDescription> : (
             <ul className="mt-2 space-y-2">
               {result.corrections.map((c, i) => (
-                <li key={i} className="rounded-xl border border-ink-200 p-3 text-sm">
+                <li key={i} className="rounded-xl border border-ink-200 p-3 text-sm dark:border-ink-700">
                   <div className="flex items-center gap-2"><Badge>{c.category}</Badge></div>
-                  {c.original && <p className="mt-1 text-ink-500 line-through">{c.original}</p>}
-                  {c.corrected && <p className="font-medium text-ink-900">{c.corrected}</p>}
-                  <p className="mt-1 text-ink-600">{c.explanation}</p>
+                  {c.original && <p className="mt-1 text-ink-500 line-through dark:text-ink-400">{c.original}</p>}
+                  {c.corrected && <p className="font-medium text-ink-900 dark:text-ink-50">{c.corrected}</p>}
+                  <p className="mt-1 text-ink-600 dark:text-ink-300">{c.explanation}</p>
                 </li>
               ))}
             </ul>
           )}
         </Card>
-        <Card>
-          <CardTitle>{t("learn.improvedVersion")}</CardTitle>
-          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-ink-800">{result.improvedText}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button size="sm" variant="secondary" onClick={() => navigator.clipboard?.writeText(result.improvedText)}>{t("learn.copyImproved")}</Button>
-          </div>
-        </Card>
+        <RewriteVariants variants={result.improvedVariants} fallbackText={result.improvedText} />
         {result.recommendations.length > 0 && (
           <Card>
             <CardTitle>{t("learn.nextSteps")}</CardTitle>
-            <ul className="mt-2 space-y-1">{result.recommendations.map((r, i) => <li key={i} className="text-sm text-ink-700">→ {r}</li>)}</ul>
+            <ul className="mt-2 space-y-1">{result.recommendations.map((r, i) => <li key={i} className="text-sm text-ink-700 dark:text-ink-200">→ {r}</li>)}</ul>
           </Card>
         )}
         <div className="flex flex-wrap gap-2">

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured, isGeminiConfigured } from "@/lib/env";
 import { checkRateLimit } from "@/lib/api/security";
 import { getWritingTask } from "@/lib/writing/tasks";
-import { analyzeWriting, xpForWriting, type WritingError } from "@/lib/writing/analyze";
+import { analyzeWriting, pickRewriteVariants, xpForWriting, type WritingError } from "@/lib/writing/analyze";
 import { blendAiScore } from "@/lib/gamification/xp-rules";
 import { writingCheckSchema } from "@/lib/writing/schemas";
 import { generateText } from "@/lib/gemini/client";
@@ -12,7 +12,7 @@ import { awardXp } from "@/lib/dashboard/award";
 interface AiCorrection { original?: string; corrected?: string; explanation?: string; category?: string }
 interface AiCriterion { key?: string; score?: number; note?: string }
 
-function safeParseAiJson(text: string): { score?: number; corrections?: AiCorrection[]; improvedText?: string; feedback?: string[]; criteria?: AiCriterion[]; strengths?: string[]; priorityFix?: string } | null {
+function safeParseAiJson(text: string): { score?: number; corrections?: AiCorrection[]; improvedText?: string; improvedVariants?: Array<{ label?: string; text?: string }>; feedback?: string[]; criteria?: AiCriterion[]; strengths?: string[]; priorityFix?: string } | null {
   try {
     const cleaned = text.replace(/```json|```/g, "").trim();
     const start = cleaned.indexOf("{");
@@ -58,6 +58,7 @@ export async function POST(request: Request) {
   let ai = false;
   let corrections: Array<{ original: string; corrected: string; explanation: string; category: string }> = [];
   let improvedText = base.improvedText;
+  let improvedVariants = pickRewriteVariants(undefined, base.improvedText);
   let score = base.score;
   let feedback = base.feedback;
   let criteria: Array<{ key: string; score: number; note: string }> = base.criteria.map((c) => ({ key: c.key, score: c.score, note: c.note }));
@@ -69,10 +70,10 @@ export async function POST(request: Request) {
       `Level ${task.level}. Task: ${task.title} — ${task.prompt}`,
       `Student text (${base.wordCount} words, rule score ${base.score}/100):`,
       parsed.data.text.slice(0, 2000),
-      `Grade HONESTLY at this level: a weak text must score low, do not inflate. Reply ONLY with JSON: {"score":0-100,"criteria":[{"key":"task|coherence|vocabulary|mechanics","score":0-100,"note":"<=15 words"} x4],"corrections":[{"original":"...","corrected":"...","explanation":"<=15 words","category":"grammar|spelling|punctuation|vocabulary|style"}],"strengths":["<=2 short"],"priorityFix":"the single highest-impact fix, <=20 words","improvedText":"corrected full text, same meaning","feedback":["<=3 short tips"]}. Max 8 corrections, ordered by impact.`,
+      `Grade HONESTLY at this level: a weak text must score low, do not inflate. Reply ONLY with JSON: {"score":0-100,"criteria":[{"key":"task|coherence|vocabulary|mechanics","score":0-100,"note":"<=15 words"} x4],"corrections":[{"original":"...","corrected":"...","explanation":"<=15 words","category":"grammar|spelling|punctuation|vocabulary|style"}],"strengths":["<=2 short"],"priorityFix":"the single highest-impact fix, <=20 words","improvedText":"corrected full text, same meaning","improvedVariants":[{"label":"Faithful|Fluent|Ambitious","text":"..."} x1-3 in this fixed order: 1 Faithful minimal corrections keeping the student's words, 2 Fluent natural rewrite at the same level, 3 Ambitious rewrite with richer vocabulary one step above],"feedback":["<=3 short tips"]}. Max 8 corrections, ordered by impact.`,
     ].join("\n");
     try {
-      const raw = await generateText(prompt, { systemPrompt: "You are LinguaAI writing coach. Strict but kind examiner at the student's level: honest scores, concrete fixes. JSON only.", maxOutputTokens: 1100, temperature: 0.4 });
+      const raw = await generateText(prompt, { systemPrompt: "You are LinguaAI writing coach. Strict but kind examiner at the student's level: honest scores, concrete fixes. JSON only.", maxOutputTokens: 1300, temperature: 0.4 });
       const aiJson = safeParseAiJson(raw);
       if (aiJson) {
         ai = true;
@@ -88,6 +89,9 @@ export async function POST(request: Request) {
           })).filter((c) => c.original && c.corrected);
         }
         if (typeof aiJson.improvedText === "string" && aiJson.improvedText.trim().length > 10) improvedText = aiJson.improvedText.trim().slice(0, 3000);
+        // Variants power the style picker; improvedText stays the primary (first) variant.
+        improvedVariants = pickRewriteVariants(aiJson.improvedVariants, improvedText);
+        improvedText = improvedVariants[0]?.text ?? improvedText;
         if (Array.isArray(aiJson.strengths)) strengths = aiJson.strengths.map(String).map((s) => s.slice(0, 200)).filter(Boolean).slice(0, 2);
         if (typeof aiJson.priorityFix === "string" && aiJson.priorityFix.trim().length > 5) priorityFix = aiJson.priorityFix.trim().slice(0, 220);
         const tips = Array.isArray(aiJson.feedback) ? aiJson.feedback.slice(0, 3).map(String) : [];
@@ -140,7 +144,7 @@ export async function POST(request: Request) {
   return NextResponse.json({
     task: { slug: task.slug, title: task.title, level: task.level, minWords: task.minWords, maxWords: task.maxWords },
     wordCount: base.wordCount, sentenceCount: base.sentenceCount, avgSentenceLen: base.avgSentenceLen,
-    score, corrections, improvedText, feedback, recommendations: base.recommendations,
+    score, corrections, improvedText, improvedVariants, feedback, recommendations: base.recommendations,
     errorCount: base.errors.length, errorsByCategory: countBy(base.errors.map((e) => e.category)),
     criteria, verdict: base.verdict, strengths, priorityFix,
     xpEarned, saved, streak, xpToday, ai,

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { LEVELS } from "@/lib/constants";
 import { countWords, type SpeakingTopic } from "@/lib/speaking/topics";
 import { CriteriaBars } from "@/components/learn/CriteriaBars";
+import { copyText } from "@/lib/clipboard";
 import type { ReadAloudPassage } from "@/lib/readaloud/passages";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 
@@ -169,6 +170,7 @@ function TopicPractice({ topic, onBack }: { topic: TopicSummary; onBack: () => v
   const [secs, setSecs] = useState(0);
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<SpeakResult | null>(null);
+  const [copiedModel, setCopiedModel] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -223,7 +225,7 @@ function TopicPractice({ topic, onBack }: { topic: TopicSummary; onBack: () => v
             <div className="mt-2"><Alert tone="warning" title={t("learn.priorityFix")}>{result.priorityFix}</Alert></div>
           )}
           <div className="mt-3 space-y-1">
-            {result.feedback.map((f, i) => <p key={i} className="text-sm text-ink-700">• {f}</p>)}
+            {result.feedback.map((f, i) => <p key={i} className="text-sm text-ink-700 dark:text-ink-200">• {f}</p>)}
           </div>
         </Card>
         {result.criteria && result.criteria.length > 0 && (
@@ -231,7 +233,7 @@ function TopicPractice({ topic, onBack }: { topic: TopicSummary; onBack: () => v
         )}
         {result.strengths.length > 0 && (
           <Card><CardTitle>{t("learn.strengths")}</CardTitle>
-            <ul className="mt-2 space-y-1">{result.strengths.map((s, i) => <li key={i} className="text-sm text-ink-700">✓ {s}</li>)}</ul>
+            <ul className="mt-2 space-y-1">{result.strengths.map((s, i) => <li key={i} className="text-sm text-ink-700 dark:text-ink-200">✓ {s}</li>)}</ul>
           </Card>
         )}
         <Card>
@@ -239,10 +241,10 @@ function TopicPractice({ topic, onBack }: { topic: TopicSummary; onBack: () => v
           {result.issues.length === 0 ? <CardDescription>{t("learn.noIssues")}</CardDescription> : (
             <ul className="mt-2 space-y-2">
               {result.issues.map((c, i) => (
-                <li key={i} className="rounded-xl border border-ink-200 p-3 text-sm">
+                <li key={i} className="rounded-xl border border-ink-200 p-3 text-sm dark:border-ink-700">
                   <Badge>{c.category}</Badge>
-                  <p className="mt-1 font-medium text-ink-900">{c.message}</p>
-                  {c.example && <p className="mt-1 text-ink-600">{c.example}</p>}
+                  <p className="mt-1 font-medium text-ink-900 dark:text-ink-50">{c.message}</p>
+                  {c.example && <p className="mt-1 text-ink-600 dark:text-ink-300">{c.example}</p>}
                 </li>
               ))}
             </ul>
@@ -251,16 +253,29 @@ function TopicPractice({ topic, onBack }: { topic: TopicSummary; onBack: () => v
         {result.modelAnswer && (
           <Card>
             <CardTitle>{t("learn.modelAnswer")}</CardTitle>
-            <p className="mt-2 text-sm leading-relaxed text-ink-800">{result.modelAnswer}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <p className="mt-2 text-sm leading-relaxed text-ink-800 dark:text-ink-100">{result.modelAnswer}</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <Button size="sm" variant="secondary" onClick={() => speakText(result.modelAnswer)}>🔊 {t("learn.listen")}</Button>
-              <Button size="sm" variant="ghost" onClick={() => navigator.clipboard?.writeText(result.modelAnswer)}>{t("learn.copyBtn")}</Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                success={copiedModel}
+                onClick={async () => {
+                  const ok = await copyText(result.modelAnswer);
+                  if (ok) {
+                    setCopiedModel(true);
+                    window.setTimeout(() => setCopiedModel(false), 2000);
+                  }
+                }}
+              >
+                {copiedModel ? t("learn.copied") : t("learn.copyBtn")}
+              </Button>
             </div>
           </Card>
         )}
         {result.recommendations.length > 0 && (
           <Card><CardTitle>{t("learn.nextSteps")}</CardTitle>
-            <ul className="mt-2 space-y-1">{result.recommendations.map((r, i) => <li key={i} className="text-sm text-ink-700">→ {r}</li>)}</ul>
+            <ul className="mt-2 space-y-1">{result.recommendations.map((r, i) => <li key={i} className="text-sm text-ink-700 dark:text-ink-200">→ {r}</li>)}</ul>
           </Card>
         )}
         <div className="flex flex-wrap gap-2">
@@ -278,7 +293,7 @@ function TopicPractice({ topic, onBack }: { topic: TopicSummary; onBack: () => v
         <div className="flex flex-wrap items-center gap-2"><Badge tone="brand">{topic.level}</Badge><Badge>{t("learn.targetSecs", { n: topic.targetSecs })}</Badge></div>
         <CardTitle className="mt-2">{topic.title}</CardTitle>
         <CardDescription>{topic.prompt}</CardDescription>
-        <ul className="mt-2 space-y-1">{topic.questions.map((q, i) => <li key={i} className="text-sm text-ink-700">• {q}</li>)}</ul>
+        <ul className="mt-2 space-y-1">{topic.questions.map((q, i) => <li key={i} className="text-sm text-ink-700 dark:text-ink-200">• {q}</li>)}</ul>
         <div className="mt-2 flex flex-wrap gap-2">{topic.usefulPhrases.map((p) => <Badge key={p}>{p}</Badge>)}</div>
       </Card>
       <Card>
@@ -476,7 +491,7 @@ function ReadAloudPractice({ passage, onBack }: { passage: PassageSummary; onBac
           <div className="mt-2"><Progress value={result.accuracy} label={t("learn.pronAccuracy")} /></div>
           <p className="mt-2 text-xs text-ink-500">{t("learn.matchedWords", { a: result.matchedWords, b: result.passageWords, w: result.wpm })}</p>
           <div className="mt-3 space-y-1">
-            {result.feedback.map((f, i) => <p key={i} className="text-sm text-ink-700">• {f}</p>)}
+            {result.feedback.map((f, i) => <p key={i} className="text-sm text-ink-700 dark:text-ink-200">• {f}</p>)}
           </div>
         </Card>
         {result.missedWords.length > 0 && (
