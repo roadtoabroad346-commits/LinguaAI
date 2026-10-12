@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   try {
     supabase = createClient();
   } catch {
-    return NextResponse.json({ error: "Backend not configured." }, { status: 503 });
+    return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
   }
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id ?? null;

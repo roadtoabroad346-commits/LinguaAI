@@ -41,19 +41,29 @@ export async function GET() {
   const today = todayKeyTz(now, timezone);
 
   const dayStart = startOfDayUtc(now, timezone);
-  const [xpRes, chalRes, spellRes, dictRes, achRes, weekRes, skillRes, writeRes, speakRes, aloudRes, masteryRes] = await Promise.all([
-    supabase.from("xp_events").select("amount").eq("user_id", userId).gte("created_at", dayStart.toISOString()).limit(5000),
-    supabase.from("daily_challenge_completions").select("score,total").eq("user_id", userId).limit(500),
-    supabase.from("spelling_attempts").select("id,session_id,correct").eq("user_id", userId).order("created_at", { ascending: false }).limit(2000),
-    supabase.from("dictionary_entries").select("id", { count: "exact", head: true }).eq("user_id", userId),
-    supabase.from("achievements").select("key,unlocked_at").eq("user_id", userId),
-    supabase.from("xp_events").select("amount,created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(500),
-    supabase.from("skill_attempts").select("skill,score,total").eq("user_id", userId).limit(2000),
-    supabase.from("writing_submissions").select("score").eq("user_id", userId).order("created_at", { ascending: false }).limit(200),
-    supabase.from("speaking_attempts").select("score").eq("user_id", userId).order("created_at", { ascending: false }).limit(200),
-    supabase.from("read_aloud_attempts").select("accuracy").eq("user_id", userId).order("created_at", { ascending: false }).limit(200),
-    supabase.from("dictionary_entries").select("mastery").eq("user_id", userId).limit(2000),
-  ]);
+  let batch;
+  try {
+    batch = await Promise.all([
+      supabase.from("xp_events").select("amount").eq("user_id", userId).gte("created_at", dayStart.toISOString()).limit(5000),
+      supabase.from("daily_challenge_completions").select("score,total").eq("user_id", userId).limit(500),
+      supabase.from("spelling_attempts").select("id,session_id,correct").eq("user_id", userId).order("created_at", { ascending: false }).limit(2000),
+      supabase.from("dictionary_entries").select("id", { count: "exact", head: true }).eq("user_id", userId),
+      supabase.from("achievements").select("key,unlocked_at").eq("user_id", userId),
+      supabase.from("xp_events").select("amount,created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(500),
+      supabase.from("skill_attempts").select("skill,score,total").eq("user_id", userId).limit(2000),
+      supabase.from("writing_submissions").select("score").eq("user_id", userId).order("created_at", { ascending: false }).limit(200),
+      supabase.from("speaking_attempts").select("score").eq("user_id", userId).order("created_at", { ascending: false }).limit(200),
+      supabase.from("read_aloud_attempts").select("accuracy").eq("user_id", userId).order("created_at", { ascending: false }).limit(200),
+      supabase.from("dictionary_entries").select("mastery").eq("user_id", userId).limit(2000),
+    ]);
+  } catch {
+    // Transient backend failure: explicit JSON (retryable) instead of an HTML 500.
+    return NextResponse.json(
+      { error: "Backend temporarily unavailable. Try again." },
+      { status: 503, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+  const [xpRes, chalRes, spellRes, dictRes, achRes, weekRes, skillRes, writeRes, speakRes, aloudRes, masteryRes] = batch;
 
   const xpToday = ((xpRes.data ?? []) as Array<{ amount: number }>).reduce((s, e) => s + (e.amount || 0), 0);
   const challenges = ((chalRes.data ?? []) as Array<{ score: number; total: number }>);

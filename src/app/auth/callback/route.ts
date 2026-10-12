@@ -88,11 +88,15 @@ export async function GET(request: NextRequest) {
   const { data: userData } = await supabase.auth.getUser();
   const user = userData.user;
   if (!user) {
-    const login = new URL("/login", origin);
-    login.searchParams.set("error", "oauth_failed");
-    // Preserve any freshly set cookies on this redirect too.
-    for (const c of response.cookies.getAll()) login.searchParams.set(`_c_${c.name}`, "1");
-    return NextResponse.redirect(login);
+    const dest = new URL("/login", origin);
+    dest.searchParams.set("error", "oauth_failed");
+    const login = NextResponse.redirect(dest);
+    // Keep any freshly set session cookies: getUser() can transiently miss
+    // (cookie rotation mid-request) while the session itself is valid.
+    for (const c of carried) {
+      login.cookies.set(c.name, c.value, c.options as Parameters<typeof login.cookies.set>[2]);
+    }
+    return login;
   }
 
   try {
@@ -129,7 +133,9 @@ export async function GET(request: NextRequest) {
   } | null;
   const cookieLang = request.cookies.get("linguaai_locale")?.value;
   const isSupported = (v: unknown): v is "kk" | "ru" | "en" => v === "kk" || v === "ru" || v === "en";
+  let localeToCarry: "kk" | "ru" | "en" | null = null;
   if (isSupported(p?.preferred_language)) {
+    localeToCarry = p.preferred_language;
     response.cookies.set("linguaai_locale", p.preferred_language, {
       path: "/",
       maxAge: 31536000,
@@ -197,6 +203,13 @@ export async function GET(request: NextRequest) {
     // (httpOnly/secure/sameSite/maxAge/path) — dropping them logged users out.
     for (const c of carried) {
       final.cookies.set(c.name, c.value, c.options as Parameters<typeof final.cookies.set>[2]);
+    }
+    if (localeToCarry) {
+      final.cookies.set("linguaai_locale", localeToCarry, {
+        path: "/",
+        maxAge: 31536000,
+        sameSite: "lax",
+      });
     }
     return final;
   }

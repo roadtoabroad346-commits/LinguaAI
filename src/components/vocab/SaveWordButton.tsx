@@ -10,7 +10,10 @@ const LOCAL_KEY = "linguaai:saved-words";
 
 export function readLocalSaved(): string[] {
   try {
-    return JSON.parse(localStorage.getItem(LOCAL_KEY) ?? "[]") as string[];
+    if (typeof window === "undefined") return [];
+    const raw = window.localStorage.getItem(LOCAL_KEY) ?? "[]";
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((w): w is string => typeof w === "string") : [];
   } catch {
     return [];
   }
@@ -18,7 +21,8 @@ export function readLocalSaved(): string[] {
 
 function writeLocalSaved(words: string[]) {
   try {
-    localStorage.setItem(LOCAL_KEY, JSON.stringify(words));
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(LOCAL_KEY, JSON.stringify(words));
   } catch {
     // best-effort
   }
@@ -50,9 +54,10 @@ export function SaveWordButton({ word, initialSaved, signedIn, size = "sm" }: {
       return;
     }
     try {
-      // Optimistic UI.
-      setSaved((s) => !s);
-      if (saved) {
+      // Optimistic UI. Revert target is the pre-toggle state, not the mount-time prop.
+      const wasSaved = saved;
+      setSaved(!wasSaved);
+      if (wasSaved) {
         const res = await fetch(`/api/dictionary?word=${encodeURIComponent(word)}`, { method: "DELETE" });
         if (!res.ok) throw new Error("remove failed");
         setSaved(false);
@@ -67,7 +72,7 @@ export function SaveWordButton({ word, initialSaved, signedIn, size = "sm" }: {
         setSaved(true);
       }
     } catch {
-      setSaved(initialSaved);
+      setSaved(saved);
       setError(t("learn.couldNotUpdate"));
     } finally {
       setBusy(false);

@@ -6,6 +6,7 @@ import { analyzeReadAloud, xpForSpeaking } from "@/lib/speaking/analyze";
 import { readAloudCheckSchema } from "@/lib/speaking/schemas";
 import { generateText } from "@/lib/gemini/client";
 import { awardXp } from "@/lib/dashboard/award";
+import { checkRateLimit } from "@/lib/api/security";
 
 function safeParseAiJson(text: string): { score?: number; tip?: string; hardWords?: string[] } | null {
   try {
@@ -18,6 +19,10 @@ function safeParseAiJson(text: string): { score?: number; tip?: string; hardWord
 }
 
 export async function POST(request: Request) {
+  // Gemini-backed: strict per-IP limit even for guests (deterministic grade stays free).
+  const limited = checkRateLimit(request, { key: "read-aloud-check", limit: 15, windowMs: 60_000 });
+  if (limited) return limited;
+
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 }); }
   const parsed = readAloudCheckSchema.safeParse(body);

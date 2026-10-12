@@ -13,12 +13,15 @@ export async function GET() {
 }
 
 export async function POST() {
-  // Allow refresh via POST too (client revalidation pattern).
+  // Allow refresh via POST too (client revalidation pattern) — same gate as the page.
   try {
     const supabase = createClient();
-    await supabase.auth.getUser();
-    const data = await getDashboardData();
-    return NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+    }
+    const payload = await getDashboardData();
+    return NextResponse.json(payload, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "Could not load dashboard." }, { status: 500 });
   }

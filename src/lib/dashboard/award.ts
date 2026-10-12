@@ -39,7 +39,7 @@ export async function awardXp(
   if (xpError) throw new Error("Could not record XP.");
 
   if (input.activityKind && input.activityTitle) {
-    await supabase.from("activity_events").insert({
+    const { error: activityError } = await supabase.from("activity_events").insert({
       user_id: userId,
       kind: input.activityKind,
       title: input.activityTitle,
@@ -47,16 +47,25 @@ export async function awardXp(
       href: input.activityHref ?? null,
       xp: input.amount,
     } as never);
+    if (activityError) {
+      console.error("[award] activity insert failed", { message: activityError.message, source: input.source });
+    }
   }
 
   const next = nextStreakState(
     { current: p.current_streak ?? 0, longest: p.longest_streak ?? 0, lastActiveDate: p.last_active_date ?? null },
     today
   );
-  await supabase
-    .from("profiles")
-    .update({ current_streak: next.current, longest_streak: next.longest, last_active_date: today, total_xp: (p.total_xp ?? 0) + input.amount } as never)
-    .eq("id", userId);
+  const profilePatch = { current_streak: next.current, longest_streak: next.longest, last_active_date: today, total_xp: (p.total_xp ?? 0) + input.amount } as never;
+  const { error: profileError } = await supabase.from("profiles").update(profilePatch).eq("id", userId);
+  if (profileError) {
+    // One retry before failing loudly: a silent streak/total_xp desync is worse than an error.
+    const { error: retryError } = await supabase.from("profiles").update(profilePatch).eq("id", userId);
+    if (retryError) {
+      console.error("[award] profile update failed", { message: retryError.message, source: input.source });
+      throw new Error("Could not update streak.");
+    }
+  }
 
   const dayStart = startOfDayUtc(now, timezone);
   const { data: todayEvents } = await supabase

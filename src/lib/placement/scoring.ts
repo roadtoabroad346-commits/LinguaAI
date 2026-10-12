@@ -1,5 +1,6 @@
 import type { Level } from "@/lib/constants";
-import { PLACEMENT_QUESTIONS } from "./questions";
+import { LEVELS } from "@/lib/constants";
+import { PLACEMENT_QUESTIONS, type PlacementQuestion } from "./questions";
 
 export interface GradeInput {
   questionId: string;
@@ -58,6 +59,47 @@ export function scoreToLevel(score: number): Level {
   if (score >= 10) return "B1";
   if (score >= 6) return "A2";
   return "A1";
+}
+
+export interface ReviewedAnswer {
+  question: PlacementQuestion;
+  selected: number;
+  correct: boolean;
+}
+
+/** Joins graded answers with the question bank for the mistake-review UI. */
+export function buildReview(grade: PlacementGrade): ReviewedAnswer[] {
+  const byId = new Map(PLACEMENT_QUESTIONS.map((q) => [q.id, q]));
+  const out: ReviewedAnswer[] = [];
+  for (const a of grade.answers) {
+    const q = byId.get(a.questionId);
+    if (q) out.push({ question: q, selected: a.selected, correct: a.correct });
+  }
+  return out;
+}
+
+/** Band with the lowest accuracy (ties resolve to the lower band — fix foundations first). */
+export function weakestBand(perBand: PlacementGrade["perBand"]): Level {
+  let worst: Level = "A1";
+  let worstRate = 2;
+  for (const band of LEVELS) {
+    const b = perBand[band];
+    const rate = b.total > 0 ? b.correct / b.total : 1;
+    if (rate < worstRate) {
+      worstRate = rate;
+      worst = band;
+    }
+  }
+  return worst;
+}
+
+/** Unique topics of the missed questions, in test order (what to study next). */
+export function missedTopics(review: ReviewedAnswer[]): string[] {
+  const seen = new Set<string>();
+  for (const r of review) {
+    if (!r.correct && !seen.has(r.question.topic)) seen.add(r.question.topic);
+  }
+  return Array.from(seen);
 }
 
 export const LEVEL_DESCRIPTIONS: Record<Level, string> = {

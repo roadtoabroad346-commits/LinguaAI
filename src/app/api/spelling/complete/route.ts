@@ -23,8 +23,8 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid answers.", issues: parsed.error.flatten() }, { status: 400 });
 
   const grade = gradeSpellingSet(parsed.data.mode, parsed.data.answers);
-  const sessionId = parsed.data.sessionId ?? randomUUID();
-
+  // Idempotency key: signed-in writes REQUIRE a client sessionId (retries reuse it).
+  // Guests get a one-off id (nothing is saved, so idempotency is moot).
   let supabase = null;
   let userId: string | null = null;
   if (isSupabaseConfigured()) {
@@ -36,8 +36,12 @@ export async function POST(request: Request) {
       supabase = null;
     }
   }
+  const sessionId = parsed.data.sessionId ?? randomUUID();
   if (!supabase || !userId) {
     return NextResponse.json({ ...grade, saved: false, sessionId });
+  }
+  if (!parsed.data.sessionId) {
+    return NextResponse.json({ error: "sessionId is required." }, { status: 400 });
   }
 
   // Idempotency: a completed session is returned as-is — no new XP, no new rows.

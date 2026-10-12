@@ -9,7 +9,12 @@ export async function GET() {
     const supabase = createClient();
     const { data } = await supabase.auth.getUser();
     const userId = data.user?.id ?? null;
-    if (!userId) return NextResponse.json({ signedIn: false, submissions: [], topErrors: [] });
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Not authenticated." },
+        { status: 401, headers: { "Cache-Control": "no-store" } }
+      );
+    }
 
     const { data: subs } = await supabase.from("writing_submissions")
       .select("id,task_slug,level,word_count,score,xp_earned,ai,created_at")

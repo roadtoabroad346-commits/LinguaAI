@@ -7,12 +7,24 @@ import { buildTeacherSystemPrompt, buildHistorySlice, fallbackTeacherReply } fro
 import { generateText } from "@/lib/gemini/client";
 
 export async function POST(request: Request) {
-  const limited = checkRateLimit(request, { key: "ai-teacher-chat", limit: 15, windowMs: 60_000 });
-  if (limited) return limited;
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 }); }
   const parsed = teacherChatSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid messages.", issues: parsed.error.flatten() }, { status: 400 });
+
+  // Single auth probe reused below (avoids triple getUser per message).
+  let authUserId: string | null = null;
+  if (isSupabaseConfigured()) {
+    try {
+      const probe = createClient();
+      const { data } = await probe.auth.getUser();
+      authUserId = data.user?.id ?? null;
+    } catch { /* treat as guest */ }
+  }
+  // Tiered abuse guard: guests get a strict budget (account creation is the
+  // expensive step for attackers thanks to Supabase signup limits + confirm).
+  const limited = checkRateLimit(request, { key: "ai-teacher-chat", limit: authUserId ? 15 : 5, windowMs: 60_000 });
+  if (limited) return limited;
 
   const messages = parsed.data.messages.slice(-10);
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
@@ -25,19 +37,16 @@ export async function POST(request: Request) {
   let interfaceLanguage: "kk" | "ru" | "en" = "kk";
   const bodyLang = (body as { interfaceLanguage?: unknown }).interfaceLanguage;
   if (bodyLang === "kk" || bodyLang === "ru" || bodyLang === "en") interfaceLanguage = bodyLang;
-  if (isSupabaseConfigured()) {
+  if (isSupabaseConfigured() && authUserId) {
     try {
       const supabase = createClient();
-      const { data } = await supabase.auth.getUser();
-      if (data.user) {
-        const { data: profile } = await supabase.from("profiles").select("level,goals,preferred_language").eq("id", data.user.id).maybeSingle();
-        const p = profile as { level?: string | null; goals?: string[]; preferred_language?: string } | null;
-        if (p?.level) level = p.level;
-        if (Array.isArray(p?.goals)) goals = p.goals.slice(0, 3);
-        // Profile setting wins over the client hint (user setting → local → browser).
-        if (p?.preferred_language === "kk" || p?.preferred_language === "ru" || p?.preferred_language === "en") {
-          interfaceLanguage = p.preferred_language;
-        }
+      const { data: profile } = await supabase.from("profiles").select("level,goals,preferred_language").eq("id", authUserId).maybeSingle();
+      const p = profile as { level?: string | null; goals?: string[]; preferred_language?: string } | null;
+      if (p?.level) level = p.level;
+      if (Array.isArray(p?.goals)) goals = p.goals.slice(0, 3);
+      // Profile setting wins over the client hint (user setting → local → browser).
+      if (p?.preferred_language === "kk" || p?.preferred_language === "ru" || p?.preferred_language === "en") {
+        interfaceLanguage = p.preferred_language;
       }
     } catch { /* preview */ }
   }
@@ -51,20 +60,17 @@ export async function POST(request: Request) {
     const reply = await generateText(prompt, { systemPrompt: buildTeacherSystemPrompt({ level, goals, interfaceLanguage }), maxOutputTokens: 600, temperature: 0.7 });
 
     // Persist history best-effort (last exchange only).
-    if (isSupabaseConfigured()) {
+    if (isSupabaseConfigured() && authUserId) {
       try {
         const supabase = createClient();
-        const { data } = await supabase.auth.getUser();
-        if (data.user) {
-          await supabase.from("ai_messages").insert([
-            { user_id: data.user.id, role: "user", content: lastUser.content.slice(0, 2000) },
-            { user_id: data.user.id, role: "assistant", content: reply.slice(0, 2000) },
-          ] as never);
-          // Retention hygiene: chat history older than 90 days is pruned
-          // best-effort so per-user tables stay small and fast.
-          const cutoff = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
-          await supabase.from("ai_messages").delete().eq("user_id", data.user.id).lt("created_at", cutoff);
-        }
+        await supabase.from("ai_messages").insert([
+          { user_id: authUserId, role: "user", content: lastUser.content.slice(0, 2000) },
+          { user_id: authUserId, role: "assistant", content: reply.slice(0, 2000) },
+        ] as never);
+        // Retention hygiene: chat history older than 90 days is pruned
+        // best-effort so per-user tables stay small and fast.
+        const cutoff = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
+        await supabase.from("ai_messages").delete().eq("user_id", authUserId).lt("created_at", cutoff);
       } catch { /* non-blocking */ }
     }
     return NextResponse.json({ reply, ai: true });

@@ -86,18 +86,28 @@ export async function GET() {
 
   const weekAgoIso = new Date(now.getTime() - 7 * 86_400_000).toISOString();
 
-  const [skillRes, writeRes, speakRes, aloudRes, errRes, spellRes, dictRes, chalRes, xpRes, actRes] = await Promise.all([
-    supabase.from("skill_attempts").select("skill,slug,score,total,created_at").eq("user_id", userId).limit(2000),
-    supabase.from("writing_submissions").select("score,created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(100),
-    supabase.from("speaking_attempts").select("created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(100),
-    supabase.from("read_aloud_attempts").select("accuracy").eq("user_id", userId).order("created_at", { ascending: false }).limit(200),
-    supabase.from("writing_errors").select("category").eq("user_id", userId).limit(500),
-    supabase.from("spelling_attempts").select("word,correct").eq("user_id", userId).limit(2000),
-    supabase.from("dictionary_entries").select("word,mastery,next_review_at").eq("user_id", userId).limit(2000),
-    supabase.from("daily_challenge_completions").select("id").eq("user_id", userId).eq("challenge_date", today).maybeSingle(),
-    supabase.from("xp_events").select("amount,created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(500),
-    supabase.from("activity_events").select("kind,created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(200),
-  ]);
+  let batch;
+  try {
+    batch = await Promise.all([
+      supabase.from("skill_attempts").select("skill,slug,score,total,created_at").eq("user_id", userId).limit(2000),
+      supabase.from("writing_submissions").select("score,created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(100),
+      supabase.from("speaking_attempts").select("created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(100),
+      supabase.from("read_aloud_attempts").select("accuracy").eq("user_id", userId).order("created_at", { ascending: false }).limit(200),
+      supabase.from("writing_errors").select("category").eq("user_id", userId).limit(500),
+      supabase.from("spelling_attempts").select("word,correct").eq("user_id", userId).limit(2000),
+      supabase.from("dictionary_entries").select("word,mastery,next_review_at").eq("user_id", userId).limit(2000),
+      supabase.from("daily_challenge_completions").select("id").eq("user_id", userId).eq("challenge_date", today).maybeSingle(),
+      supabase.from("xp_events").select("amount,created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(500),
+      supabase.from("activity_events").select("kind,created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(200),
+    ]);
+  } catch {
+    // Transient backend failure: explicit JSON (retryable) instead of an HTML 500.
+    return NextResponse.json(
+      { error: "Backend temporarily unavailable. Try again." },
+      { status: 503, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+  const [skillRes, writeRes, speakRes, aloudRes, errRes, spellRes, dictRes, chalRes, xpRes, actRes] = batch;
 
   type SkillRow = { skill: string; slug: string; score: number; total: number; created_at: string };
   const skillRows = ((skillRes.data ?? []) as SkillRow[]).filter((r) => Number.isFinite(r.score) && Number.isFinite(r.total) && r.total > 0);

@@ -7,7 +7,12 @@ export async function GET() {
   try {
     const supabase = createClient();
     const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return NextResponse.json({ attempts: [], topIssues: [], configured: true, signedIn: false });
+    if (!user.user) {
+      return NextResponse.json(
+        { error: "Not authenticated." },
+        { status: 401, headers: { "Cache-Control": "no-store" } }
+      );
+    }
     const { data } = await supabase
       .from("speaking_attempts")
       .select("topic_slug,score,word_count,duration_secs,created_at")

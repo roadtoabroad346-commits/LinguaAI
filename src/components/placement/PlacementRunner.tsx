@@ -13,7 +13,7 @@ import { StickyActionBar } from "@/components/learn/StickyActionBar";
 import { PageTransition } from "@/lib/motion/components";
 import { celebrate } from "@/lib/motion/celebrate";
 import { PLACEMENT_QUESTIONS } from "@/lib/placement/questions";
-import { LEVEL_DESCRIPTIONS, type PlacementGrade } from "@/lib/placement/scoring";
+import { LEVEL_DESCRIPTIONS, buildReview, missedTopics, weakestBand, type PlacementGrade } from "@/lib/placement/scoring";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
 
@@ -96,6 +96,10 @@ export function PlacementRunner({
 
   // ---------- Result state ----------
   if (result) {
+    const review = buildReview(result);
+    const mistakes = review.filter((r) => !r.correct);
+    const weak = weakestBand(result.perBand);
+    const topics = missedTopics(review);
     return (
       <PageTransition>
         <Card className="relative overflow-hidden text-center">
@@ -126,6 +130,58 @@ export function PlacementRunner({
                 </div>
               ))}
             </div>
+            {mistakes.length === 0 ? (
+              <p className="mx-auto mt-4 max-w-md text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                {t("placement.perfectScore")}
+              </p>
+            ) : (
+              <div className="mx-auto mt-6 max-w-xl text-left">
+                <div className="rounded-2xl border border-ink-200 bg-white p-4 dark:border-ink-700 dark:bg-ink-900">
+                  <p className="text-sm font-extrabold">{t("placement.whatToFix")}</p>
+                  <p className="mt-1 text-sm text-ink-600 dark:text-ink-300">
+                    {t("placement.weakestBand", { band: weak })}
+                    {topics.length > 0 && ` · ${t("placement.topicsToReview")}: ${topics.join(", ")}`}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Link href="/grammar">
+                      <Button variant="secondary">{t("placement.practiceGrammar")}</Button>
+                    </Link>
+                    <Link href="/ai-teacher">
+                      <Button variant="secondary">{t("placement.askTeacher")}</Button>
+                    </Link>
+                  </div>
+                </div>
+                <p className="mt-5 text-sm font-extrabold">{t("placement.reviewTitle")}</p>
+                <p className="text-xs text-ink-500">{t("placement.reviewDesc", { count: mistakes.length })}</p>
+                <ol className="mt-3 grid gap-3">
+                  {mistakes.map(({ question, selected }) => (
+                    <li
+                      key={question.id}
+                      className="rounded-2xl border border-ink-200 bg-white p-4 dark:border-ink-700 dark:bg-ink-900"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Badge tone="brand">{question.level}</Badge>
+                        <span className="truncate text-xs font-semibold text-ink-500">{question.topic}</span>
+                      </div>
+                      <p className="mt-2 text-sm font-bold">{question.prompt}</p>
+                      <p className="mt-1.5 text-sm">
+                        <span className="font-semibold text-rose-600 dark:text-rose-400">
+                          {t("placement.yourAnswer")}: {question.options[selected] ?? "—"}
+                        </span>
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                          {t("placement.correctAnswer")}: {question.options[question.answer]}
+                        </span>
+                      </p>
+                      <p className="mt-1.5 text-xs leading-relaxed text-ink-600 dark:text-ink-300">
+                        {question.explanation}
+                      </p>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
             {!result.saved && (
               <div className="mx-auto mt-4 max-w-md text-left">
                 <Alert tone="warning" title={t("placement.resultNotSaved")}>

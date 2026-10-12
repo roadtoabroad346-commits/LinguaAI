@@ -18,9 +18,6 @@ export async function PATCH(request: Request) {
   if (!parsed.success || !isValidDailyGoal(parsed.data.dailyGoalXp)) {
     return NextResponse.json({ error: "Daily goal must be an integer between 10 and 200 XP." }, { status: 400 });
   }
-  if (!isValidDailyGoal(parsed.data.dailyGoalXp)) {
-    return NextResponse.json({ error: "Invalid daily goal." }, { status: 400 });
-  }
   if (!isSupabaseConfigured()) return NextResponse.json({ error: "Supabase is not configured." }, { status: 503 });
   let supabase;
   try {

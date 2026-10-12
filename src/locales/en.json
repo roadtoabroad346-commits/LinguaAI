@@ -442,6 +442,7 @@
   },
   "onboarding": {
     "title": "Tell us about yourself",
+    "subtitle": "A few quick answers personalize your level, goals and daily plan.",
     "stepOf": "Step {current} of {total}",
     "steps": {
       "language": "Language",
@@ -518,7 +519,17 @@
     "start": "Start test",
     "loginToSave": "Log in to save your result",
     "gradedError": "Could not grade the test. Try again.",
-    "switchAccountHint": "Want a new account? Sign out first, then sign up again."
+    "switchAccountHint": "Want a new account? Sign out first, then sign up again.",
+    "reviewTitle": "Review your mistakes",
+    "reviewDesc": "{count} to fix — go through each one.",
+    "yourAnswer": "Your answer",
+    "correctAnswer": "Correct",
+    "whatToFix": "What to fix next",
+    "weakestBand": "Weakest band: {band}",
+    "topicsToReview": "Topics to review",
+    "perfectScore": "Perfect — no mistakes to review.",
+    "practiceGrammar": "Practice in Grammar",
+    "askTeacher": "Ask the AI Teacher"
   },
   "teacher": {
     "title": "AI Teacher",
@@ -611,6 +622,9 @@
     "submit": "Submit",
     "submitCount": "Submit ({a}/{b})",
     "answerAllHint": "Answer every question to enable submit.",
+    "readyToSubmit": "All answered — ready to submit.",
+    "pickCorrect": "Pick the correct answer",
+    "modeWrite": "Write the word",
     "perfect": "Perfect!",
     "wellDone": "Well done!",
     "keepPracticing": "Keep practising!",

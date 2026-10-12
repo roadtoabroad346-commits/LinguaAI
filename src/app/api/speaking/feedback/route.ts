@@ -7,6 +7,7 @@ import { blendAiScore } from "@/lib/gamification/xp-rules";
 import { speakingFeedbackSchema } from "@/lib/speaking/schemas";
 import { generateText } from "@/lib/gemini/client";
 import { awardXp } from "@/lib/dashboard/award";
+import { checkRateLimit } from "@/lib/api/security";
 
 function safeParseAiJson(text: string): { score?: number; strengths?: string[]; fixes?: Array<{ issue?: string; example?: string }>; tip?: string; modelAnswer?: string; criteria?: Array<{ key?: string; score?: number; note?: string }>; priorityFix?: string; feedback?: string[] } | null {
   try {
@@ -37,6 +38,10 @@ function validAiCriteria(list: Array<{ key?: string; score?: number; note?: stri
 }
 
 export async function POST(request: Request) {
+  // Gemini-backed: strict per-IP limit even for guests (deterministic grade stays free).
+  const limited = checkRateLimit(request, { key: "speaking-feedback", limit: 10, windowMs: 60_000 });
+  if (limited) return limited;
+
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 }); }
   const parsed = speakingFeedbackSchema.safeParse(body);

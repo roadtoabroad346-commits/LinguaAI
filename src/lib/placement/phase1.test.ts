@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { gradePlacement, scoreToLevel } from "@/lib/placement/scoring";
+import { gradePlacement, scoreToLevel, buildReview, weakestBand, missedTopics } from "@/lib/placement/scoring";
 import { PLACEMENT_QUESTIONS } from "@/lib/placement/questions";
 import { onboardingSchema, placementSubmitSchema, signInSchema, signUpSchema } from "@/lib/auth/schemas";
 
@@ -57,6 +57,29 @@ describe("placement scoring", () => {
     ]);
     expect(g.score).toBe(1);
     expect(g.answers).toHaveLength(1);
+  });
+
+  it("every question carries topic + explanation for the review UI", () => {
+    for (const q of PLACEMENT_QUESTIONS) {
+      expect(q.topic.trim().length).toBeGreaterThan(0);
+      expect(q.explanation.trim().length).toBeGreaterThan(10);
+      expect(q.answer).toBeGreaterThanOrEqual(0);
+      expect(q.answer).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it("builds a mistake review with weakest band and topics", () => {
+    const inputs = PLACEMENT_QUESTIONS.map((q) => ({
+      questionId: q.id,
+      // miss every B2 question, answer everything else correctly
+      selected: q.level === "B2" ? (q.answer + 1) % 4 : q.answer,
+    }));
+    const g = gradePlacement(inputs);
+    const review = buildReview(g);
+    expect(review).toHaveLength(20);
+    expect(review.filter((r) => !r.correct)).toHaveLength(4);
+    expect(weakestBand(g.perBand)).toBe("B2");
+    expect(missedTopics(review)).toContain("Phrasal verbs");
   });
 });
 

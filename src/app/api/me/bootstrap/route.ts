@@ -46,17 +46,27 @@ export async function GET() {
   const today = todayKeyTz(now, timezone);
   const since = startOfDayUtc(now, timezone).toISOString();
 
-  const [xpRes, dictRes, placeRes] = await Promise.all([
-    supabase.from("xp_events").select("amount,created_at").eq("user_id", user.id).gte("created_at", since),
-    supabase.from("dictionary_entries").select("id", { count: "exact", head: true }).eq("user_id", user.id),
-    supabase
-      .from("placement_results")
-      .select("level,created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
+  let batch;
+  try {
+    batch = await Promise.all([
+      supabase.from("xp_events").select("amount,created_at").eq("user_id", user.id).gte("created_at", since),
+      supabase.from("dictionary_entries").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+      supabase
+        .from("placement_results")
+        .select("level,created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+  } catch {
+    // Transient backend failure: explicit JSON (retryable) instead of an HTML 500.
+    return NextResponse.json(
+      { error: "Backend temporarily unavailable. Try again." },
+      { status: 503, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+  const [xpRes, dictRes, placeRes] = batch;
 
   const xpToday = ((xpRes.data ?? []) as Array<{ amount: number }>).reduce(
     (s, e) => s + (Number(e.amount) || 0),

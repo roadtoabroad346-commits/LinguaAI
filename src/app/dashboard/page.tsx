@@ -17,7 +17,7 @@ export const metadata = { title: "Dashboard" };
 export default async function DashboardPage() {
   const supabaseOk = isSupabaseConfigured();
   const data = await getDashboardData();
-  if (supabaseOk && !data.signedIn) redirect("/login");
+  if (supabaseOk && !data.signedIn) redirect("/login?next=/dashboard");
 
   const locale = await getEffectiveLocale();
   const t = getServerT(locale);

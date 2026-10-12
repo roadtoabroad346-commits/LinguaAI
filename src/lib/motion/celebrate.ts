@@ -12,7 +12,8 @@ export function celebrate(opts?: { big?: boolean; force?: boolean }) {
   lastBurst = now;
   haptic([12, 40, 12]);
   try {
-    if (localStorage.getItem("linguaai_reduced_motion") === "1") return;
+    if (typeof window === "undefined") return;
+    if (window.localStorage.getItem("linguaai_reduced_motion") === "1") return;
   } catch {
     /* noop */
   }

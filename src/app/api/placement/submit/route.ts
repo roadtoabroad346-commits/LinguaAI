@@ -41,6 +41,50 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ ...grade, saved: false }, { headers: noStore });
   }
+  // Non-null captures for the verify helper below (narrowing is lost inside closures).
+  const sb = supabase;
+  const u = user;
+  const input = parsed.data;
+
+  // UPDATE on a missing profile row affects 0 rows with NO error — so every
+  // path verifies the level landed, creating the row when it is absent
+  // (Google sign-ins that skipped onboarding). Never report saved:true with a lost level.
+  async function ensureProfileLevel(): Promise<boolean> {
+    const { data: current } = await sb
+      .from("profiles")
+      .select("level")
+      .eq("id", u.id)
+      .maybeSingle();
+    if ((current as { level?: string | null } | null)?.level === grade.level) return true;
+    const now = new Date().toISOString();
+    const { error } = await sb.from("profiles").upsert(
+      {
+        id: u.id,
+        email: u.email ?? null,
+        level: grade.level,
+        level_source: "placement",
+        placement_completed: true,
+        placement_completed_at: now,
+        placement_score: grade.percent,
+        placement_taken_at: now,
+        ...(input.learningMode ? { learning_mode: input.learningMode } : {}),
+      } as never,
+      { onConflict: "id" }
+    );
+    return !error;
+  }
+
+  function unsyncedResponse() {
+    return NextResponse.json(
+      {
+        ...grade,
+        saved: true,
+        profileSynced: false,
+        warning: "Result saved, but level sync needs a retry. Re-submit or pick your level manually.",
+      },
+      { headers: noStore }
+    );
+  }
 
   // Atomic path: one transaction inserts history + syncs the profile.
   try {
@@ -57,10 +101,13 @@ export async function POST(request: Request) {
       },
     } as never);
     if (!rpcError) {
-      return NextResponse.json(
-        { ...grade, saved: true, receipt: rpcData ?? null },
-        { headers: noStore }
-      );
+      if (await ensureProfileLevel()) {
+        return NextResponse.json(
+          { ...grade, saved: true, receipt: rpcData ?? null },
+          { headers: noStore }
+        );
+      }
+      return unsyncedResponse();
     }
   } catch {
     /* fall through to legacy write */
@@ -104,42 +151,21 @@ export async function POST(request: Request) {
         .from("profiles")
         .update(legacyPatch as never)
         .eq("id", user.id);
-      if (!legacyError) {
+      if (!legacyError && (await ensureProfileLevel())) {
         return NextResponse.json({ ...grade, saved: true, migrated: false }, { headers: noStore });
       }
     }
     // History row is saved — verify whether the profile actually got the level
-    // (the 0016 trigger syncs it even when the update above fails). Never lose
-    // the graded result: return 200 with an explicit sync flag so the client
-    // shows the level instead of a dead-end error.
-    const { data: verify } = await supabase
-      .from("profiles")
-      .select("level")
-      .eq("id", user.id)
-      .maybeSingle();
-    const synced =
-      (verify as { level?: string | null } | null)?.level === grade.level;
-    if (synced) {
-      return NextResponse.json({ ...grade, saved: true }, { headers: noStore });
-    }
-    // One repair attempt with the minimal patch before admitting failure.
-    const { error: repairError } = await supabase
-      .from("profiles")
-      .update({ level: grade.level } as never)
-      .eq("id", user.id);
-    if (!repairError) {
+    // (the 0016 trigger syncs it even when the update above fails).
+    if (await ensureProfileLevel()) {
       return NextResponse.json({ ...grade, saved: true, repaired: true }, { headers: noStore });
     }
-    return NextResponse.json(
-      {
-        ...grade,
-        saved: true,
-        profileSynced: false,
-        warning: "Result saved, but level sync needs a retry. Re-submit or pick your level manually.",
-      },
-      { headers: noStore }
-    );
+    return unsyncedResponse();
   }
 
-  return NextResponse.json({ ...grade, saved: true }, { headers: noStore });
+  // Update reported success but may have touched 0 rows (absent profile row).
+  if (await ensureProfileLevel()) {
+    return NextResponse.json({ ...grade, saved: true }, { headers: noStore });
+  }
+  return unsyncedResponse();
 }

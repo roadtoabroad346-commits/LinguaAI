@@ -154,6 +154,16 @@ export interface Database {
         Insert: Omit<Database["public"]["Tables"]["achievements"]["Row"], "id" | "unlocked_at">;
         Update: Partial<Database["public"]["Tables"]["achievements"]["Row"]>;
       };
+      devices: {
+        Row: { id: string; user_id: string; first_seen: string; last_seen: string; user_agent: string | null; platform: string | null; screen: string | null; timezone: string | null; language: string | null; created_at: string };
+        Insert: Omit<Database["public"]["Tables"]["devices"]["Row"], "first_seen" | "last_seen" | "created_at"> & { id: string; user_id: string };
+        Update: Partial<Database["public"]["Tables"]["devices"]["Row"]>;
+      };
+      security_events: {
+        Row: { id: string; user_id: string | null; event_type: "login" | "signup" | "device_new" | "country_change" | "shared_ip" | "password_reset" | "oauth_link"; ip: string | null; country: string | null; region: string | null; city: string | null; user_agent: string | null; device_id: string | null; meta: Record<string, unknown>; created_at: string };
+        Insert: Omit<Database["public"]["Tables"]["security_events"]["Row"], "id" | "created_at">;
+        Update: Partial<Database["public"]["Tables"]["security_events"]["Row"]>;
+      };
     };
   };
 }

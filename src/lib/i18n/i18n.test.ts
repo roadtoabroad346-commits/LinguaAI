@@ -88,6 +88,33 @@ describe("dictionary parity (no missing keys in kk/ru)", () => {
   it("dictionaries are non-empty and nested", () => {
     expect(enKeys.length).toBeGreaterThan(100);
   });
+  it("every static t() key used in code exists in English", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const root = path.resolve(__dirname, "..", "..", "..");
+    const used = new Set<string>();
+    const walk = (dir: string) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) walk(p);
+        else if (/\.(ts|tsx)$/.test(e.name) && !e.name.includes(".test.")) {
+          const src = fs.readFileSync(p, "utf8");
+          const re = /\bt\(\s*["']([^"']+)["']/g;
+          let m: RegExpExecArray | null;
+          while ((m = re.exec(src)) !== null) {
+            if (!m[1].includes("{") && !m[1].includes("+")) used.add(m[1]);
+          }
+        }
+      }
+    };
+    walk(path.join(root, "src"));
+    const enSet = new Set(enKeys);
+    const enArr = Array.from(enSet);
+    // Plural-object leaves (common.dayStreak) resolve via collectKeys children.
+    const ok = (k: string) => enSet.has(k) || enArr.some((ek) => ek.startsWith(k + "."));
+    const missing = Array.from(used).filter((k) => !ok(k)).sort();
+    expect(missing).toEqual([]);
+  });
 });
 
 describe("AI teacher language context", () => {

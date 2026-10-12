@@ -7,7 +7,7 @@ import { AuthShell } from "@/components/learn/AuthShell";
 import { Alert } from "@/components/ui/feedback";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { ThemeToggle } from "@/components/providers/ThemeToggle";
-import { getSessionProfile, getSessionUser } from "@/lib/auth/session";
+import { getSessionProfile, getSessionUserResilient } from "@/lib/auth/session";
 import { resolveNextPath, sanitizeNext } from "@/lib/auth/routing";
 import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
 
@@ -31,7 +31,7 @@ export default async function LoginPage({
 }: {
   searchParams: { error?: string; signed_out?: string; next?: string; message?: string };
 }) {
-  const user = await getSessionUser();
+  const user = await getSessionUserResilient();
   if (user) {
     const profile = await getSessionProfile().catch(() => null);
     redirect(resolveNextPath(profile, sanitizeNext(searchParams.next, "/dashboard")));
