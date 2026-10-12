@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isGeminiConfigured } from "@/lib/env";
+import { checkRateLimit } from "@/lib/api/security";
 import { getDashboardData } from "@/lib/dashboard/queries";
 import { generateText } from "@/lib/gemini/client";
 
@@ -10,7 +11,10 @@ import { generateText } from "@/lib/gemini/client";
  * called only when the user taps "Personalize with AI". Compact prompt, small
  * user context, short completion. Falls back to deterministic list on any error.
  */
-export async function POST() {
+export async function POST(request: Request) {
+  const limited = checkRateLimit(request, { key: "recommendations", limit: 15, windowMs: 60_000 });
+  if (limited) return limited;
+
   let data = null;
   try {
     data = await getDashboardData();

@@ -23,7 +23,8 @@ export async function POST(request: Request) {
   }
   // Tiered abuse guard: guests get a strict budget (account creation is the
   // expensive step for attackers thanks to Supabase signup limits + confirm).
-  const limited = checkRateLimit(request, { key: "ai-teacher-chat", limit: authUserId ? 15 : 5, windowMs: 60_000 });
+  // Authenticated callers are scoped by user id (rotation-proof, unlike IPs).
+  const limited = checkRateLimit(request, { key: "ai-teacher-chat", limit: authUserId ? 15 : 5, windowMs: 60_000, scope: authUserId });
   if (limited) return limited;
 
   const messages = parsed.data.messages.slice(-10);

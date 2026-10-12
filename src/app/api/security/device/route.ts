@@ -18,9 +18,6 @@ export const dynamic = "force-dynamic";
  * Logs `device_new` only for genuinely new devices (low volume by design).
  */
 export async function POST(request: Request) {
-  const limited = checkRateLimit(request, { key: "security-device", limit: 20, windowMs: 60_000 });
-  if (limited) return limited;
-
   let supabase;
   try {
     supabase = createClient();
@@ -30,6 +27,10 @@ export async function POST(request: Request) {
   const { data: userData } = await supabase.auth.getUser();
   const user = userData.user;
   if (!user) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+
+  // Scoped by user id (rotation-proof); runs after auth so the scope is known.
+  const limited = checkRateLimit(request, { key: "security-device", limit: 20, windowMs: 60_000, scope: user.id });
+  if (limited) return limited;
 
   let body: unknown;
   try {

@@ -25,4 +25,21 @@ describe("api security helpers", () => {
   it("extracts client ip from forwarded headers", () => {
     expect(getClientIp(req("9.9.9.9, 8.8.8.8"))).toBe("9.9.9.9");
   });
+
+  it("prefers the unspoofable Vercel edge header over x-forwarded-for", () => {
+    const r = new Request("http://localhost/api/test", {
+      headers: { "x-forwarded-for": "spoofed, 8.8.8.8", "x-vercel-forwarded-for": "1.1.1.1" },
+    });
+    expect(getClientIp(r)).toBe("1.1.1.1");
+  });
+
+  it("scopes buckets by user id when provided (rotation-proof)", () => {
+    __resetRateLimits();
+    const spoofed = () => new Request("http://localhost/api/test", { headers: { "x-forwarded-for": `rnd-${Math.random()}` } });
+    expect(checkRateLimit(spoofed(), { key: "s", limit: 1, windowMs: 60_000, scope: "user-1" })).toBeNull();
+    // Same user, rotated IP header: still limited.
+    expect(checkRateLimit(spoofed(), { key: "s", limit: 1, windowMs: 60_000, scope: "user-1" })).not.toBeNull();
+    // Different user: fresh budget.
+    expect(checkRateLimit(spoofed(), { key: "s", limit: 1, windowMs: 60_000, scope: "user-2" })).toBeNull();
+  });
 });
