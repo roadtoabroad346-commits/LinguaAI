@@ -108,7 +108,37 @@ export async function POST(request: Request) {
         return NextResponse.json({ ...grade, saved: true, migrated: false }, { headers: noStore });
       }
     }
-    return NextResponse.json({ error: "Result saved, but profile update failed." }, { status: 500, headers: noStore });
+    // History row is saved — verify whether the profile actually got the level
+    // (the 0016 trigger syncs it even when the update above fails). Never lose
+    // the graded result: return 200 with an explicit sync flag so the client
+    // shows the level instead of a dead-end error.
+    const { data: verify } = await supabase
+      .from("profiles")
+      .select("level")
+      .eq("id", user.id)
+      .maybeSingle();
+    const synced =
+      (verify as { level?: string | null } | null)?.level === grade.level;
+    if (synced) {
+      return NextResponse.json({ ...grade, saved: true }, { headers: noStore });
+    }
+    // One repair attempt with the minimal patch before admitting failure.
+    const { error: repairError } = await supabase
+      .from("profiles")
+      .update({ level: grade.level } as never)
+      .eq("id", user.id);
+    if (!repairError) {
+      return NextResponse.json({ ...grade, saved: true, repaired: true }, { headers: noStore });
+    }
+    return NextResponse.json(
+      {
+        ...grade,
+        saved: true,
+        profileSynced: false,
+        warning: "Result saved, but level sync needs a retry. Re-submit or pick your level manually.",
+      },
+      { headers: noStore }
+    );
   }
 
   return NextResponse.json({ ...grade, saved: true }, { headers: noStore });

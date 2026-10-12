@@ -49,8 +49,7 @@ export async function PATCH(request: Request) {
   }
   const d = parsed.data;
   const patch: Record<string, unknown> = {};
-  if (d.displayName !== undefined) patch.display_name = d.displayName;
-  if (d.nativeLanguage !== undefined) patch.native_language = d.nativeLanguage;
+  if (d.displayName !== undefined) patch.display_name = d.displayName;  if (d.nativeLanguage !== undefined) patch.native_language = d.nativeLanguage;
   if (d.goals !== undefined) patch.goals = d.goals;
   if (d.dailyGoalXp !== undefined) patch.daily_goal_xp = d.dailyGoalXp;
   if (d.learningMode !== undefined) patch.learning_mode = d.learningMode;
@@ -65,6 +64,12 @@ export async function PATCH(request: Request) {
   if (d.interests !== undefined) patch.interests = d.interests;
   if (d.studyTimePreference !== undefined) patch.study_time_preference = d.studyTimePreference || null;
   if (d.obstacles !== undefined) patch.obstacles = d.obstacles;
+  if (d.level !== undefined) {
+    // Manual / self-selected level (repair path for skipped placement).
+    // levelInputSchema already normalized to canonical "A1".."C1".
+    patch.level = d.level;
+    patch.level_source = "self";
+  }
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
   }
@@ -85,6 +90,7 @@ export async function PATCH(request: Request) {
         "learning_mode",
         "preferred_language",
         "timezone",
+        "level",
       ]) {
         if (patch[k] !== undefined) legacy[k] = patch[k];
       }

@@ -17,7 +17,13 @@ import { LEVEL_DESCRIPTIONS, type PlacementGrade } from "@/lib/placement/scoring
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
 
-type GradeResponse = PlacementGrade & { saved: boolean; error?: string };
+type GradeResponse = PlacementGrade & {
+  saved: boolean;
+  error?: string;
+  profileSynced?: boolean;
+  repaired?: boolean;
+  warning?: string;
+};
 
 export function PlacementRunner({
   signedIn,
@@ -124,6 +130,13 @@ export function PlacementRunner({
               <div className="mx-auto mt-4 max-w-md text-left">
                 <Alert tone="warning" title={t("placement.resultNotSaved")}>
                   {signedIn ? t("placement.resultNotSavedIn") : t("placement.resultNotSavedOut")}
+                </Alert>
+              </div>
+            )}
+            {result.saved && result.profileSynced === false && (
+              <div className="mx-auto mt-4 max-w-md text-left">
+                <Alert tone="warning" title={t("common.couldNotSave")}>
+                  {result.warning ?? t("common.couldNotSave")}
                 </Alert>
               </div>
             )}

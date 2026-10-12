@@ -2,6 +2,19 @@ import { z } from "zod";
 import { LEVELS } from "@/lib/constants";
 import { isValidTimezone } from "@/lib/dashboard/streak";
 
+export const levelSchema = z.enum(LEVELS);
+
+/**
+ * Lenient level input: trims whitespace and uppercases before validating,
+ * so " b1 " or "b2" are accepted and stored as "B1"/"B2". Canonical output
+ * is always one of LEVELS.
+ */
+export const levelInputSchema = z.preprocess(
+  (v) => (typeof v === "string" ? v.trim().toUpperCase() : v),
+  levelSchema
+);
+export type LevelInput = z.infer<typeof levelInputSchema>;
+
 export const emailSchema = z.string().email("Enter a valid email address");
 export const passwordSchema = z
   .string()
@@ -80,6 +93,7 @@ export type OnboardingInput = z.infer<typeof onboardingSchema>;
 
 export const profileUpdateSchema = z.object({
   displayName: z.string().trim().min(1).max(60).optional(),
+  level: levelInputSchema.optional(),
   nativeLanguage: z.string().trim().max(40).optional(),
   goals: z.array(z.string().trim().min(1)).max(6).optional(),
   dailyGoalXp: z.coerce.number().int().min(10).max(200).optional(),
@@ -107,5 +121,3 @@ export const placementSubmitSchema = z.object({
   testVersion: z.string().trim().max(20).optional(),
 });
 export type PlacementSubmitInput = z.infer<typeof placementSubmitSchema>;
-
-export const levelSchema = z.enum(LEVELS);
