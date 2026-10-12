@@ -13,11 +13,13 @@ export function PageHero({
 }) {
   return (
     <div className="min-w-0">
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <h1 className="font-display min-w-0 flex-1 text-balance text-2xl font-extrabold tracking-tight md:text-3xl">
+      {/* Mobile: title owns the full row, badges wrap underneath — a long
+          greeting must never share (and lose) a line with badges. */}
+      <div className="flex min-w-0 flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+        <h1 className="font-display min-w-0 text-balance text-2xl font-extrabold tracking-tight md:flex-1 md:text-3xl">
           {title}
         </h1>
-        {badges}
+        {badges && <div className="flex min-w-0 flex-wrap items-center gap-2">{badges}</div>}
       </div>
       {desc && <p className="mt-1.5 max-w-2xl text-pretty text-sm leading-relaxed text-ink-500 dark:text-ink-400">{desc}</p>}
       {action && <div className="mt-3">{action}</div>}
