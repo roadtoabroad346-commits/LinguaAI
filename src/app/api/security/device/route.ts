@@ -5,6 +5,7 @@ import {
   deviceFingerprintSchema,
   getNetworkContext,
   hashDevice,
+  isMissingTableError,
   logSecurityEvent,
 } from "@/lib/security/telemetry";
 
@@ -47,12 +48,20 @@ export async function POST(request: Request) {
   const deviceId = hashDevice(fp);
   const net = getNetworkContext(request);
 
-  const { data: existing } = await supabase
+  const { data: existing, error: selectError } = await supabase
     .from("devices")
     .select("id")
     .eq("id", deviceId)
     .eq("user_id", user.id)
     .maybeSingle();
+  if (selectError && isMissingTableError(selectError.message)) {
+    // Telemetry tables not installed (migration 0017 pending): report skipped
+    // with 200 so the beacon stops retrying instead of spamming 404s.
+    // Auth, placement and learning features are unaffected.
+    const res = NextResponse.json({ ok: true, stored: false, reason: "telemetry_unavailable" });
+    res.headers.set("Cache-Control", "no-store");
+    return res;
+  }
   const isNew = !existing;
 
   const { error: upsertError } = await supabase.from("devices").upsert(
@@ -69,6 +78,11 @@ export async function POST(request: Request) {
     { onConflict: "id" }
   );
   if (upsertError) {
+    if (isMissingTableError(upsertError.message)) {
+      const res = NextResponse.json({ ok: true, stored: false, reason: "telemetry_unavailable" });
+      res.headers.set("Cache-Control", "no-store");
+      return res;
+    }
     return NextResponse.json({ error: "Could not save device." }, { status: 500 });
   }
 

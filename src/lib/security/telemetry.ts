@@ -83,6 +83,16 @@ export function isCountryChange(lastCountry: string | null, current: string | nu
   return !!lastCountry && !!current && lastCountry !== current;
 }
 
+/**
+ * True when a Supabase error means "telemetry tables are not installed yet"
+ * (migration 0017 not applied): PostgREST 404 / PGRST205 schema-cache miss.
+ * Callers must degrade silently instead of retry-spamming the logs.
+ */
+export function isMissingTableError(message: string | null | undefined): boolean {
+  if (!message) return false;
+  return /could not find the table|PGRST205|relation .* does not exist|schema cache/i.test(message);
+}
+
 export type SecurityEventType =
   | "login" | "signup" | "device_new" | "country_change"
   | "shared_ip" | "password_reset" | "oauth_link";

@@ -4,6 +4,7 @@ import {
   getNetworkContext,
   hashDevice,
   isCountryChange,
+  isMissingTableError,
   logSecurityEvent,
 } from "@/lib/security/telemetry";
 
@@ -44,6 +45,15 @@ describe("security telemetry", () => {
     expect(isCountryChange("KZ", "KZ")).toBe(false);
     expect(isCountryChange(null, "KZ")).toBe(false);
     expect(isCountryChange("KZ", null)).toBe(false);
+  });
+
+  it("recognizes missing-table errors (migration pending)", () => {
+    expect(isMissingTableError("Could not find the table 'public.devices' in the schema cache")).toBe(true);
+    expect(isMissingTableError("PGRST205")).toBe(true);
+    expect(isMissingTableError('relation "public.devices" does not exist')).toBe(true);
+    expect(isMissingTableError("permission denied for table devices")).toBe(false);
+    expect(isMissingTableError(null)).toBe(false);
+    expect(isMissingTableError("")).toBe(false);
   });
 
   it("validates fingerprints leniently", () => {
