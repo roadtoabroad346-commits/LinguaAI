@@ -23,6 +23,11 @@ export async function POST(request: Request) {
   }
 
   const fallback = data.recommendations;
+  // Dashboard is an authenticated page: guests get the deterministic list
+  // (same quality signal, zero tokens). This removes anonymous token burn.
+  if (!data.signedIn) {
+    return NextResponse.json({ recommendations: fallback, ai: false, reason: "Sign in for AI picks." });
+  }
   if (!isGeminiConfigured()) {
     return NextResponse.json({ recommendations: fallback, ai: false, reason: "GEMINI_API_KEY is not set." });
   }
