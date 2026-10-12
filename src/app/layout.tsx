@@ -7,6 +7,7 @@ import { LOCALE_META } from "@/lib/i18n/config";
 import { getRequestLocale } from "@/lib/i18n/server";
 import { AppProviders } from "@/components/providers/AppProviders";
 import { DeviceBeacon } from "@/components/security/DeviceBeacon";
+import { GuestPlacementMigrator } from "@/components/placement/GuestPlacementMigrator";
 import { getCurrentUser } from "@/lib/auth/session";
 
 const sans = Inter({ subsets: ["latin", "cyrillic"], variable: "--font-sans", display: "swap" });
@@ -79,6 +80,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className={`${sans.variable} ${display.variable} min-h-dvh bg-ink-50 text-ink-900 dark:bg-ink-950 dark:text-ink-100`}>
         <AppProviders initialAuth={initialAuth}>
           {initialAuth.status === "authenticated" && <DeviceBeacon />}
+          {initialAuth.status === "authenticated" && <GuestPlacementMigrator />}
           <I18nProvider initialLocale={locale}>{children}</I18nProvider>
         </AppProviders>
       </body>

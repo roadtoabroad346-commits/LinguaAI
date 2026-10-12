@@ -149,6 +149,22 @@ export function OnboardingWizard({ initial }: { initial: Omit<Partial<Onboarding
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ preferredLanguage: interfaceLanguage }),
       }).catch(() => {});
+      // Route by DB state: a migrated guest result (or an edit revisit) means
+      // the level already exists — never force a retake of the placement test.
+      try {
+        const st = await fetch("/api/me/status", { cache: "no-store" });
+        const sj = (await st.json().catch(() => null)) as {
+          placementCompleted?: boolean;
+          level?: string | null;
+        } | null;
+        if (sj && (sj.placementCompleted === true || (typeof sj.level === "string" && sj.level.length > 0))) {
+          router.push("/dashboard");
+          router.refresh();
+          return;
+        }
+      } catch {
+        /* fall through to placement */
+      }
       router.push("/placement");
       router.refresh();
     } catch {

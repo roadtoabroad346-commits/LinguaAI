@@ -13,6 +13,7 @@ import { StickyActionBar } from "@/components/learn/StickyActionBar";
 import { PageTransition } from "@/lib/motion/components";
 import { celebrate } from "@/lib/motion/celebrate";
 import { PLACEMENT_QUESTIONS } from "@/lib/placement/questions";
+import { clearGuestPlacement, saveGuestPlacement } from "@/lib/placement/guest";
 import { LEVEL_DESCRIPTIONS, buildReview, missedTopics, weakestBand, type PlacementGrade } from "@/lib/placement/scoring";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
@@ -77,6 +78,21 @@ export function PlacementRunner({
       if (!res.ok) {
         setError(json.error ?? t("placement.gradedError"));
         return;
+      }
+      if (!signedIn) {
+        // Guest result: stash for post-signup replay so the test is never retaken.
+        try {
+          saveGuestPlacement(window.localStorage, { answers: payload.answers, learningMode });
+        } catch {
+          /* best-effort */
+        }
+      } else {
+        // Signed-in attempt supersedes any stale guest result on this browser.
+        try {
+          clearGuestPlacement(window.localStorage);
+        } catch {
+          /* best-effort */
+        }
       }
       setResult(json);
       celebrate({ big: true, force: true });

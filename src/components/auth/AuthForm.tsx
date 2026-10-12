@@ -12,6 +12,7 @@ import { signInSchema, signUpSchema } from "@/lib/auth/schemas";
 import { friendlyAuthError } from "@/lib/auth/errors";
 import { resolveNextPath, sanitizeNext } from "@/lib/auth/routing";
 import { readGuestData } from "@/lib/auth/storage";
+import { migrateGuestPlacement } from "@/lib/placement/guest";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 
 export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
@@ -38,6 +39,8 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
   /** After any successful password auth: migrate guest data, then route by DB state. */
   async function postAuthRedirect(): Promise<string> {
     await migrateGuestOnce().catch(() => {});
+    // Guest placement replay first: a test taken before signup must count.
+    await migrateGuestPlacement().catch(() => {});
     await syncLanguageOnLogin().catch(() => {});
     try {
       const res = await fetch("/api/me/bootstrap", { cache: "no-store" });
