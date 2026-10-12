@@ -1,6 +1,7 @@
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import { UserMenu } from "@/components/auth/UserMenu";
+import { NotificationBell } from "@/components/notifications/NotificationCenter";
 import { BottomTabBar } from "./MobileNav";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { ThemeToggle } from "@/components/providers/ThemeToggle";
@@ -28,6 +29,7 @@ export async function AppShell({ children, title }: { children: React.ReactNode;
           <>
             <ThemeToggle />
             <LanguageSwitcher />
+            {user && <NotificationBell />}
             <UserMenu />
           </>
         }

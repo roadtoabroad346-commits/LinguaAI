@@ -6,6 +6,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/feedback";
 import { Button } from "@/components/ui/Button";
 import { ProfileForm } from "@/components/profile/ProfileForm";
+import { NotificationSettings } from "@/components/notifications/NotificationSettings";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { AppearanceSettings } from "@/components/learn/AppearanceSettings";
 import { PageTransition } from "@/lib/motion/components";
@@ -126,6 +127,9 @@ export default async function ProfilePage() {
         </div>
         <div className="mt-4">
           <AppearanceSettings />
+        </div>
+        <div className="mt-4" id="notifications">
+          <NotificationSettings />
         </div>
       </PageTransition>
     </AppShell>
