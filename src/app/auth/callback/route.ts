@@ -2,6 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getSiteUrl } from "@/lib/env";
 import { resolveNextPath, sanitizeNext } from "@/lib/auth/routing";
+import {
+  getNetworkContext,
+  isCountryChange,
+  logSecurityEvent,
+} from "@/lib/security/telemetry";
 
 /** Build the public origin correctly on Vercel (forwarded host/proto aware). */
 function siteUrl(request: NextRequest): string {
@@ -140,6 +145,51 @@ export async function GET(request: NextRequest) {
 
   // Decide destination on the server — never blindly /onboarding.
   // Recovery always lands on /reset-password (no onboarding gate).
+  // Security telemetry: best-effort login event + anomaly flags. Never fatal.
+  try {
+    const net = getNetworkContext(request);
+    const { data: lastLogin } = await supabase
+      .from("security_events")
+      .select("country")
+      .eq("user_id", user.id)
+      .eq("event_type", "login")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const lastCountry = (lastLogin as { country?: string | null } | null)?.country ?? null;
+    const { data: sharedCount } = await supabase.rpc("check_shared_ip", { p_ip: net.ip } as never);
+    const newCountry = isCountryChange(lastCountry, net.country);
+    const sharedIp = typeof sharedCount === "number" && sharedCount >= 2;
+    await logSecurityEvent(supabase, {
+      userId: user.id,
+      type: "login",
+      net,
+      meta: {
+        provider: (user.app_metadata?.provider as string | undefined) ?? "unknown",
+        isRecovery,
+        newCountry,
+        sharedIp,
+      },
+    });
+    if (newCountry) {
+      await logSecurityEvent(supabase, {
+        userId: user.id,
+        type: "country_change",
+        net,
+        meta: { from: lastCountry, to: net.country },
+      });
+    }
+    if (sharedIp) {
+      await logSecurityEvent(supabase, {
+        userId: user.id,
+        type: "shared_ip",
+        net,
+        meta: { distinctUsersLastHour: sharedCount },
+      });
+    }
+  } catch {
+    /* telemetry must never break login */
+  }
   const destination = isRecovery ? "/reset-password" : resolveNextPath(p, requestedNext);
   if (destination !== requestedNext) {
     const final = NextResponse.redirect(new URL(destination, origin));
