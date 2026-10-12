@@ -19,6 +19,24 @@ export function getClientIp(request: Request): string {
 type Bucket = { count: number; resetAt: number };
 const buckets = new Map<string, Bucket>();
 
+const LIMIT_MESSAGES = {
+  kk: "Әрекет тым көп. Біраз күтіп, қайта көріңіз.",
+  ru: "Слишком много запросов. Подождите немного и попробуйте снова.",
+  en: "Too many requests. Please slow down and try again shortly.",
+} as const;
+
+/** Interface language from the locale cookie (best-effort, defaults to English). */
+function limitLocale(request: Request): keyof typeof LIMIT_MESSAGES {
+  try {
+    const cookie = request.headers.get("cookie") ?? "";
+    const m = cookie.match(/(?:^|;\s*)linguaai_locale=(kk|ru|en)/);
+    if (m) return m[1] as keyof typeof LIMIT_MESSAGES;
+  } catch {
+    /* fall through */
+  }
+  return "en";
+}
+
 /**
  * Fixed-window rate limiter (per key). Returns null when allowed,
  * or a 429 JSON response when exceeded. In-memory: sufficient for
@@ -42,8 +60,10 @@ export function checkRateLimit(
   }
   if (b.count >= limit) {
     const retryAfter = Math.max(1, Math.ceil((b.resetAt - now) / 1000));
+    // Localized warning: clients render `error` verbatim, so answer in the
+    // learner's own interface language (from the locale cookie).
     const res = NextResponse.json(
-      { error: "Too many requests. Please slow down and try again shortly." },
+      { error: LIMIT_MESSAGES[limitLocale(request)], code: "rate_limited" },
       { status: 429 }
     );
     res.headers.set("Retry-After", String(retryAfter));

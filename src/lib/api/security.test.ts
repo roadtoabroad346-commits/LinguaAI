@@ -42,4 +42,16 @@ describe("api security helpers", () => {
     // Different user: fresh budget.
     expect(checkRateLimit(spoofed(), { key: "s", limit: 1, windowMs: 60_000, scope: "user-2" })).toBeNull();
   });
+
+  it("warns in the learner's language with a machine-readable code", () => {
+    __resetRateLimits();
+    const ru = () => new Request("http://localhost/api/test", { headers: { cookie: "linguaai_locale=ru" } });
+    expect(checkRateLimit(ru(), { key: "w", limit: 1, windowMs: 60_000 })).toBeNull();
+    const blocked = checkRateLimit(ru(), { key: "w", limit: 1, windowMs: 60_000 });
+    expect(blocked).not.toBeNull();
+    return blocked!.json().then((j: { error: string; code: string }) => {
+      expect(j.code).toBe("rate_limited");
+      expect(j.error).toContain("Подождите");
+    });
+  });
 });
