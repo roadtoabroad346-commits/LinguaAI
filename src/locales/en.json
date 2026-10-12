@@ -529,7 +529,9 @@
     "topicsToReview": "Topics to review",
     "perfectScore": "Perfect — no mistakes to review.",
     "practiceGrammar": "Practice in Grammar",
-    "askTeacher": "Ask the AI Teacher"
+    "askTeacher": "Ask the AI Teacher",
+    "guestTransfer": "No retake needed",
+    "guestTransferDesc": "Saved on this device — create an account within 7 days and your level transfers automatically."
   },
   "teacher": {
     "title": "AI Teacher",

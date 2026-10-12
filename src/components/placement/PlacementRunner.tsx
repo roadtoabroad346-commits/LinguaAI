@@ -205,6 +205,13 @@ export function PlacementRunner({
                 </Alert>
               </div>
             )}
+            {!signedIn && (
+              <div className="mx-auto mt-4 max-w-md text-left">
+                <Alert tone="brand" title={t("placement.guestTransfer")}>
+                  {t("placement.guestTransferDesc")}
+                </Alert>
+              </div>
+            )}
             {result.saved && result.profileSynced === false && (
               <div className="mx-auto mt-4 max-w-md text-left">
                 <Alert tone="warning" title={t("common.couldNotSave")}>
