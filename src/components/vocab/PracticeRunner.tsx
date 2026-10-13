@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { PartyPopper } from "lucide-react";
 import { motion } from "framer-motion";
@@ -10,6 +10,7 @@ import { QuizOption } from "@/components/learn/QuizOption";
 import { StickyActionBar } from "@/components/learn/StickyActionBar";
 import { PageTransition, Reveal } from "@/lib/motion/components";
 import { celebrate } from "@/lib/motion/celebrate";
+import { newAttemptKey } from "@/lib/completions/client";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 
 interface PublicQ {
@@ -28,6 +29,8 @@ export function PracticeRunner() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ score: number; total: number; correctWords: string[]; xpEarned: number; perfect: boolean; saved: boolean } | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Quiz is loaded once per mount; its single submit carries one key.
+  const attemptKey = useRef(newAttemptKey());
 
   useEffect(() => {
     let cancelled = false;
@@ -110,7 +113,7 @@ export function PracticeRunner() {
       const res = await fetch("/api/vocab/practice/complete", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ selections }),
+        body: JSON.stringify({ selections, idempotencyKey: attemptKey.current }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "submit failed");

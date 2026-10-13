@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { PartyPopper, Type } from "lucide-react";
 import { motion } from "framer-motion";
@@ -14,6 +14,7 @@ import { PageTransition, Stagger, StaggerItem } from "@/lib/motion/components";
 import { celebrate } from "@/lib/motion/celebrate";
 import { LEVELS } from "@/lib/constants";
 import type { ReadingPassage } from "@/lib/reading/library";
+import { newAttemptKey } from "@/lib/completions/client";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
 
@@ -80,6 +81,7 @@ export function ReadingRunner({ slug, paragraphs, vocabFocus, questions }: {
   const [error, setError] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState<"sm" | "md" | "lg">("md");
   const [peek, setPeek] = useState<string | null>(null);
+  const attemptKey = useRef(newAttemptKey());
   const answered = Object.keys(answers).length;
 
   const textClass = fontSize === "sm" ? "text-[15px]" : fontSize === "lg" ? "text-[19px] leading-loose" : "text-[17px] leading-relaxed";
@@ -111,7 +113,7 @@ export function ReadingRunner({ slug, paragraphs, vocabFocus, questions }: {
       const selections = questions.map((x) => ({ questionId: x.id, selected: answers[x.id], choices: x.choices }));
       const res = await fetch("/api/reading/complete", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ slug, selections }),
+        body: JSON.stringify({ slug, selections, idempotencyKey: attemptKey.current }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? t("learn.submitFailed"));

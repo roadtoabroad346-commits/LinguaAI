@@ -93,6 +93,13 @@ export function StudyRunner({ setId }: { setId: string }) {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Review failed");
+      if (json.deduped) {
+        // Server deduped this review: undo the optimistic XP/counters.
+        const expected = rating === "again" ? 1 : rating === "hard" ? 2 : rating === "good" ? 3 : 4;
+        setXp((x) => x - expected);
+        setResults((r) => r.slice(0, -1));
+        return;
+      }
       if (typeof json.xpAwarded === "number") {
         const expected = rating === "again" ? 1 : rating === "hard" ? 2 : rating === "good" ? 3 : 4;
         if (json.xpAwarded !== expected) setXp((x) => x - expected + json.xpAwarded);

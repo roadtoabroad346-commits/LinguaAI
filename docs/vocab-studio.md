@@ -72,6 +72,26 @@ order). Apply with `supabase db push` or paste into the Supabase SQL
 editor. RLS: owner-only policies on all three tables; indexes on
 `(user_id, …)` for list/review/queue queries.
 
+Migration `supabase/migrations/0020_completion_claims.sql` adds the
+`completion_claims` table behind idempotent completions (see below).
+Without it, `claimCompletion()` fails open — behavior is exactly as
+before, no errors. RLS owner-only + UNIQUE(user_id, scope, key).
+
+## Idempotent completions (anti double-XP)
+
+`src/lib/completions/claims.ts` + `client.ts`. Every XP-bearing
+completion endpoint (grammar, reading, listening, dictation,
+pronunciation, vocab practice, flashcards, writing, speaking,
+read-aloud — plus the pre-existing spelling `sessionId`, daily-challenge
+date-unique and vocab-review idempotency keys) accepts an optional
+`idempotencyKey`: one UUID per attempt, minted client-side
+(`newAttemptKey()`), stable across retries of the same attempt, fresh
+for each new attempt. Replays return the deterministic grade with
+`repeated: true`, `xpEarned: 0` and award nothing. Old clients that omit
+the key behave exactly as before. Rate limits: per-user scoped on all
+completion endpoints (60/min quizzes, 120/min flashcard reviews,
+10–30/min AI-backed checks), per-IP for guest preview paths.
+
 ## Pages
 
 - `/flashcards` — Flashcards Pro dashboard (sets library + real stats);

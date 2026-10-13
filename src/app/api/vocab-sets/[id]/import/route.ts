@@ -3,6 +3,7 @@ import { z } from "zod";
 import { bulkImportSchema, quickBulkSchema } from "@/lib/vocab-studio/schemas";
 import { parseBulkLines, parseCsv, mapCsvRows, splitList, assertFileSize } from "@/lib/vocab-studio/csv";
 import { requireUser, getOwnedSet } from "@/lib/vocab-studio/server";
+import { checkRateLimit } from "@/lib/api/security";
 
 export const dynamic = "force-dynamic";
 
@@ -111,6 +112,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (error || !supabase || !userId) return error ?? NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   const { set } = await getOwnedSet(supabase, userId, params.id);
   if (!set) return NextResponse.json({ error: "Set not found." }, { status: 404 });
+
+  // Bulk writes are expensive: per-user limit.
+  const limited = checkRateLimit(request, { key: "vocab-import", limit: 10, scope: userId });
+  if (limited) return limited;
 
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 }); }

@@ -1,9 +1,11 @@
 /** Phase 5 — zod schemas for writing + AI teacher APIs. */
 import { z } from "zod";
+import { idempotencyKeySchema } from "@/lib/completions/claims";
 
 export const writingCheckSchema = z.object({
   taskSlug: z.string().trim().min(1).max(80),
   text: z.string().trim().min(10).max(3000),
+  idempotencyKey: idempotencyKeySchema,
 });
 
 export const chatMessageSchema = z.object({

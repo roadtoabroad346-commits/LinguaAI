@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { reviewSubmitSchema } from "@/lib/vocab-studio/schemas";
 import { rateCard, xpForRating, type CardStatus } from "@/lib/vocab-studio/scheduler";
 import { requireUser } from "@/lib/vocab-studio/server";
+import { checkRateLimit } from "@/lib/api/security";
 import { awardXp } from "@/lib/dashboard/award";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,9 @@ export async function POST(request: Request) {
   const parsed = reviewSubmitSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid review.", issues: parsed.error.flatten() }, { status: 400 });
   const { cardId, rating, idempotencyKey } = parsed.data;
+
+  const userLimited = checkRateLimit(request, { key: "vocab-reviews", limit: 120, scope: userId });
+  if (userLimited) return userLimited;
 
   // Idempotency: return prior result without double-counting XP/scheduling.
   const { data: prior } = await supabase.from("vocab_reviews").select("*").eq("user_id", userId).eq("idempotency_key", idempotencyKey).maybeSingle();

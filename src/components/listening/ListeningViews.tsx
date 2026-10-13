@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { PartyPopper, Play, Pause, Volume2 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -16,6 +16,7 @@ import { celebrate } from "@/lib/motion/celebrate";
 import { LEVELS } from "@/lib/constants";
 import { speak, stopSpeaking } from "@/lib/vocab/speak";
 import type { ListeningTrack } from "@/lib/listening/library";
+import { newAttemptKey } from "@/lib/completions/client";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
 
@@ -114,6 +115,10 @@ export function ListeningRunner({ slug, lines, vocabFocus, questions, dictationI
   const [dictLoading, setDictLoading] = useState(false);
   const [dictResult, setDictResult] = useState<{ exact: boolean; similarity: number; xpEarned: number } | null>(null);
   const [dictError, setDictError] = useState<string | null>(null);
+  // One idempotency key per attempt; dictation keys are per-sentence so a
+  // lost-response retry of the same sentence dedupes instead of double-XP.
+  const attemptKey = useRef(newAttemptKey());
+  const dictKeys = useRef(new Map<number, string>());
 
   const fullText = useMemo(() => lines.map((l) => l.text).join(" "), [lines]);
   const answered = Object.keys(answers).length;
@@ -158,7 +163,7 @@ export function ListeningRunner({ slug, lines, vocabFocus, questions, dictationI
       const selections = questions.map((x) => ({ questionId: x.id, selected: answers[x.id], choices: x.choices }));
       const res = await fetch("/api/listening/complete", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ slug, selections }),
+        body: JSON.stringify({ slug, selections, idempotencyKey: attemptKey.current }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? t("learn.submitFailed"));
@@ -175,13 +180,15 @@ export function ListeningRunner({ slug, lines, vocabFocus, questions, dictationI
   async function submitDictation() {
     const lineIdx = dictationIndexes[dictIndex];
     if (lineIdx === undefined || !dictText.trim()) return;
+    let key = dictKeys.current.get(lineIdx);
+    if (!key) { key = newAttemptKey(); dictKeys.current.set(lineIdx, key); }
     setDictLoading(true);
     setDictError(null);
     setDictResult(null);
     try {
       const res = await fetch("/api/listening/dictation", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ slug, index: lineIdx, text: dictText }),
+        body: JSON.stringify({ slug, index: lineIdx, text: dictText, idempotencyKey: key }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? t("learn.dictationFailed"));

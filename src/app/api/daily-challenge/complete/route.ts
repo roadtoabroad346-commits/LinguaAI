@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { challengeCompleteSchema } from "@/lib/dashboard/schemas";
 import { getDailyChallenge, gradeDailyChallenge } from "@/lib/dashboard/daily-challenge";
 import { awardXp } from "@/lib/dashboard/award";
+import { checkRateLimit } from "@/lib/api/security";
 import { XP_RULES } from "@/lib/gamification/xp-rules";
 import { dayDiff, todayKeyTz } from "@/lib/dashboard/streak";
 
@@ -56,6 +57,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ ...grade, saved: false, streak: null });
   }
 
+  const limited = checkRateLimit(request, { key: "daily-challenge", limit: 20, scope: userId });
+  if (limited) return limited;
+
   // Idempotency: one completion per day. Re-submits return the stored result.
   const { data: existing } = await supabase
     .from("daily_challenge_completions")
@@ -75,6 +79,17 @@ export async function POST(request: Request) {
     xp_earned: grade.xpEarned,
   } as never);
   if (insertError) {
+    // Concurrent double-submit: the UNIQUE(user_id, challenge_date) winner
+    // already stored the result — return it instead of a 500 (no double XP).
+    const { data: raced } = await supabase
+      .from("daily_challenge_completions")
+      .select("score,total,xp_earned")
+      .eq("user_id", userId)
+      .eq("challenge_date", dateKey)
+      .maybeSingle();
+    if (raced) {
+      return NextResponse.json({ ...grade, saved: true, repeated: true, stored: raced });
+    }
     return NextResponse.json({ ...grade, saved: false, error: "Could not save completion." }, { status: 500 });
   }
 

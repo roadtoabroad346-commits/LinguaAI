@@ -8,6 +8,7 @@ import { LEVELS } from "@/lib/constants";
 import { countWords, type SpeakingTopic } from "@/lib/speaking/topics";
 import { CriteriaBars } from "@/components/learn/CriteriaBars";
 import { copyText } from "@/lib/clipboard";
+import { newAttemptKey } from "@/lib/completions/client";
 import type { ReadAloudPassage } from "@/lib/readaloud/passages";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 
@@ -177,6 +178,9 @@ function TopicPractice({ topic, onBack }: { topic: TopicSummary; onBack: () => v
   const active = rec.recording || live.listening;
   const transcript = (live.transcript || manual).trim();
   const words = countWords(transcript);
+  // Same transcript re-checked reuses one key → XP once; edits start a new attempt.
+  const checkKey = useRef(newAttemptKey());
+  useEffect(() => { checkKey.current = newAttemptKey(); }, [transcript]);
 
   useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
@@ -197,7 +201,7 @@ function TopicPractice({ topic, onBack }: { topic: TopicSummary; onBack: () => v
     try {
       const res = await fetch("/api/speaking/feedback", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ topicSlug: topic.slug, transcript, durationSecs: secs }),
+        body: JSON.stringify({ topicSlug: topic.slug, transcript, durationSecs: secs, idempotencyKey: checkKey.current }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? t("learn.feedbackFailedDesc"));
@@ -441,6 +445,9 @@ function ReadAloudPractice({ passage, onBack }: { passage: PassageSummary; onBac
   const transcript = (live.transcript || manual).trim();
   const words = countWords(transcript);
   const active = rec.recording || live.listening;
+  // Same transcript re-checked reuses one key → XP once; edits start a new attempt.
+  const checkKey = useRef(newAttemptKey());
+  useEffect(() => { checkKey.current = newAttemptKey(); }, [transcript]);
 
   useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); stopSpeaking(); }, []);
 
@@ -468,7 +475,7 @@ function ReadAloudPractice({ passage, onBack }: { passage: PassageSummary; onBac
     try {
       const res = await fetch("/api/read-aloud/check", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ passageSlug: passage.slug, transcript, durationSecs: secs }),
+        body: JSON.stringify({ passageSlug: passage.slug, transcript, durationSecs: secs, idempotencyKey: checkKey.current }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? t("learn.checkFailedDesc"));

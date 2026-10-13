@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { PartyPopper } from "lucide-react";
 import { motion } from "framer-motion";
@@ -14,6 +14,7 @@ import { celebrate } from "@/lib/motion/celebrate";
 import { LEVELS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { GrammarTopic } from "@/lib/grammar/topics";
+import { newAttemptKey } from "@/lib/completions/client";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 
 export function GrammarList({ topics }: { topics: GrammarTopic[] }) {
@@ -81,6 +82,9 @@ export function GrammarRunner({ slug, questions }: { slug: string; questions: Pu
   const [shuffled, setShuffled] = useState(false);
   // Retry mode: after a submit, narrow the set to the missed questions only.
   const [retryIds, setRetryIds] = useState<string[] | null>(null);
+  // One idempotency key per attempt: double-clicks/retries of THIS submit
+  // dedupe server-side; a new attempt (retry) mints a fresh key.
+  const attemptKey = useRef(newAttemptKey());
   const visible = useMemo(() => {
     const base = retryIds ? questions.filter((q) => retryIds.includes(q.id)) : questions;
     if (!shuffled) return base;
@@ -103,7 +107,7 @@ export function GrammarRunner({ slug, questions }: { slug: string; questions: Pu
       const selections = visible.map((x) => ({ questionId: x.id, selected: answers[x.id], choices: x.choices }));
       const res = await fetch("/api/grammar/complete", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ slug, selections }),
+        body: JSON.stringify({ slug, selections, idempotencyKey: attemptKey.current }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? t("learn.submitFailed"));
@@ -126,6 +130,7 @@ export function GrammarRunner({ slug, questions }: { slug: string; questions: Pu
     setAnswers({});
     setResult(null);
     setError(null);
+    attemptKey.current = newAttemptKey();
   }
 
   if (result) {

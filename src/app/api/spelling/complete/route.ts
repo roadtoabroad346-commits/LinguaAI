@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { checkRateLimit } from "@/lib/api/security";
 import { gradeSpellingSet, repeatedSessionResult, type StoredSpellingSession } from "@/lib/spelling/spelling";
 import { spellingCompleteSchema } from "@/lib/spelling/schemas";
 import { awardXp } from "@/lib/dashboard/award";
@@ -43,6 +44,9 @@ export async function POST(request: Request) {
   if (!parsed.data.sessionId) {
     return NextResponse.json({ error: "sessionId is required." }, { status: 400 });
   }
+
+  const limited = checkRateLimit(request, { key: "spelling-complete", limit: 60, scope: userId });
+  if (limited) return limited;
 
   // Idempotency: a completed session is returned as-is — no new XP, no new rows.
   const { data: storedSession } = await supabase

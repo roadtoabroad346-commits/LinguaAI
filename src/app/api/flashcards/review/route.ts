@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { awardXp } from "@/lib/dashboard/award";
+import { checkRateLimit } from "@/lib/api/security";
+import { claimCompletion } from "@/lib/completions/claims";
 import { applyReview, nextReviewDate, masteryBand, reviewXp } from "@/lib/vocab/mastery";
 import { flashReviewSchema } from "@/lib/vocab/schemas";
 
@@ -25,7 +27,26 @@ export async function POST(request: Request) {
   const userId = userData.user?.id ?? null;
   if (!userId) return NextResponse.json({ error: "Sign in to save reviews." }, { status: 401 });
 
+  const userLimited = checkRateLimit(request, { key: "flashcards-review", limit: 120, scope: userId });
+  if (userLimited) return userLimited;
+
   const slug = parsed.data.word.trim().toLowerCase();
+
+  // Same card graded twice with one key (retry / double-swipe) counts once.
+  const claim = await claimCompletion(supabase, userId, "flashcards", parsed.data.idempotencyKey);
+  if (!claim.fresh) {
+    const { data: current } = await supabase
+      .from("dictionary_entries")
+      .select("mastery")
+      .eq("user_id", userId)
+      .eq("word", slug)
+      .maybeSingle();
+    return NextResponse.json({
+      saved: true, repeated: true, word: slug,
+      mastery: (current as { mastery?: number } | null)?.mastery ?? 0,
+      xpAwarded: 0, streak: null, xpToday: null,
+    });
+  }
   const { data: row } = await supabase
     .from("dictionary_entries")
     .select("mastery,review_count,correct_count")

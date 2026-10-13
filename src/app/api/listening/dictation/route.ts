@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { checkRateLimit } from "@/lib/api/security";
+import { claimCompletion } from "@/lib/completions/claims";
 import { getListeningTrack, gradeDictation, DICTATION_XP } from "@/lib/listening/library";
 import { dictationSchema } from "@/lib/skills/schemas";
 import { awardXp } from "@/lib/dashboard/award";
@@ -42,7 +44,15 @@ export async function POST(request: Request) {
   }
   if (!supabase || !userId) return NextResponse.json({ exact, similarity, xpEarned, saved: false });
 
+  const limited = checkRateLimit(request, { key: "dictation", limit: 60, scope: userId });
+  if (limited) return limited;
+
   if (exact) {
+    // One XP award per sentence attempt: same key replays return the grade with no XP.
+    const claim = await claimCompletion(supabase, userId, "dictation", parsed.data.idempotencyKey);
+    if (!claim.fresh) {
+      return NextResponse.json({ exact, similarity, xpEarned: 0, saved: true, repeated: true, streak: null, xpToday: null });
+    }
     try {
       await supabase.from("skill_attempts").insert({
         user_id: userId, skill: "dictation", slug: `${track.slug}#${parsed.data.index}`,

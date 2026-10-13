@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { checkRateLimit } from "@/lib/api/security";
+import { claimCompletion } from "@/lib/completions/claims";
 import { getListeningTrack, gradeListeningSelections } from "@/lib/listening/library";
 import { listeningCompleteSchema } from "@/lib/skills/schemas";
 import { awardXp } from "@/lib/dashboard/award";
@@ -31,6 +33,15 @@ export async function POST(request: Request) {
     }
   }
   if (!supabase || !userId) return NextResponse.json({ ...grade, saved: false });
+
+  const limited = checkRateLimit(request, { key: "listening-complete", limit: 60, scope: userId });
+  if (limited) return limited;
+
+  // Idempotency: retries / double-submits with the same key award XP once.
+  const claim = await claimCompletion(supabase, userId, "listening", parsed.data.idempotencyKey);
+  if (!claim.fresh) {
+    return NextResponse.json({ ...grade, saved: true, repeated: true, xpEarned: 0, streak: null, xpToday: null });
+  }
 
   try {
     await supabase.from("skill_attempts").insert({

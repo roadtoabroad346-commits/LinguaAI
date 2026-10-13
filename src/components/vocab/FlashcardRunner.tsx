@@ -14,6 +14,7 @@ import { PageTransition } from "@/lib/motion/components";
 import { celebrate } from "@/lib/motion/celebrate";
 import { haptic } from "@/lib/motion/hooks";
 import { speak } from "@/lib/vocab/speak";
+import { newAttemptKey } from "@/lib/completions/client";
 import { SLOW_PLAYBACK_SPEED } from "@/lib/audio/speed";
 import { BAND_LABEL, type MasteryBand } from "@/lib/vocab/mastery";
 import {
@@ -196,10 +197,20 @@ export function FlashcardRunner() {
         const res = await fetch("/api/flashcards/review", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ word: card.slug, known }),
+          body: JSON.stringify({ word: card.slug, known, idempotencyKey: newAttemptKey() }),
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || "review failed");
+        if (json.repeated) {
+          // Server deduped this review (retry/double-fire): undo optimistic XP.
+          setXpSum((x) => x - optimisticXp);
+          if (typeof json.mastery === "number") {
+            setAllCards((list) =>
+              (list ?? []).map((c) => (c.slug === slug ? { ...c, mastery: json.mastery } : c))
+            );
+          }
+          return;
+        }
         const awarded = typeof json.xpAwarded === "number" ? json.xpAwarded : optimisticXp;
         if (awarded !== optimisticXp) setXpSum((x) => x - optimisticXp + awarded);
         setAllCards((list) =>

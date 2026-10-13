@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { requireUser, getOwnedSet } from "@/lib/vocab-studio/server";
+import { checkRateLimit } from "@/lib/api/security";
 
 export const dynamic = "force-dynamic";
 
 /** POST /api/vocab-sets/[id]/duplicate — deep-copy set + cards. */
-export async function POST(_: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: { id: string } }) {
   const { error, supabase, userId } = await requireUser();
   if (error || !supabase || !userId) return error ?? NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const limited = checkRateLimit(request, { key: "vocab-duplicate", limit: 20, scope: userId });
+  if (limited) return limited;
   const { set } = await getOwnedSet(supabase, userId, params.id);
   if (!set) return NextResponse.json({ error: "Set not found." }, { status: 404 });
 

@@ -8,6 +8,7 @@ import { speakingFeedbackSchema } from "@/lib/speaking/schemas";
 import { generateText } from "@/lib/gemini/client";
 import { awardXp } from "@/lib/dashboard/award";
 import { checkRateLimit } from "@/lib/api/security";
+import { claimCompletion } from "@/lib/completions/claims";
 
 function safeParseAiJson(text: string): { score?: number; strengths?: string[]; fixes?: Array<{ issue?: string; example?: string }>; tip?: string; modelAnswer?: string; criteria?: Array<{ key?: string; score?: number; note?: string }>; priorityFix?: string; feedback?: string[] } | null {
   try {
@@ -107,6 +108,21 @@ export async function POST(request: Request) {
       const { data } = await supabase.auth.getUser();
       const userId = data.user?.id ?? null;
       if (userId) {
+        const userLimited = checkRateLimit(request, { key: "speaking-feedback", limit: 30, scope: userId });
+        if (userLimited) return userLimited;
+        // Same transcript submitted twice (retry / double-click) counts once.
+        const claim = await claimCompletion(supabase, userId, "speaking", parsed.data.idempotencyKey);
+        if (!claim.fresh) {
+          return NextResponse.json({
+            topic: { slug: topic.slug, title: topic.title, level: topic.level, minWords: topic.minWords, targetSecs: topic.targetSecs },
+            wordCount: base.wordCount, sentenceCount: base.sentenceCount, wpm: base.wpm,
+            fillerCount: base.fillerCount, repetitionCount: base.repetitionCount, uniqueRatio: base.uniqueRatio,
+            score, issues: base.issues, strengths, modelAnswer,
+            feedback, recommendations: base.recommendations,
+            criteria, verdict: base.verdict, priorityFix, timingKnown: base.timingKnown,
+            xpEarned: 0, saved: true, repeated: true, streak: null, xpToday: null, ai,
+          });
+        }
         const { error } = await supabase.from("speaking_attempts").insert({
           user_id: userId, topic_slug: topic.slug, level: topic.level,
           transcript: parsed.data.transcript.slice(0, 3000),

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { aiAssistSchema } from "@/lib/vocab-studio/schemas";
 import { requireUser } from "@/lib/vocab-studio/server";
+import { checkRateLimit } from "@/lib/api/security";
 import { isGeminiConfigured } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,10 @@ export async function POST(request: Request) {
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 }); }
   const parsed = aiAssistSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid request.", issues: parsed.error.flatten() }, { status: 400 });
+
+  // AI costs tokens: per-user limit even when configured.
+  const limited = checkRateLimit(request, { key: "vocab-ai-assist", limit: 20, scope: userId });
+  if (limited) return limited;
 
   if (!isGeminiConfigured()) {
     return NextResponse.json({

@@ -7,6 +7,7 @@ import { readAloudCheckSchema } from "@/lib/speaking/schemas";
 import { generateText } from "@/lib/gemini/client";
 import { awardXp } from "@/lib/dashboard/award";
 import { checkRateLimit } from "@/lib/api/security";
+import { claimCompletion } from "@/lib/completions/claims";
 
 function safeParseAiJson(text: string): { score?: number; tip?: string; hardWords?: string[] } | null {
   try {
@@ -67,6 +68,19 @@ export async function POST(request: Request) {
       const { data } = await supabase.auth.getUser();
       const userId = data.user?.id ?? null;
       if (userId) {
+        const userLimited = checkRateLimit(request, { key: "read-aloud-check", limit: 30, scope: userId });
+        if (userLimited) return userLimited;
+        // Same read submitted twice (retry / double-click) counts once.
+        const claim = await claimCompletion(supabase, userId, "read_aloud", parsed.data.idempotencyKey);
+        if (!claim.fresh) {
+          return NextResponse.json({
+            passage: { slug: passage.slug, title: passage.title, level: passage.level },
+            wordCount: base.wordCount, passageWords: base.passageWords, matchedWords: base.matchedWords,
+            accuracy: base.accuracy, wpm: base.wpm, missedWords: base.missedWords,
+            extraCount: base.extraCount, score, feedback, hardWords,
+            xpEarned: 0, saved: true, repeated: true, streak: null, xpToday: null, ai,
+          });
+        }
         const { error } = await supabase.from("read_aloud_attempts").insert({
           user_id: userId, passage_slug: passage.slug, level: passage.level,
           transcript: parsed.data.transcript.slice(0, 3000),

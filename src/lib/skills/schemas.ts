@@ -1,5 +1,6 @@
 /** Phase 4 — zod schemas for grammar/reading/listening APIs. */
 import { z } from "zod";
+import { idempotencyKeySchema } from "@/lib/completions/claims";
 
 const selection = z.object({
   questionId: z.string().min(1).max(80),
@@ -10,26 +11,31 @@ const selection = z.object({
 export const grammarCompleteSchema = z.object({
   slug: z.string().trim().min(1).max(80),
   selections: z.array(selection).min(1).max(12),
+  idempotencyKey: idempotencyKeySchema,
 });
 
 export const readingCompleteSchema = z.object({
   slug: z.string().trim().min(1).max(80),
   selections: z.array(selection).min(1).max(12),
+  idempotencyKey: idempotencyKeySchema,
 });
 
 export const listeningCompleteSchema = z.object({
   slug: z.string().trim().min(1).max(80),
   selections: z.array(selection).min(1).max(12),
+  idempotencyKey: idempotencyKeySchema,
 });
 
 export const dictationSchema = z.object({
   slug: z.string().trim().min(1).max(80),
   index: z.number().int().min(0).max(30),
   text: z.string().trim().min(1).max(1000),
+  idempotencyKey: idempotencyKeySchema,
 });
 
 export const pronunciationCompleteSchema = z.object({
   slug: z.string().trim().min(1).max(80),
   /** Learner self-rating 1–5 (honest practice estimate, never fake precision). */
   rating: z.number().int().min(1).max(5),
+  idempotencyKey: idempotencyKeySchema,
 });

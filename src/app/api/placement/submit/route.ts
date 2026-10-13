@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { placementSubmitSchema } from "@/lib/auth/schemas";
+import { checkRateLimit } from "@/lib/api/security";
 import { gradePlacement } from "@/lib/placement/scoring";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,10 @@ export async function POST(request: Request) {
 
   const grade = gradePlacement(parsed.data.answers);
   const noStore = { "Cache-Control": "no-store" };
+
+  // History-append endpoint: per-IP limit against submit spam.
+  const limited = checkRateLimit(request, { key: "placement-submit", limit: 10 });
+  if (limited) return limited;
 
   let supabase;
   try {

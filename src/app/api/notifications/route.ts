@@ -261,6 +261,7 @@ const VALID_HREFS = new Set([
   "/dashboard", "/onboarding", "/placement", "/flashcards", "/daily-challenge",
   "/grammar", "/reading", "/listening", "/speaking", "/writing", "/spelling",
   "/progress", "/smart-path", "/profile", "/vocabulary", "/dictionary",
+  "/vocab-sets",
 ]);
 
 function isValidHref(href: unknown): boolean {

@@ -13,6 +13,7 @@ import { LEVELS } from "@/lib/constants";
 import { speak, stopSpeaking } from "@/lib/vocab/speak";
 import { SLOW_PLAYBACK_SPEED } from "@/lib/audio/speed";
 import { KIND_LABEL, type PronunciationDrill, type PronunciationKind } from "@/lib/pronunciation/drills";
+import { newAttemptKey } from "@/lib/completions/client";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
 
@@ -97,6 +98,8 @@ export function PronunciationRunner({ drill }: { drill: PronunciationDrill }) {
   const [recUrl, setRecUrl] = useState<string | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
+  // One idempotency key per rating submit; a new rating mints a fresh key.
+  const submitKey = useRef(newAttemptKey());
 
   function playLine(line: string, slow: boolean) {
     stopSpeaking();
@@ -137,7 +140,7 @@ export function PronunciationRunner({ drill }: { drill: PronunciationDrill }) {
       const res = await fetch("/api/pronunciation/complete", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ slug: drill.slug, rating }),
+        body: JSON.stringify({ slug: drill.slug, rating, idempotencyKey: submitKey.current }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? t("learn.submitFailed"));
@@ -280,7 +283,7 @@ export function PronunciationRunner({ drill }: { drill: PronunciationDrill }) {
                   type="button"
                   role="radio"
                   aria-checked={rating === n}
-                  onClick={() => setRating(n)}
+                  onClick={() => { setRating(n); submitKey.current = newAttemptKey(); }}
                   className={cn(
                     "touch-44 flex h-12 flex-1 items-center justify-center rounded-2xl border text-lg font-extrabold tabular-nums",
                     rating === n

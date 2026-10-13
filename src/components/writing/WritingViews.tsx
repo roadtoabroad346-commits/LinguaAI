@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { Alert, Badge, EmptyState, Progress } from "@/components/ui/feedback";
 import { Button } from "@/components/ui/Button";
@@ -9,6 +9,7 @@ import { countWords, type WritingTask } from "@/lib/writing/tasks";
 import { CriteriaBars } from "@/components/learn/CriteriaBars";
 import type { Criterion } from "@/components/learn/CriteriaBars";
 import { copyText } from "@/lib/clipboard";
+import { newAttemptKey } from "@/lib/completions/client";
 import { haptic } from "@/lib/motion/hooks";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
@@ -170,11 +171,15 @@ export function WritingEditor({ task, onBack }: { task: TaskSummary; onBack: () 
   const [error, setError] = useState<string | null>(null);
   const words = countWords(text);
   const pct = task.minWords > 0 ? Math.min(100, Math.round((words / task.minWords) * 100)) : 0;
+  // Same text re-checked (retry / double-click) reuses one key → XP once.
+  // Editing the text starts a new attempt with a fresh key.
+  const checkKey = useRef(newAttemptKey());
+  useEffect(() => { checkKey.current = newAttemptKey(); }, [text]);
 
   async function check() {
     setChecking(true); setError(null);
     try {
-      const res = await fetch("/api/writing/check", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ taskSlug: task.slug, text }) });
+      const res = await fetch("/api/writing/check", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ taskSlug: task.slug, text, idempotencyKey: checkKey.current }) });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? t("learn.checkFailedDesc"));
       setResult(json);

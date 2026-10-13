@@ -1,5 +1,6 @@
 /** Phase 3 — zod schemas for vocabulary APIs. */
 import { z } from "zod";
+import { idempotencyKeySchema } from "@/lib/completions/claims";
 
 export const saveWordSchema = z.object({
   word: z.string().trim().min(1).max(64),
@@ -17,6 +18,7 @@ export const updateEntrySchema = z.object({
 export const flashReviewSchema = z.object({
   word: z.string().trim().min(1).max(64),
   known: z.boolean(),
+  idempotencyKey: idempotencyKeySchema,
 });
 
 export const translateSchema = z.object({
@@ -30,4 +32,5 @@ export const practiceCompleteSchema = z.object({
     selected: z.number().int().min(0).max(9),
     choices: z.array(z.string().max(500)).min(2).max(6),
   })).min(1).max(12),
+  idempotencyKey: idempotencyKeySchema,
 });

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
+import { checkRateLimit } from "@/lib/api/security";
+import { claimCompletion } from "@/lib/completions/claims";
 import { getWord } from "@/lib/vocab/bank";
 import { gradePracticeByWord } from "@/lib/vocab/practice";
 import { applyPracticeResult, masteryBand, nextReviewDate } from "@/lib/vocab/mastery";
@@ -36,6 +38,15 @@ export async function POST(request: Request) {
   }
   if (!supabase || !userId) {
     return NextResponse.json({ ...grade, saved: false, xpEarned: grade.xpEarned });
+  }
+
+  const limited = checkRateLimit(request, { key: "vocab-practice", limit: 60, scope: userId });
+  if (limited) return limited;
+
+  // Same quiz submitted twice (retry / double-click) counts once.
+  const claim = await claimCompletion(supabase, userId, "vocab_practice", parsed.data.idempotencyKey);
+  if (!claim.fresh) {
+    return NextResponse.json({ ...grade, saved: true, repeated: true, masteryUpdates: false, xpEarned: 0, streak: null, xpToday: null });
   }
 
   // Gentle mastery nudge for saved words that appeared in the quiz.

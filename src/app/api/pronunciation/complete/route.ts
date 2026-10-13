@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import { checkRateLimit } from "@/lib/api/security";
+import { claimCompletion } from "@/lib/completions/claims";
 import { getPronunciationDrill, scoreFromSelfRating } from "@/lib/pronunciation/drills";
 import { pronunciationCompleteSchema } from "@/lib/skills/schemas";
 import { XP_RULES, xpFromBands } from "@/lib/gamification/xp-rules";
@@ -40,6 +41,15 @@ export async function POST(request: Request) {
     }
   }
   if (!supabase || !userId) return NextResponse.json({ score, total: 100, xpEarned, saved: false });
+
+  const userLimited = checkRateLimit(request, { key: "pronunciation", limit: 60, scope: userId });
+  if (userLimited) return userLimited;
+
+  // Self-reported rating: same key replays award XP once.
+  const claim = await claimCompletion(supabase, userId, "pronunciation", parsed.data.idempotencyKey);
+  if (!claim.fresh) {
+    return NextResponse.json({ score, total: 100, xpEarned: 0, saved: true, repeated: true, streak: null, xpToday: null });
+  }
 
   try {
     await supabase.from("skill_attempts").insert({

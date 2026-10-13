@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured, isGeminiConfigured } from "@/lib/env";
 import { checkRateLimit } from "@/lib/api/security";
+import { claimCompletion } from "@/lib/completions/claims";
 import { getWritingTask } from "@/lib/writing/tasks";
 import { analyzeWriting, pickRewriteVariants, xpForWriting, type WritingError } from "@/lib/writing/analyze";
 import { blendAiScore } from "@/lib/gamification/xp-rules";
@@ -119,6 +120,21 @@ export async function POST(request: Request) {
       const { data } = await supabase.auth.getUser();
       const userId = data.user?.id ?? null;
       if (userId) {
+        const userLimited = checkRateLimit(request, { key: "writing-check", limit: 30, scope: userId });
+        if (userLimited) return userLimited;
+        // Same text submitted twice (retry / double-click) is graded once for XP:
+        // the deterministic grade above is returned with no new submission or XP.
+        const claim = await claimCompletion(supabase, userId, "writing", parsed.data.idempotencyKey);
+        if (!claim.fresh) {
+          return NextResponse.json({
+            task: { slug: task.slug, title: task.title, level: task.level, minWords: task.minWords, maxWords: task.maxWords },
+            wordCount: base.wordCount, sentenceCount: base.sentenceCount, avgSentenceLen: base.avgSentenceLen,
+            score, corrections, improvedText, improvedVariants, feedback, recommendations: base.recommendations,
+            errorCount: base.errors.length, errorsByCategory: countBy(base.errors.map((e) => e.category)),
+            criteria, verdict: base.verdict, strengths, priorityFix,
+            xpEarned: 0, saved: true, repeated: true, streak: null, xpToday: null, ai,
+          });
+        }
         const { data: sub } = await supabase.from("writing_submissions").insert({
           user_id: userId, task_slug: task.slug, level: task.level, text: parsed.data.text.slice(0, 3000),
           word_count: base.wordCount, score, feedback, improved_text: improvedText, xp_earned: xpEarned, ai,
