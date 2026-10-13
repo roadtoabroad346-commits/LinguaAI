@@ -97,6 +97,12 @@ export async function POST(request: Request) {
         res.headers.set("Cache-Control", "no-store");
         return res;
       }
+      if (isRlsOwnershipError(updateError as { message?: string; code?: unknown })) {
+        return NextResponse.json(
+          { error: "Session expired. Refresh and retry.", code: "session_expired" },
+          { status: 401 }
+        );
+      }
       return NextResponse.json({ error: "Could not save device." }, { status: 500 });
     }
     stored = true;
@@ -108,6 +114,17 @@ export async function POST(request: Request) {
       const res = NextResponse.json({ ok: true, stored: false, reason: "telemetry_unavailable" });
       res.headers.set("Cache-Control", "no-store");
       return res;
+    } else if (isRlsOwnershipError(insertError)) {
+      // RLS WITH CHECK (auth.uid() = user_id) failed: session expired between
+      // getUser() and insert, or user_id mismatch. Never 500 — tell the client
+      // to refresh the session and retry once. Policy stays strict by design.
+      console.warn("[security] device insert rejected by ownership policy", {
+        code: (insertError as { code?: unknown }).code ?? null,
+      });
+      return NextResponse.json(
+        { error: "Session expired. Refresh and retry.", code: "session_expired" },
+        { status: 401 }
+      );
     } else if (String((insertError as { code?: unknown }).code ?? "") === "23505") {
       // Unique violation: either our own parallel tab won the race, or the
       // fingerprint belongs to another user. Re-read to tell them apart.
@@ -171,4 +188,19 @@ export async function POST(request: Request) {
   const res = NextResponse.json({ ok: true, deviceId, isNew });
   res.headers.set("Cache-Control", "no-store");
   return res;
+}
+
+/**
+ * True when PostgREST rejected the row via the user-ownership RLS policy:
+ *   new row violates row-level security policy (42501) or
+ *   new row violates row-level security policy for table "devices".
+ * Callers map this to 401 (refresh session), never 500, and never loosen RLS.
+ */
+function isRlsOwnershipError(error: { message?: string; code?: unknown } | null | undefined): boolean {
+  if (!error) return false;
+  const code = String(error.code ?? "");
+  if (code === "42501") return true;
+  return /row-level security|violates row-level security|ownership policy|new row violates/i.test(
+    error.message ?? ""
+  );
 }

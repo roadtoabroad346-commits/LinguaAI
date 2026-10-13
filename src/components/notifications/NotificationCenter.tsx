@@ -25,6 +25,8 @@ import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/feedback";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
+import { useRealtimeNotifications } from "@/lib/realtime/useRealtimeNotifications";
 
 const ICONS: Record<string, typeof Bell> = {
   onboarding: Flag,
@@ -88,6 +90,7 @@ export function NotificationBell() {
   const [failed, setFailed] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
   const [acting, setActing] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -144,6 +147,38 @@ export function NotificationBell() {
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [refreshCount]);
+
+  // Resolve the signed-in user id once (cookie session) for private channels.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.auth.getUser();
+        if (alive) setUserId(data.user?.id ?? null);
+      } catch {
+        if (alive) setUserId(null);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Live updates: private Broadcast (migration 0021) with polling fallback above.
+  // Any notification change refreshes the badge; when the center is open, reload
+  // the active list so inserts/deletes appear without a manual refresh.
+  const openRef = useRef(open);
+  openRef.current = open;
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+  useRealtimeNotifications({
+    userId,
+    onNotification: () => {
+      void refreshCount();
+      if (openRef.current) void load(tabRef.current);
+    },
+  });
 
   useEffect(() => {
     if (open) {

@@ -150,8 +150,8 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["spelling_sessions"]["Row"]>;
       };
       achievements: {
-        Row: { id: string; user_id: string; key: string; unlocked_at: string };
-        Insert: Omit<Database["public"]["Tables"]["achievements"]["Row"], "id" | "unlocked_at">;
+        Row: { id: string; user_id: string; key: string; unlocked_at: string; created_at: string };
+        Insert: Omit<Database["public"]["Tables"]["achievements"]["Row"], "id" | "unlocked_at" | "created_at"> & { unlocked_at?: string; created_at?: string };
         Update: Partial<Database["public"]["Tables"]["achievements"]["Row"]>;
       };
       devices: {
@@ -202,6 +202,24 @@ export interface Database {
         Row: { id: string; user_id: string | null; event_type: "login" | "signup" | "device_new" | "country_change" | "shared_ip" | "password_reset" | "oauth_link"; ip: string | null; country: string | null; region: string | null; city: string | null; user_agent: string | null; device_id: string | null; meta: Record<string, unknown>; created_at: string };
         Insert: Omit<Database["public"]["Tables"]["security_events"]["Row"], "id" | "created_at">;
         Update: Partial<Database["public"]["Tables"]["security_events"]["Row"]>;
+      };
+      notifications: {
+        Row: {
+          id: string; user_id: string; dedupe_key: string;
+          category: "onboarding" | "learning" | "review" | "goal" | "streak" | "challenge" | "skills" | "milestone" | "weekly" | "system";
+          priority: "low" | "normal" | "high";
+          title_key: string; body_key: string; vars: Record<string, unknown>;
+          href: string; read_at: string | null; dismissed_at: string | null;
+          snoozed_until: string | null; resolved_at: string | null;
+          expires_at: string | null; created_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["notifications"]["Row"], "id" | "created_at">;
+        Update: Partial<Database["public"]["Tables"]["notifications"]["Row"]>;
+      };
+      completion_claims: {
+        Row: { id: string; user_id: string; scope: string; key: string; created_at: string };
+        Insert: Omit<Database["public"]["Tables"]["completion_claims"]["Row"], "id" | "created_at">;
+        Update: Partial<Database["public"]["Tables"]["completion_claims"]["Row"]>;
       };
     };
   };

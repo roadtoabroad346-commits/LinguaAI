@@ -186,7 +186,14 @@ export async function GET(request: Request) {
 
   let query = supabase.from("notifications").select("*").eq("user_id", user.id);
   if (view === "active") {
-    query = query.is("dismissed_at", null).is("resolved_at", null).or(`snoozed_until.is.null,snoozed_until.lte.${now.toISOString()}`);
+    // PostgREST .or() values containing ":" / "+" (ISO timestamps) must be
+    // double-quoted, otherwise the parser throws a 400 syntax error near the
+    // timestamp. Supabase-js URL-encodes the quoted value correctly.
+    const nowIso = now.toISOString();
+    query = query
+      .is("dismissed_at", null)
+      .is("resolved_at", null)
+      .or(`snoozed_until.is.null,snoozed_until.lte."${nowIso}"`);
   }
   const { data: items, error: listError } = await query
     .order("created_at", { ascending: false })
@@ -201,7 +208,7 @@ export async function GET(request: Request) {
     .is("read_at", null)
     .is("dismissed_at", null)
     .is("resolved_at", null)
-    .or(`snoozed_until.is.null,snoozed_until.lte.${now.toISOString()}`);
+    .or(`snoozed_until.is.null,snoozed_until.lte."${now.toISOString()}"`);
 
   return NextResponse.json(
     {
