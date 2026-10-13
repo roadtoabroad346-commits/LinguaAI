@@ -99,6 +99,8 @@ export async function GET() {
       supabase.from("daily_challenge_completions").select("id").eq("user_id", userId).eq("challenge_date", today).maybeSingle(),
       supabase.from("xp_events").select("amount,created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(500),
       supabase.from("activity_events").select("kind,created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(200),
+      supabase.from("vocab_cards").select("word,mastery,next_review_at,set_id").eq("user_id", userId).limit(5000),
+      supabase.from("vocab_sets").select("id,title").eq("user_id", userId).eq("is_archived", false).limit(200),
     ]);
   } catch {
     // Transient backend failure: explicit JSON (retryable) instead of an HTML 500.
@@ -107,7 +109,7 @@ export async function GET() {
       { status: 503, headers: { "Cache-Control": "no-store" } }
     );
   }
-  const [skillRes, writeRes, speakRes, aloudRes, errRes, spellRes, dictRes, chalRes, xpRes, actRes] = batch;
+  const [skillRes, writeRes, speakRes, aloudRes, errRes, spellRes, dictRes, chalRes, xpRes, actRes, studioRes, setsRes] = batch;
 
   type SkillRow = { skill: string; slug: string; score: number; total: number; created_at: string };
   const skillRows = ((skillRes.data ?? []) as SkillRow[]).filter((r) => Number.isFinite(r.score) && Number.isFinite(r.total) && r.total > 0);
@@ -123,13 +125,18 @@ export async function GET() {
   if (spells.length > 0) attemptRows.push({ skill: "spelling", score: spells.filter((s) => s.correct).length, total: spells.length });
 
   const dictEntries = ((dictRes.data ?? []) as Array<{ word: string; mastery: number; next_review_at: string | null }>);
-  const masteryVals = dictEntries.filter((d) => Number.isFinite(d.mastery));
+  // Flashcards Pro: merge custom studio cards into the same review queue (source of truth stays per-card).
+  const studioEntries = (((studioRes as { data?: Array<{ word: string; mastery: number; next_review_at: string | null; set_id: string }> } | null)?.data ?? []) as Array<{ word: string; mastery: number; next_review_at: string | null }>);
+  const studioSets = (((setsRes as { data?: Array<{ id: string; title: string }> } | null)?.data ?? []) as Array<{ id: string; title: string }>);
+  const allEntries = [...dictEntries, ...studioEntries];
+  const masteryVals = allEntries.filter((d) => Number.isFinite(d.mastery));
   const avgMastery = masteryVals.length > 0 ? Math.round(masteryVals.reduce((s, d) => s + d.mastery, 0) / masteryVals.length) : null;
-  const skills = computeSkillScores(attemptRows, { avg: avgMastery, count: dictEntries.length });
+  const skills = computeSkillScores(attemptRows, { avg: avgMastery, count: allEntries.length });
   const weakAreas = findWeakAreas(skills);
 
   // Review schedule: words due on/before today (never-reviewed count as due).
-  const dueWords = dictEntries
+  // Includes both legacy dictionary_entries and Flashcards Pro studio cards.
+  const dueWords = allEntries
     .filter((d) => isDue(d.next_review_at, today))
     .sort((a, b) => a.mastery - b.mastery || (a.word < b.word ? -1 : 1))
     .map((d) => ({ word: d.word, mastery: d.mastery, nextReviewAt: d.next_review_at }));
@@ -201,7 +208,7 @@ export async function GET() {
     skills,
     weakAreas,
     dueWords,
-    totalWords: dictEntries.length,
+    totalWords: allEntries.length,
     avgMastery,
     worstSlugs,
     writingErrors,
@@ -226,7 +233,8 @@ export async function GET() {
     signals: {
       weakAreas,
       dueCount: dueWords.length,
-      totalWords: dictEntries.length,
+      totalWords: allEntries.length,
+      studioSets: studioSets.length,
       avgMastery,
       writingErrors,
       misspelledWords: misspelledWords.slice(0, 3),

@@ -13,6 +13,7 @@ const PROTECTED_PREFIXES = [
   "/vocabulary",
   "/dictionary",
   "/flashcards",
+  "/vocab-sets",
   "/grammar",
   "/reading",
   "/listening",

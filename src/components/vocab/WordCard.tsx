@@ -5,6 +5,7 @@ import { Volume2 } from "lucide-react";
 import { Badge } from "@/components/ui/feedback";
 import { speak } from "@/lib/vocab/speak";
 import { SaveWordButton } from "./SaveWordButton";
+import { SaveToSetButton } from "@/components/vocab-studio/SaveToSetButton";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 import { haptic } from "@/lib/motion/hooks";
 import type { VocabWord } from "@/lib/vocab/bank";
@@ -63,7 +64,10 @@ export function WordCard({ word, saved, mastery, signedIn }: {
           </button>
           {mastery !== null && <Badge tone={masteryTone(mastery)} className="tabular-nums">{mastery}%</Badge>}
         </div>
-        <SaveWordButton word={word.slug} initialSaved={saved} signedIn={signedIn} />
+        <div className="flex items-center gap-1.5">
+          <SaveWordButton word={word.slug} initialSaved={saved} signedIn={signedIn} />
+          {signedIn && <SaveToSetButton word={word.word} definition={word.definition} example={word.example} source="vocabulary" />}
+        </div>
       </div>
     </motion.article>
   );

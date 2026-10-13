@@ -159,6 +159,45 @@ export interface Database {
         Insert: Omit<Database["public"]["Tables"]["devices"]["Row"], "first_seen" | "last_seen" | "created_at"> & { id: string; user_id: string };
         Update: Partial<Database["public"]["Tables"]["devices"]["Row"]>;
       };
+      vocab_sets: {
+        Row: {
+          id: string; user_id: string; title: string; description: string;
+          language: string; native_language: string; level: string | null;
+          category: string; color: string; icon: string;
+          is_archived: boolean; is_favorite: boolean;
+          last_studied_at: string | null; created_at: string; updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["vocab_sets"]["Row"], "id" | "created_at" | "updated_at">;
+        Update: Partial<Database["public"]["Tables"]["vocab_sets"]["Row"]>;
+      };
+      vocab_cards: {
+        Row: {
+          id: string; set_id: string; user_id: string;
+          front: string; back: string; word: string; definition: string;
+          example: string; example_translation: string;
+          part_of_speech: string | null; level: string | null; phonetic: string;
+          synonyms: string[]; antonyms: string[]; collocations: string[];
+          grammar_notes: string; personal_notes: string; tags: string[]; source: string;
+          status: "new" | "learning" | "review" | "relearning" | "mastered";
+          mastery: number; ease_factor: number; interval_days: number;
+          review_count: number; correct_count: number; lapses: number;
+          last_reviewed_at: string | null; next_review_at: string | null;
+          created_at: string; updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["vocab_cards"]["Row"], "id" | "created_at" | "updated_at">;
+        Update: Partial<Database["public"]["Tables"]["vocab_cards"]["Row"]>;
+      };
+      vocab_reviews: {
+        Row: {
+          id: string; user_id: string; card_id: string; set_id: string;
+          rating: "again" | "hard" | "good" | "easy" | "known" | "unknown";
+          correct: boolean; prev_mastery: number; new_mastery: number;
+          prev_interval: number; new_interval: number;
+          idempotency_key: string; created_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["vocab_reviews"]["Row"], "id" | "created_at">;
+        Update: Partial<Database["public"]["Tables"]["vocab_reviews"]["Row"]>;
+      };
       security_events: {
         Row: { id: string; user_id: string | null; event_type: "login" | "signup" | "device_new" | "country_change" | "shared_ip" | "password_reset" | "oauth_link"; ip: string | null; country: string | null; region: string | null; city: string | null; user_agent: string | null; device_id: string | null; meta: Record<string, unknown>; created_at: string };
         Insert: Omit<Database["public"]["Tables"]["security_events"]["Row"], "id" | "created_at">;

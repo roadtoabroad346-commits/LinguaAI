@@ -71,13 +71,14 @@ export async function GET(request: Request) {
       return null;
     }
   };
-  const [xpRes, dictRes, chalRes, skillRes, weekRes, actRes] = await Promise.all([
+  const [xpRes, dictRes, chalRes, skillRes, weekRes, actRes, studioRes] = await Promise.all([
     safe(supabase.from("xp_events").select("amount").eq("user_id", user.id).gte("created_at", dayStart).limit(2000)),
     safe(supabase.from("dictionary_entries").select("word,mastery,next_review_at").eq("user_id", user.id).limit(2000)),
     safe(supabase.from("daily_challenge_completions").select("id").eq("user_id", user.id).eq("challenge_date", today).maybeSingle()),
     safe(supabase.from("skill_attempts").select("skill,score,total").eq("user_id", user.id).limit(1000)),
     safe(supabase.from("xp_events").select("amount,created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(500)),
     safe(supabase.from("activity_events").select("created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1)),
+    safe(supabase.from("vocab_cards").select("id,next_review_at").eq("user_id", user.id).limit(5000)),
   ]);
 
   const xpToday = (((xpRes as { data?: Array<{ amount: number }> } | null)?.data ?? []) as Array<{ amount: number }>).reduce(
@@ -85,7 +86,9 @@ export async function GET(request: Request) {
     0
   );
   const dictRows = (((dictRes as { data?: Array<{ word: string; mastery: number; next_review_at: string | null }> } | null)?.data ?? []) as Array<{ mastery: number; next_review_at: string | null }>);
-  const dueCount = dictRows.filter((d) => isDue(d.next_review_at, today)).length;
+  const studioRows = (((studioRes as { data?: Array<{ next_review_at: string | null }> } | null)?.data ?? []) as Array<{ next_review_at: string | null }>);
+  const dueCount = dictRows.filter((d) => isDue(d.next_review_at, today)).length
+    + studioRows.filter((d) => isDue(d.next_review_at, today)).length;
   const challengeDone = Boolean((chalRes as { data?: unknown } | null)?.data);
   const attemptRows: SkillAttemptLike[] = ((((skillRes as { data?: Array<{ skill: string; score: number; total: number }> } | null)?.data ?? []) as Array<{ skill: string; score: number; total: number }>))
     .filter((r) => Number.isFinite(r.score) && Number.isFinite(r.total) && r.total > 0)
@@ -113,7 +116,7 @@ export async function GET(request: Request) {
     xpToday,
     streakCurrent: typeof p.current_streak === "number" ? (p.current_streak as number) : 0,
     totalXp: typeof p.total_xp === "number" ? (p.total_xp as number) : 0,
-    dictCount: dictRows.length,
+    dictCount: dictRows.length + studioRows.length,
     dueCount,
     challengeDone,
     weakAreas,
