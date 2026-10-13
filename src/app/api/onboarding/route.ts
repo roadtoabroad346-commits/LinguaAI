@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { onboardingSchema } from "@/lib/auth/schemas";
+import { checkRateLimit } from "@/lib/api/security";
 
 export const dynamic = "force-dynamic";
 
 /** Completes onboarding: validates input, writes atomically, marks it complete. */
 export async function POST(request: Request) {
+  const limited = await checkRateLimit(request, { key: "onboarding", limit: 20 });
+  if (limited) return limited;
   let supabase;
   try {
     supabase = createClient();

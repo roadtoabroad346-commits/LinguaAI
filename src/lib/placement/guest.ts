@@ -191,6 +191,8 @@ export async function migrateGuestPlacement(): Promise<MigrateResult> {
         pronunciationSecs: guest.pronunciationSecs ?? 0,
         testVersion: guest.testVersion ?? "v3-multi",
         learningMode: guest.learningMode,
+        // Stable per-device key: safe retries never append duplicate history.
+        idempotencyKey: `guest-migrate-${String(guest.savedAt ?? 0)}`,
       }),
     });
     const json = (await submitRes.json().catch(() => null)) as { saved?: boolean } | null;

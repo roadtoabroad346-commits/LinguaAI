@@ -8,19 +8,46 @@ import {
   logSecurityEvent,
 } from "@/lib/security/telemetry";
 
-/** Build the public origin correctly on Vercel (forwarded host/proto aware). */
+/** Build the public origin correctly on Vercel (forwarded host/proto aware).
+ * The forwarded host is allowlisted (app URL / Vercel hosts only) so a
+ * spoofed Host header cannot turn the post-auth redirect into an open
+ * redirect to an attacker origin. */
 function siteUrl(request: NextRequest): string {
-  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const fallback = getSiteUrl(request.nextUrl.origin);
+  const allowed = new Set<string>();
+  try {
+    allowed.add(new URL(fallback).host.toLowerCase());
+  } catch {
+    /* ignore */
+  }
+  try {
+    allowed.add(request.nextUrl.host.toLowerCase());
+  } catch {
+    /* ignore */
+  }
+  if (process.env.VERCEL_URL) {
+    allowed.add(process.env.VERCEL_URL.toLowerCase().replace(/\/+$/, ""));
+  }
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim().toLowerCase();
   const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
   if (forwardedHost) {
-    const proto = forwardedProto === "http" || forwardedProto === "https" ? forwardedProto : "https";
-    try {
-      return new URL(`${proto}://${forwardedHost}`).toString().replace(/\/+$/, "");
-    } catch {
-      /* fall through */
+    const hostOnly = forwardedHost.split(":")[0];
+    const trusted =
+      allowed.has(forwardedHost) ||
+      allowed.has(hostOnly) ||
+      hostOnly.endsWith(".vercel.app") ||
+      hostOnly === "localhost" ||
+      hostOnly === "127.0.0.1";
+    if (trusted) {
+      const proto = forwardedProto === "http" || forwardedProto === "https" ? forwardedProto : "https";
+      try {
+        return new URL(`${proto}://${forwardedHost}`).toString().replace(/\/+$/, "");
+      } catch {
+        /* fall through */
+      }
     }
   }
-  return getSiteUrl(request.nextUrl.origin);
+  return fallback;
 }
 
 /**

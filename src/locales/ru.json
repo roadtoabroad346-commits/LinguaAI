@@ -615,7 +615,8 @@
       "writing": "Письмо",
       "speaking": "Говорение",
       "pronunciation": "Произношение"
-    }
+    },
+    "recordingLabel": "Ваша запись: {section}"
   },
   "notif": {
     "center": "Уведомления",

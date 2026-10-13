@@ -611,7 +611,8 @@
       "writing": "Writing",
       "speaking": "Speaking",
       "pronunciation": "Pronunciation"
-    }
+    },
+    "recordingLabel": "Your recording: {section}"
   },
   "notif": {
     "center": "Notifications",

@@ -50,9 +50,19 @@ export async function POST(request: Request) {
       const aiJson = safeParseAiJson(raw);
       if (aiJson) {
         ai = true;
-        if (typeof aiJson.score === "number" && aiJson.score >= 0 && aiJson.score <= 100) score = Math.round(aiJson.score);
+        // Same 50/50 guard as writing/speaking: AI cannot inflate or crush
+        // the deterministic word-match score on its own.
+        if (typeof aiJson.score === "number" && aiJson.score >= 0 && aiJson.score <= 100) {
+          const { blendAiScore } = await import("@/lib/gamification/xp-rules");
+          score = blendAiScore(base.score, Math.round(aiJson.score));
+        }
         if (typeof aiJson.tip === "string" && aiJson.tip.trim()) feedback = [aiJson.tip.trim().slice(0, 200), ...base.feedback].slice(0, 4);
-        if (Array.isArray(aiJson.hardWords)) hardWords = aiJson.hardWords.map(String).slice(0, 5);
+        if (Array.isArray(aiJson.hardWords)) {
+          hardWords = aiJson.hardWords
+            .map((w) => String(w).toLowerCase().replace(/[^a-z' -]/g, "").trim().slice(0, 30))
+            .filter((w) => w.length >= 2 && passage.text.toLowerCase().includes(w))
+            .slice(0, 5);
+        }
       }
     } catch { /* deterministic base stands */ }
   }

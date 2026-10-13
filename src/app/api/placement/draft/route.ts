@@ -105,15 +105,22 @@ export async function DELETE(request: Request) {
   } catch {
     /* noop */
   }
+  attemptKey = attemptKey.trim().slice(0, 120);
+  if (attemptKey.length < 4 && attemptKey.length > 0) {
+    return NextResponse.json({ error: "Invalid attemptKey." }, { status: 400, headers: noStore });
+  }
+  const limited = await checkRateLimit(request, { key: "placement-draft", limit: 30 });
+  if (limited) return limited;
+
   let supabase;
   try {
     supabase = createClient();
   } catch {
-    return NextResponse.json({ deleted: false }, { headers: noStore });
+    return NextResponse.json({ error: "Backend not configured." }, { status: 503, headers: noStore });
   }
   const { data: userData } = await supabase.auth.getUser();
   const user = userData.user;
-  if (!user) return NextResponse.json({ deleted: false }, { headers: noStore });
+  if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401, headers: noStore });
 
   try {
     if (attemptKey.trim().length >= 4) {

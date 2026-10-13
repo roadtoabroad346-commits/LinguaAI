@@ -28,7 +28,8 @@ export default async function PlacementPage({
 }) {
   const user = await getSessionUser();
   const profile = user ? await getSessionProfile() : null;
-  const t = getServerT(await getEffectiveLocale());
+  const locale = await getEffectiveLocale();
+  const t = getServerT(locale);
   const wantsRetake = searchParams?.retake === "1";
 
   const placementDone =
@@ -54,6 +55,7 @@ export default async function PlacementPage({
         .select("level,score,total,skill_scores,created_at,test_version")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
         .limit(5);
       const rows = ((data ?? []) as unknown as LatestAttempt[]);
       if (rows.length > 0) {
@@ -92,7 +94,7 @@ export default async function PlacementPage({
                     ? `${latest.score}/${latest.total}`
                     : ""}{" "}
                   {latest.created_at
-                    ? `· ${new Date(latest.created_at).toLocaleDateString()}`
+                    ? `· ${new Date(latest.created_at).toLocaleDateString(locale)}`
                     : ""}{" "}
                   {latest.test_version ? `· ${latest.test_version}` : ""}
                   {historyCount > 1 ? ` · ${historyCount} attempts` : ""}
@@ -123,7 +125,7 @@ export default async function PlacementPage({
               </Link>
               <SignOutButton variant="ghost" />
             </div>
-            <p className="mt-3 text-xs text-ink-500 dark:text-ink-400">{t("placement.switchAccountHint")}</p>
+            <p className="mt-3 text-xs text-ink-500 dark:text-ink-300">{t("placement.switchAccountHint")}</p>
           </Card>
         </main>
       </div>
@@ -134,7 +136,7 @@ export default async function PlacementPage({
     <div className="min-h-screen">
       <Header right={<LanguageSwitcher />} />
       <main className="mx-auto max-w-2xl px-4 py-12">
-        <h1 className="truncate text-2xl font-bold tracking-tight">{t("placement.title")}</h1>
+        <h1 className="text-balance text-2xl font-bold tracking-tight">{t("placement.title")}</h1>
         <CardDescription>{t("placement.desc")}</CardDescription>
         <div className="mt-4">
           <PlacementRunner

@@ -9,7 +9,9 @@ import { XP_RULES, xpFromBands } from "@/lib/gamification/xp-rules";
 import { awardXp } from "@/lib/dashboard/award";
 
 export async function POST(request: Request) {
-  const limited = await checkRateLimit(request, { key: "pronunciation", limit: 30 });
+  // Self-rating is honest practice by design (never lab-grade scoring):
+  // tight anonymous budget + per-user budget below.
+  const limited = await checkRateLimit(request, { key: "pronunciation", limit: 15 });
   if (limited) return limited;
 
   let body: unknown;
@@ -42,7 +44,7 @@ export async function POST(request: Request) {
   }
   if (!supabase || !userId) return NextResponse.json({ score, total: 100, xpEarned, saved: false });
 
-  const userLimited = await checkRateLimit(request, { key: "pronunciation", limit: 60, scope: userId });
+  const userLimited = await checkRateLimit(request, { key: "pronunciation", limit: 30, scope: userId });
   if (userLimited) return userLimited;
 
   // Self-reported rating: same key replays award XP once.

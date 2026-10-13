@@ -37,15 +37,23 @@ export async function POST(request: Request) {
     );
   }
 
+  const noStore = { "Cache-Control": "no-store" };
+
+  // Throttle before grading: unauthenticated CPU burn protection.
+  const limited = await checkRateLimit(request, { key: "placement-submit", limit: 10 });
+  if (limited) return limited;
+
   const input = parsed.data;
-  const isV3 =
-    (input.testVersion ?? "").startsWith("v3") ||
+  const hasV3Fields =
     (input.reading?.length ?? 0) > 0 ||
     (input.listening?.length ?? 0) > 0 ||
     (input.spelling?.length ?? 0) > 0 ||
     input.writingText.trim().length > 0 ||
     input.speakingTranscript.trim().length > 0 ||
     input.pronunciationTranscript.trim().length > 0;
+  const isV3 = hasV3Fields || (input.testVersion ?? "").startsWith("v3");
+  // Stored version always reflects how the server actually graded.
+  const storedVersion = isV3 ? PLACEMENT_TEST_VERSION : "v2";
 
   const grade: PlacementV3Grade | ReturnType<typeof gradePlacement> = isV3
     ? gradePlacementV3({
@@ -60,12 +68,6 @@ export async function POST(request: Request) {
         pronunciationSecs: input.pronunciationSecs,
       })
     : (gradePlacement(input.answers) as unknown as PlacementV3Grade);
-
-  const noStore = { "Cache-Control": "no-store" };
-
-  // History-append endpoint: per-IP limit against submit spam.
-  const limited = await checkRateLimit(request, { key: "placement-submit", limit: 10 });
-  if (limited) return limited;
 
   let supabase;
   try {
@@ -87,13 +89,14 @@ export async function POST(request: Request) {
   const attemptKey = (input.idempotencyKey ?? "").trim().slice(0, 120);
   if (attemptKey.length >= 8) {
     try {
-      const claim = await claimCompletion(sb as never, u.id, "placement" as never, attemptKey);
+      const claim = await claimCompletion(sb as never, u.id, "placement", attemptKey);
       if (!claim.fresh) {
         const { data: latest } = await sb
           .from("placement_results")
           .select("score,total,level,skill_scores,answers,created_at,test_version")
           .eq("user_id", u.id)
           .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
           .limit(1)
           .maybeSingle();
         const row = latest as {
@@ -102,17 +105,29 @@ export async function POST(request: Request) {
           level?: string;
           skill_scores?: unknown;
           answers?: unknown;
+          test_version?: string;
         } | null;
+        // Return the STORED attempt verbatim (never mix current payload
+        // into a previous attempt's grade shape).
+        if (row && typeof row.score === "number" && typeof row.total === "number" && typeof row.level === "string") {
+          return NextResponse.json(
+            {
+              score: row.score,
+              total: row.total,
+              level: row.level,
+              percent: row.total > 0 ? Math.round((row.score / row.total) * 100) : 0,
+              skill_scores: row.skill_scores ?? null,
+              answers: row.answers ?? [],
+              testVersion: row.test_version ?? storedVersion,
+              saved: true,
+              repeated: true,
+              xpAwarded: 0,
+            },
+            { headers: noStore }
+          );
+        }
         return NextResponse.json(
-          {
-            ...grade,
-            score: typeof row?.score === "number" ? row.score : (grade as { score: number }).score,
-            total: typeof row?.total === "number" ? row.total : (grade as { total: number }).total,
-            level: typeof row?.level === "string" ? row.level : (grade as { level: string }).level,
-            saved: true,
-            repeated: true,
-            xpAwarded: 0,
-          },
+          { ...grade, saved: true, repeated: true, xpAwarded: 0 },
           { headers: noStore }
         );
       }
@@ -201,12 +216,9 @@ export async function POST(request: Request) {
 
   async function cleanupDraft() {
     try {
-      const key = attemptKey.trim().slice(0, 120);
-      if (key.length >= 4) {
-        await sb.from("placement_drafts").delete().eq("user_id", u.id).eq("attempt_key", key);
-      } else {
-        await sb.from("placement_drafts").delete().eq("user_id", u.id).eq("status", "in_progress");
-      }
+      // Post-submit: no in-progress draft may survive (any key), otherwise
+      // the next draft GET resurrects a stale attempt after a saved result.
+      await sb.from("placement_drafts").delete().eq("user_id", u.id).eq("status", "in_progress");
     } catch {
       /* best-effort: client also DELETEs */
     }
@@ -224,7 +236,7 @@ export async function POST(request: Request) {
         skillScores: (skillScores ?? {}) as unknown,
         learningMode: parsed.data.learningMode,
         durationSeconds: parsed.data.durationSeconds,
-        testVersion: parsed.data.testVersion ?? (isV3 ? PLACEMENT_TEST_VERSION : "v2"),
+        testVersion: storedVersion,
       },
     } as never);
     if (!rpcError) {
@@ -251,7 +263,7 @@ export async function POST(request: Request) {
     skill_scores: skillScores,
     correct_answers: g.score,
     duration_seconds: parsed.data.durationSeconds ?? null,
-    test_version: parsed.data.testVersion ?? (isV3 ? PLACEMENT_TEST_VERSION : "v2"),
+    test_version: storedVersion,
   };
   const { error: fullError } = await supabase.from("placement_results").insert(fullInsert as never);
   let resultError = fullError;

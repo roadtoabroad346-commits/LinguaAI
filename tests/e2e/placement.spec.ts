@@ -14,8 +14,9 @@ test.describe("placement guest flow", () => {
     await expect(start).toBeVisible();
     await start.click();
 
-    // Section tabs render (7 sections).
-    await expect(page.getByRole("tab", { name: /grammar/i })).toBeVisible();
+    // Section nav renders (7 sections).
+    await expect(page.getByRole("navigation", { name: /placement sections/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /grammar/i })).toBeVisible();
     await expect(page.getByText(/progress autosaved/i)).toBeVisible();
 
     // Answer first grammar question, go next, come back: answer persists.
@@ -35,10 +36,10 @@ test.describe("placement guest flow", () => {
     await page.goto("/placement");
     const start = page.getByRole("button", { name: /start test|continue test/i }).first();
     await start.click();
-    // Jump to last section via tabs, submit should either be disabled or
+    // Jump to last section via nav, submit should either be disabled or
     // show a validation/insufficient warning — never a level out of thin air.
-    const tabs = page.getByRole("tab");
-    await tabs.last().click();
+    const nav = page.getByRole("navigation", { name: /placement sections/i });
+    await nav.getByRole("button").last().click();
     const submit = page.getByRole("button", { name: /see my level/i });
     await expect(submit).toBeVisible();
     // Empty test: insufficient-data warning is shown in the test shell.

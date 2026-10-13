@@ -2,13 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getSiteUrl } from "@/lib/env";
 
-/** Signs the user out (accepts GET for link-based sign-out and POST for forms). */
+/** Signs the user out (POST only: GET would allow logout-CSRF via link prefetch). */
 export async function POST(request: NextRequest) {
   return signOut(request);
 }
 
-export async function GET(request: NextRequest) {
-  return signOut(request);
+export async function GET() {
+  return NextResponse.json({ error: "Use POST to sign out." }, { status: 405 });
 }
 
 async function signOut(request: NextRequest) {

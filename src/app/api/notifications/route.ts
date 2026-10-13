@@ -48,8 +48,10 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const view = url.searchParams.get("view") === "history" ? "history" : "active";
-  const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
-  const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
+  const rawLimit = Number(url.searchParams.get("limit"));
+  const rawOffset = Number(url.searchParams.get("offset"));
+  const limit = Number.isFinite(rawLimit) ? Math.min(50, Math.max(1, Math.floor(rawLimit))) : 20;
+  const offset = Number.isFinite(rawOffset) ? Math.max(0, Math.floor(rawOffset)) : 0;
 
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
   const p = (profile ?? {}) as Record<string, unknown>;

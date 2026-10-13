@@ -34,6 +34,10 @@ export function PasswordInput({ label, error, hint, id, ...props }: PasswordInpu
           label={undefined}
           error={undefined}
           hint={undefined}
+          aria-describedby={
+            error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined
+          }
+          aria-invalid={error ? true : undefined}
           className="pr-12"
           {...props}
         />
@@ -43,7 +47,7 @@ export function PasswordInput({ label, error, hint, id, ...props }: PasswordInpu
           aria-pressed={visible}
           aria-label={visible ? t("auth.hidePassword") : t("auth.showPassword")}
           title={visible ? t("auth.hidePassword") : t("auth.showPassword")}
-          className="touch-44 absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-600 dark:hover:bg-ink-800 dark:hover:text-ink-200"
+          className="touch-44 absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-600 dark:text-ink-300 dark:hover:bg-ink-800 dark:hover:text-ink-200"
         >
           {visible ? <EyeOff className="h-5 w-5" aria-hidden /> : <Eye className="h-5 w-5" aria-hidden />}
         </button>

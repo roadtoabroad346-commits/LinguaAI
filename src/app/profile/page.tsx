@@ -92,43 +92,45 @@ export default async function ProfilePage() {
             <CardDescription>{t("profile.accountDesc")}</CardDescription>
             <dl className="mt-3 space-y-2.5 text-sm">
               <div className="flex justify-between gap-2">
-                <dt className="text-ink-500">{t("common.levelLabel")}</dt>
+                <dt className="text-ink-500 dark:text-ink-300">{t("common.levelLabel")}</dt>
                 <dd className="font-semibold">{profile.level ?? t("profile.notPlaced")}</dd>
               </div>
               <div className="flex justify-between gap-2">
-                <dt className="text-ink-500">{t("profile.placementScore")}</dt>
+                <dt className="text-ink-500 dark:text-ink-300">{t("profile.placementScore")}</dt>
                 <dd className="font-semibold tabular-nums">
                   {profile.placement_score !== null ? `${profile.placement_score}%` : "—"}
                 </dd>
               </div>
               {latest && (
                 <div className="flex justify-between gap-2">
-                  <dt className="text-ink-500">{t("placement.yourLevel")}</dt>
+                  <dt className="text-ink-500 dark:text-ink-300">{t("placement.yourLevel")}</dt>
                   <dd className="font-semibold tabular-nums">
                     {latest.level} · {new Date(latest.created_at).toLocaleDateString(locale)}
                   </dd>
                 </div>
               )}
               <div className="flex justify-between gap-2">
-                <dt className="text-ink-500">{t("profile.dailyGoal")}</dt>
+                <dt className="text-ink-500 dark:text-ink-300">{t("profile.dailyGoal")}</dt>
                 <dd className="font-semibold tabular-nums">{formatXP(locale, profile.daily_goal_xp)}</dd>
               </div>
               <div className="flex justify-between gap-2">
-                <dt className="text-ink-500">{t("profile.onboarding")}</dt>
+                <dt className="text-ink-500 dark:text-ink-300">{t("profile.onboarding")}</dt>
                 <dd className="font-semibold">{profile.onboarding_completed ? t("profile.complete") : t("profile.incomplete")}</dd>
               </div>
             </dl>
             {latest?.skill_scores && typeof latest.skill_scores === "object" && (
-              <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Latest placement skills">
+              <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Latest placement skills">
                 {Object.entries(latest.skill_scores)
                   .filter(([k, v]) => !k.startsWith("_") && v && (v as { answered?: boolean }).answered !== false)
                   .slice(0, 7)
                   .map(([k, v]) => (
-                    <Badge key={k} tone="brand">
-                      {k}: {(v as { level?: string }).level ?? (v as { score?: number }).score ?? "—"}
-                    </Badge>
+                    <li key={k}>
+                      <Badge tone="brand">
+                        {k}: {(v as { level?: string }).level ?? (v as { score?: number }).score ?? "—"}
+                      </Badge>
+                    </li>
                   ))}
-              </div>
+              </ul>
             )}
             {attempts.length > 1 && (
               <div className="mt-3 rounded-xl bg-ink-50 p-2.5 text-xs text-ink-600 dark:bg-ink-800 dark:text-ink-300">
@@ -143,7 +145,7 @@ export default async function ProfilePage() {
               </div>
             )}
             {!latest && (
-              <p className="mt-3 text-xs text-ink-500">{t("placement.fillMore")}</p>
+              <p className="mt-3 text-xs text-ink-500 dark:text-ink-300">{t("placement.fillMore")}</p>
             )}
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href="/dashboard">

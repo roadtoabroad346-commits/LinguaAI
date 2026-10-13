@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { profileUpdateSchema } from "@/lib/auth/schemas";
+import { checkRateLimit } from "@/lib/api/security";
 
 /** Returns the caller's profile. */
 export async function GET() {
@@ -25,6 +26,8 @@ export async function GET() {
 
 /** Partial profile update (display name, goals, daily goal, learning mode). */
 export async function PATCH(request: Request) {
+  const limited = await checkRateLimit(request, { key: "profile-update", limit: 30 });
+  if (limited) return limited;
   let supabase;
   try {
     supabase = createClient();

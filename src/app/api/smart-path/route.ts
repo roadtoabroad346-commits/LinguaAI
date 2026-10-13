@@ -132,10 +132,18 @@ export async function GET() {
   // Per-skill accuracy (same augmentation as the gamification summary).
   const attemptRows: SkillAttemptLike[] = skillRows.map((r) => ({ skill: r.skill, score: r.score, total: r.total }));
   const writes = ((((writeRes as { data?: Array<{ score: number; created_at: string }> }).data ?? [])) as Array<{ score: number; created_at: string }>);
-  for (const w of writes) if (Number.isFinite(w.score)) attemptRows.push({ skill: "writing", score: w.score, total: 100 });
+  for (const w of writes) {
+    if (Number.isFinite(w.score)) {
+      attemptRows.push({ skill: "writing", score: Math.max(0, Math.min(100, w.score)), total: 100 });
+    }
+  }
   const speaks = ((((speakRes as { data?: Array<{ created_at: string }> }).data ?? [])) as Array<{ created_at: string }>);
   const alouds = ((((aloudRes as { data?: Array<{ accuracy: number }> }).data ?? [])) as Array<{ accuracy: number }>);
-  for (const r of alouds) if (Number.isFinite(r.accuracy)) attemptRows.push({ skill: "read-aloud", score: r.accuracy, total: 100 });
+  for (const r of alouds) {
+    if (Number.isFinite(r.accuracy)) {
+      attemptRows.push({ skill: "read-aloud", score: Math.max(0, Math.min(100, r.accuracy)), total: 100 });
+    }
+  }
   const spells = ((((spellRes as { data?: Array<{ word: string; correct: boolean }> }).data ?? [])) as Array<{ word: string; correct: boolean }>);
   if (spells.length > 0) attemptRows.push({ skill: "spelling", score: spells.filter((s) => s.correct).length, total: spells.length });
 
@@ -177,7 +185,7 @@ export async function GET() {
   // Review schedule: words due on/before today (never-reviewed count as due).
   // Includes both legacy dictionary_entries and Flashcards Pro studio cards.
   const dueWords = allEntries
-    .filter((d) => isDue(d.next_review_at, today))
+    .filter((d) => Number.isFinite(d.mastery) && isDue(d.next_review_at, today))
     .sort((a, b) => a.mastery - b.mastery || (a.word < b.word ? -1 : 1))
     .map((d) => ({ word: d.word, mastery: d.mastery, nextReviewAt: d.next_review_at }));
 
@@ -238,7 +246,7 @@ export async function GET() {
   const xpEvents = ((((xpRes as { data?: Array<{ amount: number; created_at: string }> }).data ?? [])) as Array<{ amount: number; created_at: string }>);
   const xpToday = xpEvents
     .filter((e) => dateKeyInTimezone(new Date(e.created_at ?? ""), timezone) === today)
-    .reduce((s, e) => s + (e.amount || 0), 0);
+    .reduce((s, e) => s + (Number(e.amount) || 0), 0);
 
   const effectiveLevel = level ?? placementLevel;
   const input: SmartPathInput = {

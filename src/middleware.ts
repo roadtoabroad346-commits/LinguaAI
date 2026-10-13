@@ -48,8 +48,21 @@ export async function middleware(request: NextRequest) {
 
   if (userId && isAuthPage(pathname)) {
     const next = request.nextUrl.searchParams.get("next");
+    // Same policy as lib/auth/routing sanitizeNext: no protocol-relative,
+    // backslash, control chars, or auth-loop destinations.
     const safe =
-      next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/auth/")
+      next &&
+      next.startsWith("/") &&
+      !next.startsWith("//") &&
+      !next.startsWith("/\\") &&
+      !next.includes("\\") &&
+      !next.includes("://") &&
+      !next.startsWith("/auth/") &&
+      next !== "/login" &&
+      !next.startsWith("/login?") &&
+      next !== "/signup" &&
+      !next.startsWith("/signup?") &&
+      next.length <= 256
         ? next
         : "/dashboard";
     const dest = request.nextUrl.clone();

@@ -23,7 +23,8 @@ export const idempotencyKeySchema = z.string().trim().min(8).max(120).optional()
 
 export type CompletionScope =
   | "grammar" | "reading" | "listening" | "dictation" | "pronunciation"
-  | "vocab_practice" | "flashcards" | "writing" | "speaking" | "read_aloud";
+  | "vocab_practice" | "flashcards" | "writing" | "speaking" | "read_aloud"
+  | "placement";
 
 type ClaimsClient = {
   from(table: string): any;

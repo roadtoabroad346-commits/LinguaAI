@@ -611,7 +611,8 @@
       "writing": "Жазу",
       "speaking": "Сөйлеу",
       "pronunciation": "Айтылым"
-    }
+    },
+    "recordingLabel": "Сіздің жазбаңыз: {section}"
   },
   "notif": {
     "center": "Хабарламалар",

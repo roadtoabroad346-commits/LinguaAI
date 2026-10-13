@@ -100,13 +100,13 @@ export function UserMenu() {
           aria-expanded={open}
           aria-haspopup="menu"
           aria-label={email ?? t("auth.profile")}
-          className="touch-44 flex min-h-[40px] items-center gap-1.5 rounded-full border border-ink-200/70 py-1 pl-1 pr-2 transition-colors hover:border-brand-300 active:scale-95 sm:min-h-[44px] sm:gap-2 dark:border-ink-700"
+          className="touch-44 flex min-h-[44px] items-center gap-1.5 rounded-full border border-ink-200/70 py-1 pl-1 pr-2 transition-colors hover:border-brand-300 active:scale-95 sm:gap-2 dark:border-ink-700"
         >
           <Avatar name={email ?? "U"} size="sm" />
           <span className="hidden max-w-32 truncate text-xs font-medium text-ink-600 sm:block dark:text-ink-300">
             {email}
           </span>
-          <span aria-hidden className="text-xs text-ink-400">
+          <span aria-hidden className="text-xs text-ink-500 dark:text-ink-300">
             {initial ? "▾" : ""}
           </span>
         </button>

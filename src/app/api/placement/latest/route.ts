@@ -22,6 +22,7 @@ export async function GET() {
     .select("id,score,total,level,skill_scores,answers,created_at,test_version,attempt_number,duration_seconds")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error) {

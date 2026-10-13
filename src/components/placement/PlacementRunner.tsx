@@ -160,12 +160,14 @@ export function PlacementRunner({
   const listeningItems = useMemo(() => getPlacementListening(), []);
   const spellingItems = useMemo(() => getPlacementSpelling(), []);
 
-  const [draft, setDraft] = useState<PlacementDraft>(() => newDraft(newAttemptKey()));
+  // SSR-safe init: identical placeholder on server + first client paint.
+  // Real attempt key + start time are minted in the init effect below.
+  const [draft, setDraft] = useState<PlacementDraft>(() => newDraft("pending"));
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [hasResume, setHasResume] = useState(false);
   const [stage, setStage] = useState<"intro" | "test" | "result">("intro");
   const [sectionIndex, setSectionIndex] = useState(0);
-  const [startedAt] = useState(() => Date.now());
+  const [startedAt, setStartedAt] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitLock, setSubmitLock] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -173,7 +175,10 @@ export function PlacementRunner({
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [showTranscripts, setShowTranscripts] = useState<Record<string, boolean>>({});
-  const [speakSecsTick, setSpeakSecsTick] = useState(0);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const speakingRec = useRecorder();
   const pronRec = useRecorder();
@@ -182,6 +187,7 @@ export function PlacementRunner({
   useEffect(() => {
     let cancelled = false;
     async function init() {
+      setStartedAt(Date.now());
       const saved = loadBrowserDraft(owner);
       if (saved) {
         if (!cancelled) {
@@ -189,23 +195,32 @@ export function PlacementRunner({
           setSectionIndex(Math.min(saved.sectionIndex, PLACEMENT_SECTION_ORDER.length - 1));
           setHasResume(draftTouched(saved));
         }
-      } else if (signedIn) {
-        // Login after starting as guest: adopt the guest in-progress draft once
-        // so answers are not lost on sign-in. Completed guest results migrate
-        // separately via /api/placement/submit (server wins).
-        try {
-          const guest = loadBrowserDraft("guest");
-          if (guest && draftTouched(guest)) {
-            if (!cancelled) {
-              setDraft(guest);
-              setSectionIndex(Math.min(guest.sectionIndex, PLACEMENT_SECTION_ORDER.length - 1));
-              setHasResume(true);
-              saveBrowserDraft(owner, guest);
-              clearBrowserDraft("guest");
+      } else {
+        // Fresh attempt: mint a real idempotency key on the client only
+        // (avoids SSR crypto/Date.now hydration mismatch from "pending").
+        const fresh = newDraft(newAttemptKey());
+        if (signedIn) {
+          // Login after starting as guest: adopt the guest in-progress draft once
+          // so answers are not lost on sign-in. Completed guest results migrate
+          // separately via /api/placement/submit (server wins).
+          try {
+            const guest = loadBrowserDraft("guest");
+            if (guest && draftTouched(guest)) {
+              if (!cancelled) {
+                setDraft(guest);
+                setSectionIndex(Math.min(guest.sectionIndex, PLACEMENT_SECTION_ORDER.length - 1));
+                setHasResume(true);
+                saveBrowserDraft(owner, guest);
+                clearBrowserDraft("guest");
+              }
+            } else if (!cancelled) {
+              setDraft(fresh);
             }
+          } catch {
+            if (!cancelled) setDraft(fresh);
           }
-        } catch {
-          /* best-effort */
+        } else if (!cancelled) {
+          setDraft(fresh);
         }
       }
       // Signed-in: server draft is authoritative for multi-device resume.
@@ -290,7 +305,6 @@ export function PlacementRunner({
   useEffect(() => {
     if (!speakingRec.recording) return;
     const id = setInterval(() => {
-      setSpeakSecsTick((n) => n + 1);
       setDraft((d) => ({ ...d, speakingSecs: Math.min(600, d.speakingSecs + 1) }));
     }, 1000);
     return () => clearInterval(id);
@@ -356,7 +370,15 @@ export function PlacementRunner({
   }
 
   async function submit() {
-    if (submitting || submitLock || result) return;
+    if (submitting || submitLock || result || !draftLoaded) return;
+    // Never submit with the SSR placeholder key.
+    const attemptKey =
+      draft.attemptKey && draft.attemptKey !== "pending" && draft.attemptKey.length >= 4
+        ? draft.attemptKey
+        : newAttemptKey();
+    if (attemptKey !== draft.attemptKey) {
+      setDraft((d) => ({ ...d, attemptKey }));
+    }
     setError(null);
     setSubmitting(true);
     setSubmitLock(true);
@@ -383,9 +405,9 @@ export function PlacementRunner({
         pronunciationTranscript: draft.pronunciationTranscript.slice(0, 2000),
         pronunciationSecs: draft.pronunciationSecs,
         learningMode: draft.learningMode,
-        durationSeconds: Math.max(0, Math.min(7200, Math.round((Date.now() - startedAt) / 1000))),
+        durationSeconds: startedAt > 0 ? Math.max(0, Math.min(7200, Math.round((Date.now() - startedAt) / 1000))) : 0,
         testVersion: PLACEMENT_TEST_VERSION,
-        idempotencyKey: draft.attemptKey,
+        idempotencyKey: attemptKey,
       };
       const res = await fetch("/api/placement/submit", {
         method: "POST",
@@ -430,7 +452,7 @@ export function PlacementRunner({
       }
       if (signedIn) {
         try {
-          fetch(`/api/placement/draft?attemptKey=${encodeURIComponent(draft.attemptKey)}`, {
+          fetch(`/api/placement/draft?attemptKey=${encodeURIComponent(attemptKey)}`, {
             method: "DELETE",
           }).catch(() => {});
         } catch {
@@ -944,7 +966,7 @@ export function PlacementRunner({
 
   return (
     <PageTransition>
-      <div className="mx-auto w-full max-w-2xl">
+      <div className="mx-auto w-full max-w-2xl pb-10">
         <div className="flex min-w-0 items-center justify-between gap-2">
           <p className="min-w-0 flex-1 truncate text-sm font-semibold text-ink-500">
             {t("placement.sectionOf", {
@@ -958,18 +980,20 @@ export function PlacementRunner({
           </Badge>
         </div>
         <Progress value={overallProgress} label={`${answeredUnits} / ${totalUnits}`} className="mt-2.5" tone="brand" />
-        <div className="mt-2 flex flex-wrap gap-1.5" role="tablist" aria-label="Placement sections">
+        <nav className="mt-2 flex flex-wrap gap-1.5" aria-label="Placement sections">
           {PLACEMENT_SECTION_ORDER.map((s, i) => (
             <button
               key={s.skill}
-              role="tab"
-              aria-selected={i === sectionIndex}
+              aria-current={i === sectionIndex ? "step" : undefined}
               onClick={() => {
                 setDraft((d) => ({ ...d, sectionIndex: i }));
                 setSectionIndex(i);
+                requestAnimationFrame(() => {
+                  document.getElementById("placement-section-heading")?.focus();
+                });
               }}
               className={cn(
-                "rounded-full px-2.5 py-1 text-[11px] font-bold",
+                "min-h-[44px] rounded-full px-3 py-2 text-xs font-bold",
                 i === sectionIndex
                   ? "bg-brand-600 text-white"
                   : "bg-ink-100 text-ink-600 hover:bg-ink-200 dark:bg-ink-800 dark:text-ink-300"
@@ -978,7 +1002,7 @@ export function PlacementRunner({
               {i + 1}. {t(s.titleKey)}
             </button>
           ))}
-        </div>
+        </nav>
         {willBeInsufficient && (
           <div className="mt-2">
             <Alert tone="warning" title={t("placement.insufficientTitle")}>
@@ -988,6 +1012,9 @@ export function PlacementRunner({
         )}
 
         <div className="mt-4">
+          <h2 id="placement-section-heading" tabIndex={-1} className="sr-only">
+            {t(section.titleKey)}
+          </h2>
           {section.skill === "grammar" && (
             <Card>
               <CardTitle>{t("placement.sections.grammar")}</CardTitle>
@@ -1062,13 +1089,13 @@ export function PlacementRunner({
 
           {section.skill === "listening" && (
             <div className="grid gap-3">
-              {!canSpeak() && (
+              {mounted && !canSpeak() && (
                 <Alert tone="warning" title={t("placement.audioUnavailable")}>
                   {t("placement.audioUnavailableDesc")}
                 </Alert>
               )}
               {audioError && (
-                <Alert tone="danger" title={t("common.saveFailed")}>
+                <Alert tone="danger" title={t("placement.audioError")}>
                   {audioError}
                 </Alert>
               )}
@@ -1230,7 +1257,7 @@ export function PlacementRunner({
                 value={draft.writingText}
                 onChange={(e) => patch({ writingText: e.target.value.slice(0, 3000) })}
                 placeholder={t("placement.writingPlaceholder")}
-                className="mt-3 min-h-[160px] w-full rounded-2xl border border-ink-300 bg-white p-3.5 text-[15px] leading-relaxed dark:border-ink-600 dark:bg-ink-900"
+                className="mt-3 min-h-[160px] w-full scroll-mb-40 rounded-2xl border border-ink-300 bg-white p-3.5 text-[15px] leading-relaxed dark:border-ink-600 dark:bg-ink-900"
               />
               <p className="mt-1 text-xs tabular-nums text-ink-500" role="status">
                 {t("placement.wordsLabel", { count: writingWords })} · {t("placement.minLabel", { count: PLACEMENT_WRITING.minWords })}
@@ -1256,16 +1283,34 @@ export function PlacementRunner({
                     {t("placement.micUnsupportedDesc")}
                   </Alert>
                 ) : speakingRec.recording ? (
-                  <Button variant="secondary" onClick={speakingRec.stop}>
+                  <Button
+                    variant="secondary"
+                    onClick={speakingRec.stop}
+                    aria-pressed={true}
+                  >
                     <Square className="h-4 w-4" /> {t("placement.stopRecording")} ({draft.speakingSecs}s)
                   </Button>
                 ) : (
-                  <Button variant="secondary" onClick={speakingRec.start}>
+                  <Button
+                    variant="secondary"
+                    onClick={speakingRec.start}
+                    aria-pressed={false}
+                  >
                     <Mic className="h-4 w-4" /> {t("placement.startRecording")}
                   </Button>
                 )}
+                <span role="status" aria-live="polite" className="sr-only">
+                  {speakingRec.recording
+                    ? `${t("placement.stopRecording")} (${draft.speakingSecs}s)`
+                    : t("placement.startRecording")}
+                </span>
                 {speakingRec.audioUrl && (
-                  <audio controls src={speakingRec.audioUrl} className="h-9 w-full sm:w-56" aria-label="Your recording" />
+                  <audio
+                    controls
+                    src={speakingRec.audioUrl}
+                    className="h-9 w-full sm:w-56"
+                    aria-label={t("placement.recordingLabel", { section: PLACEMENT_SPEAKING.title })}
+                  />
                 )}
               </div>
               {speakingRec.error && (
@@ -1286,7 +1331,7 @@ export function PlacementRunner({
                 value={draft.speakingTranscript}
                 onChange={(e) => patch({ speakingTranscript: e.target.value.slice(0, 3000) })}
                 placeholder={t("placement.speakingPlaceholder")}
-                className="mt-2 min-h-[130px] w-full rounded-2xl border border-ink-300 bg-white p-3.5 text-[15px] leading-relaxed dark:border-ink-600 dark:bg-ink-900"
+                className="mt-2 min-h-[130px] w-full scroll-mb-40 rounded-2xl border border-ink-300 bg-white p-3.5 text-[15px] leading-relaxed dark:border-ink-600 dark:bg-ink-900"
               />
               <p className="mt-1 text-xs tabular-nums text-ink-500" role="status">
                 {t("placement.wordsLabel", { count: speakingWords })} ·{" "}
@@ -1294,7 +1339,6 @@ export function PlacementRunner({
                 {t("placement.minLabel", { count: PLACEMENT_SPEAKING.minWords })}
               </p>
               <p className="mt-1 text-[11px] text-ink-500 dark:text-ink-300">{t("placement.speakingLimitNote")}</p>
-              <span className="hidden">{speakSecsTick}</span>
             </Card>
           )}
 
@@ -1310,18 +1354,35 @@ export function PlacementRunner({
                   <Play className="h-4 w-4" /> {t("placement.playReference")}
                 </Button>
                 {!pronRec.supported ? (
-                  <span className="text-xs text-ink-500">{t("placement.micUnsupportedDesc")}</span>
+                  <Alert tone="warning" title={t("placement.micUnsupported")}>
+                    {t("placement.micUnsupportedDesc")}
+                  </Alert>
                 ) : pronRec.recording ? (
-                  <Button size="sm" variant="secondary" onClick={pronRec.stop}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={pronRec.stop}
+                    aria-pressed={true}
+                  >
                     <Square className="h-4 w-4" /> {t("placement.stopRecording")}
                   </Button>
                 ) : (
-                  <Button size="sm" variant="secondary" onClick={pronRec.start}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={pronRec.start}
+                    aria-pressed={false}
+                  >
                     <Mic className="h-4 w-4" /> {t("placement.startRecording")}
                   </Button>
                 )}
                 {pronRec.audioUrl && (
-                  <audio controls src={pronRec.audioUrl} className="h-9 w-full sm:w-56" aria-label="Your recording" />
+                  <audio
+                    controls
+                    src={pronRec.audioUrl}
+                    className="h-9 w-full sm:w-56"
+                    aria-label={t("placement.recordingLabel", { section: PLACEMENT_PRONUNCIATION.title })}
+                  />
                 )}
               </div>
               {pronRec.error && (
@@ -1347,7 +1408,7 @@ export function PlacementRunner({
                   })
                 }
                 placeholder={t("placement.pronPlaceholder")}
-                className="mt-2 min-h-[100px] w-full rounded-2xl border border-ink-300 bg-white p-3.5 text-[15px] leading-relaxed dark:border-ink-600 dark:bg-ink-900"
+                className="mt-2 min-h-[100px] w-full scroll-mb-40 rounded-2xl border border-ink-300 bg-white p-3.5 text-[15px] leading-relaxed dark:border-ink-600 dark:bg-ink-900"
               />
               <p className="mt-1 text-xs tabular-nums text-ink-500" role="status">
                 {t("placement.wordsLabel", { count: pronWords })}

@@ -26,12 +26,13 @@ for (const url of PAGES) {
   });
 }
 
-test("@a11y placement keyboard: tabs are reachable", async ({ page }) => {
+test("@a11y placement keyboard: section nav is reachable", async ({ page }) => {
   await page.goto("/placement");
   const start = page.getByRole("button", { name: /start test|continue test/i }).first();
   if (await start.isVisible()) await start.click();
-  const tab = page.getByRole("tab").first();
-  await expect(tab).toBeVisible();
-  await tab.focus();
-  await expect(tab).toBeFocused();
+  const nav = page.getByRole("navigation", { name: /placement sections/i });
+  await expect(nav).toBeVisible();
+  const btn = nav.getByRole("button").first();
+  await btn.focus();
+  await expect(btn).toBeFocused();
 });

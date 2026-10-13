@@ -390,7 +390,7 @@ export function gradePlacementV3(input: PlacementV3Input): PlacementV3Grade {
     answeredScores.length > 0
       ? Math.round(answeredScores.reduce((s, x) => s + x, 0) / answeredScores.length)
       : 0;
-  const overallLevel = insufficient ? percentToLevel(overallPercent) : percentToLevel(overallPercent);
+  const overallLevel = percentToLevel(overallPercent);
 
   const overallIdx = levelIndex(overallLevel);
   const gaps = answeredSkills.filter((k) => levelIndex(skills[k].level) <= overallIdx - 2);

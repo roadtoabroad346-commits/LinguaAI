@@ -7,7 +7,8 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const noStore = { "Cache-Control": "no-store" };
   const url = new URL(request.url);
-  const limit = Math.max(1, Math.min(20, Number(url.searchParams.get("limit") || 5)));
+  const rawLimit = Number(url.searchParams.get("limit") || 5);
+  const limit = Number.isFinite(rawLimit) ? Math.max(1, Math.min(20, Math.floor(rawLimit))) : 5;
   let supabase;
   try {
     supabase = createClient();
@@ -24,6 +25,7 @@ export async function GET(request: Request) {
     .select("id,score,total,level,skill_scores,created_at,test_version,attempt_number")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(limit);
   if (error) {
     return NextResponse.json({ error: "Could not load placement history." }, { status: 500, headers: noStore });
