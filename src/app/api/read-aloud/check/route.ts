@@ -21,7 +21,7 @@ function safeParseAiJson(text: string): { score?: number; tip?: string; hardWord
 
 export async function POST(request: Request) {
   // Gemini-backed: strict per-IP limit even for guests (deterministic grade stays free).
-  const limited = checkRateLimit(request, { key: "read-aloud-check", limit: 15, windowMs: 60_000 });
+  const limited = await checkRateLimit(request, { key: "read-aloud-check", limit: 15, windowMs: 60_000 });
   if (limited) return limited;
 
   let body: unknown;
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
       const { data } = await supabase.auth.getUser();
       const userId = data.user?.id ?? null;
       if (userId) {
-        const userLimited = checkRateLimit(request, { key: "read-aloud-check", limit: 30, scope: userId });
+        const userLimited = await checkRateLimit(request, { key: "read-aloud-check", limit: 30, scope: userId });
         if (userLimited) return userLimited;
         // Same read submitted twice (retry / double-click) counts once.
         const claim = await claimCompletion(supabase, userId, "read_aloud", parsed.data.idempotencyKey);

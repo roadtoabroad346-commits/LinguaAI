@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   }
   if (!supabase || !userId) return NextResponse.json({ exact, similarity, xpEarned, saved: false });
 
-  const limited = checkRateLimit(request, { key: "dictation", limit: 60, scope: userId });
+  const limited = await checkRateLimit(request, { key: "dictation", limit: 60, scope: userId });
   if (limited) return limited;
 
   if (exact) {

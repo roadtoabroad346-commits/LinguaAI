@@ -262,7 +262,7 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
       >
         {t("auth.continueGoogle")}
       </Button>
-      <div className="my-4 flex items-center gap-3 text-xs text-ink-400" aria-hidden>
+      <div className="my-4 flex items-center gap-3 text-xs text-ink-500 dark:text-ink-300" aria-hidden>
         <span className="h-px flex-1 bg-ink-200" />
         <span>{t("common.orWithEmail")}</span>
         <span className="h-px flex-1 bg-ink-200" />

@@ -40,7 +40,7 @@ function validAiCriteria(list: Array<{ key?: string; score?: number; note?: stri
 
 export async function POST(request: Request) {
   // Gemini-backed: strict per-IP limit even for guests (deterministic grade stays free).
-  const limited = checkRateLimit(request, { key: "speaking-feedback", limit: 10, windowMs: 60_000 });
+  const limited = await checkRateLimit(request, { key: "speaking-feedback", limit: 10, windowMs: 60_000 });
   if (limited) return limited;
 
   let body: unknown;
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
       const { data } = await supabase.auth.getUser();
       const userId = data.user?.id ?? null;
       if (userId) {
-        const userLimited = checkRateLimit(request, { key: "speaking-feedback", limit: 30, scope: userId });
+        const userLimited = await checkRateLimit(request, { key: "speaking-feedback", limit: 30, scope: userId });
         if (userLimited) return userLimited;
         // Same transcript submitted twice (retry / double-click) counts once.
         const claim = await claimCompletion(supabase, userId, "speaking", parsed.data.idempotencyKey);

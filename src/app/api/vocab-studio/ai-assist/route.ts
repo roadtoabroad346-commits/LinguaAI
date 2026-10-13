@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid request.", issues: parsed.error.flatten() }, { status: 400 });
 
   // AI costs tokens: per-user limit even when configured.
-  const limited = checkRateLimit(request, { key: "vocab-ai-assist", limit: 20, scope: userId });
+  const limited = await checkRateLimit(request, { key: "vocab-ai-assist", limit: 20, scope: userId });
   if (limited) return limited;
 
   if (!isGeminiConfigured()) {

@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   const userId = userData.user?.id ?? null;
   if (!userId) return NextResponse.json({ error: "Sign in to save reviews." }, { status: 401 });
 
-  const userLimited = checkRateLimit(request, { key: "flashcards-review", limit: 120, scope: userId });
+  const userLimited = await checkRateLimit(request, { key: "flashcards-review", limit: 120, scope: userId });
   if (userLimited) return userLimited;
 
   const slug = parsed.data.word.trim().toLowerCase();

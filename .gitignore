@@ -13,3 +13,6 @@ coverage/
 *.pem
 *.key
 service-account*.json
+test-results/
+playwright-report/
+.playwright/

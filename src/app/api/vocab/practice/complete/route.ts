@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ...grade, saved: false, xpEarned: grade.xpEarned });
   }
 
-  const limited = checkRateLimit(request, { key: "vocab-practice", limit: 60, scope: userId });
+  const limited = await checkRateLimit(request, { key: "vocab-practice", limit: 60, scope: userId });
   if (limited) return limited;
 
   // Same quiz submitted twice (retry / double-click) counts once.

@@ -43,7 +43,7 @@ function validAiCriteria(list: AiCriterion[] | undefined): Array<{ key: string; 
 }
 
 export async function POST(request: Request) {
-  const limited = checkRateLimit(request, { key: "writing-check", limit: 10, windowMs: 60_000 });
+  const limited = await checkRateLimit(request, { key: "writing-check", limit: 10, windowMs: 60_000 });
   if (limited) return limited;
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 }); }
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
       const { data } = await supabase.auth.getUser();
       const userId = data.user?.id ?? null;
       if (userId) {
-        const userLimited = checkRateLimit(request, { key: "writing-check", limit: 30, scope: userId });
+        const userLimited = await checkRateLimit(request, { key: "writing-check", limit: 30, scope: userId });
         if (userLimited) return userLimited;
         // Same text submitted twice (retry / double-click) is graded once for XP:
         // the deterministic grade above is returned with no new submission or XP.

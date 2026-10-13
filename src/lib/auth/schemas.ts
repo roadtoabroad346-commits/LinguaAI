@@ -112,12 +112,82 @@ export const profileUpdateSchema = z.object({
 });
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
 
+const spellingAnswerSchema = z.object({
+  slug: z.string().min(1).max(80),
+  typed: z.string().trim().max(80).optional(),
+  selected: z.number().int().min(0).max(10).optional(),
+  choices: z.array(z.string().max(80)).max(10).optional(),
+});
+
 export const placementSubmitSchema = z.object({
   answers: z
     .array(z.object({ questionId: z.string().min(1), selected: z.number().int().min(0).max(3) }))
-    .min(1, "Answer at least one question"),
+    .max(100)
+    .optional()
+    .default([]),
+  reading: z
+    .array(z.object({ questionId: z.string().min(1), selected: z.number().int().min(0).max(10) }))
+    .max(50)
+    .optional()
+    .default([]),
+  listening: z
+    .array(z.object({ questionId: z.string().min(1), selected: z.number().int().min(0).max(10) }))
+    .max(50)
+    .optional()
+    .default([]),
+  spelling: z.array(spellingAnswerSchema).max(30).optional().default([]),
+  writingText: z.string().max(4000).optional().default(""),
+  speakingTranscript: z.string().max(4000).optional().default(""),
+  speakingSecs: z.coerce.number().min(0).max(3600).optional().default(0),
+  pronunciationTranscript: z.string().max(3000).optional().default(""),
+  pronunciationSecs: z.coerce.number().min(0).max(3600).optional().default(0),
   learningMode: z.enum(["guided", "free"]).optional(),
   durationSeconds: z.coerce.number().int().min(0).max(7200).optional(),
   testVersion: z.string().trim().max(20).optional(),
+  idempotencyKey: z.string().trim().min(8).max(120).optional(),
+}).superRefine((v, ctx) => {
+  const total =
+    (v.answers?.length ?? 0) +
+    (v.reading?.length ?? 0) +
+    (v.listening?.length ?? 0) +
+    (v.spelling?.length ?? 0) +
+    (v.writingText.trim().length > 0 ? 1 : 0) +
+    (v.speakingTranscript.trim().length > 0 ? 1 : 0) +
+    (v.pronunciationTranscript.trim().length > 0 ? 1 : 0);
+  if (total === 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Answer at least one question", path: ["answers"] });
+  }
 });
 export type PlacementSubmitInput = z.infer<typeof placementSubmitSchema>;
+
+/** Server-side draft payload: same shapes as submit, but partial is allowed. */
+export const placementDraftPayloadSchema = z.object({
+  answers: z.record(z.string().min(1).max(80), z.number().int().min(0).max(10)).optional().default({}),
+  reading: z.record(z.string().min(1).max(80), z.number().int().min(0).max(10)).optional().default({}),
+  listening: z.record(z.string().min(1).max(80), z.number().int().min(0).max(10)).optional().default({}),
+  spelling: z
+    .record(
+      z.string().min(1).max(80),
+      z.object({
+        typed: z.string().max(80).optional(),
+        selected: z.number().int().min(0).max(10).optional(),
+        choices: z.array(z.string().max(80)).max(10).optional(),
+      })
+    )
+    .optional()
+    .default({}),
+  writingText: z.string().max(3000).optional().default(""),
+  speakingTranscript: z.string().max(3000).optional().default(""),
+  speakingSecs: z.coerce.number().min(0).max(600).optional().default(0),
+  pronunciationTranscript: z.string().max(2000).optional().default(""),
+  pronunciationSecs: z.coerce.number().min(0).max(600).optional().default(0),
+  learningMode: z.enum(["guided", "free"]).optional().default("guided"),
+});
+export type PlacementDraftPayload = z.infer<typeof placementDraftPayloadSchema>;
+
+export const placementDraftUpsertSchema = z.object({
+  attemptKey: z.string().trim().min(4).max(120),
+  sectionIndex: z.coerce.number().int().min(0).max(19).optional().default(0),
+  payload: placementDraftPayloadSchema,
+});
+export type PlacementDraftUpsert = z.infer<typeof placementDraftUpsertSchema>;

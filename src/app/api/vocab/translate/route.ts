@@ -9,7 +9,7 @@ import { translateSchema } from "@/lib/vocab/schemas";
  * "Translate" on a word detail — keeps Gemini usage minimal.
  */
 export async function POST(request: Request) {
-  const limited = checkRateLimit(request, { key: "vocab-translate", limit: 20, windowMs: 60_000 });
+  const limited = await checkRateLimit(request, { key: "vocab-translate", limit: 20, windowMs: 60_000 });
   if (limited) return limited;
   let body: unknown;
   try {

@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
 
   // Scoped by user id (rotation-proof); runs after auth so the scope is known.
-  const limited = checkRateLimit(request, { key: "security-device", limit: 20, windowMs: 60_000, scope: user.id });
+  const limited = await checkRateLimit(request, { key: "security-device", limit: 20, windowMs: 60_000, scope: user.id });
   if (limited) return limited;
 
   let body: unknown;

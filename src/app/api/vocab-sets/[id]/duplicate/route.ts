@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const { error, supabase, userId } = await requireUser();
   if (error || !supabase || !userId) return error ?? NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  const limited = checkRateLimit(request, { key: "vocab-duplicate", limit: 20, scope: userId });
+  const limited = await checkRateLimit(request, { key: "vocab-duplicate", limit: 20, scope: userId });
   if (limited) return limited;
   const { set } = await getOwnedSet(supabase, userId, params.id);
   if (!set) return NextResponse.json({ error: "Set not found." }, { status: 404 });

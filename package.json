@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:a11y": "playwright test --grep @a11y",
+    "lighthouse": "node scripts/lighthouse.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
@@ -25,13 +28,17 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.64.0",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20.16.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.20",
+    "axe-core": "^4.14.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.13",
+    "lighthouse": "^13.5.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.4",

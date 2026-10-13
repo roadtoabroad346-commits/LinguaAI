@@ -7,11 +7,11 @@ npm install
 npm run dev            # http://localhost:3000
 ```
 ## Scripts
-`dev` / `build` / `typecheck` (`tsc --noEmit`) / `lint` (`next lint`) / `test` (Vitest).
+`dev` / `build` / `typecheck` (`tsc --noEmit`) / `lint` (`next lint`) / `test` (Vitest) / `test:e2e` (Playwright: 360/390/1440) / `test:a11y` (axe, WCAG 2A/2AA) / `lighthouse` (perf/a11y/best-practices/seo thresholds).
 ## Design system (Phase 10)
 Tokens in `tailwind.config.ts` + `src/app/globals.css` (light/dark, Inter + Sora, glass/gradients, safe-area, 100dvh). UI kit in `src/components/ui/` (Button motion press/shine, Card, Tabs, Progress+Ring, Sheet bottom sheet, Toast, Skeleton, Avatar, Section). Motion in `src/lib/motion/` (page transitions, reveals, counters, confetti). Shell: bottom tab bar (Home/Learn/Words/Challenge/Profile, hide-on-scroll) + desktop sidebar, theme toggle (`linguaai_theme`), reduced-motion + haptics settings on Profile. Landing is a scroll story (`src/components/landing/LandingStory.tsx`). PWA manifest + `/offline`.
 ## Environment
-See `.env.example`. Server-only: `GEMINI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. Public: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+See `.env.example`. Server-only: `GEMINI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. Public: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Optional server-only: `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` (multi-instance rate limits; without them the API fails open to in-memory limits).
 ## Google OAuth (Phase 1) — production настроен
 Код: `src/components/auth/AuthForm.tsx` (`signInWithOAuth provider google`,
 `redirectTo: <origin>/auth/callback?next=/onboarding`), обмен кода — `src/app/auth/callback/route.ts`.
@@ -40,11 +40,18 @@ Apply migrations in order in Supabase SQL editor (or `supabase db push`):
 - `supabase/migrations/0013_user_state_columns.sql` — typed profile columns (`onboarding_step`, `placement_completed`, `level_source`, goals/targets/skills/interests, `avatar_url`, `preferences`), placement history columns + `set_updated_at()`.
 - `supabase/migrations/0014_user_state_rpc.sql` — atomic RPC (`complete_onboarding`, `save_placement_result`, `get_user_bootstrap`) + RLS re-audit on all 15 tables.
 - `supabase/migrations/0015_user_state_trigger_backfill.sql` — `handle_new_user()` trigger + backfill (a profile for every auth user), integrity checks, attempt numbering, completion backfill.
-Apply `0001` → `0015` in order (0013 → 0014 → 0015 for the new ones); every file is idempotent and ends with an `OK-00XX` proof row — if you do not see it, the paste was truncated, re-copy the entire file.
+- `supabase/migrations/0016_level_sync_guard.sql` — `placement_results` insert trigger syncs `profiles.level` even on legacy writes + orphan backfill.
+- `supabase/migrations/0017_security_telemetry.sql` — `security_events` + `devices` telemetry (owner RLS).
+- `supabase/migrations/0018_notifications.sql` — in-app notifications + preferences.
+- `supabase/migrations/0019_vocab_studio.sql` — Flashcards Pro sets/cards/reviews.
+- `supabase/migrations/0020_completion_claims.sql` — idempotency claims `UNIQUE(user_id, scope, key)` (placement submit uses `scope=placement`).
+- `supabase/migrations/0021_realtime_security_performance_fix.sql` — SECURITY DEFINER hardening, RLS perf (`(select auth.uid())`), missing FK indexes, private Realtime Broadcast.
+- `supabase/migrations/0022_placement_drafts.sql` — `placement_drafts` (`user_id, attempt_key` unique, `status`, `section_index`, `payload jsonb`) with owner-only RLS for multi-device resume.
+Apply `0001` → `0022` in order (0013 → 0014 → 0015 for the new ones); every file is idempotent and ends with an `OK-00XX` proof row — if you do not see it, the paste was truncated, re-copy the entire file.
 ## Auth + session architecture (Phase 13)
 Cookie sessions via `@supabase/ssr` everywhere (singleton `lib/supabase/client.ts`, `lib/supabase/server.ts`, service-role `lib/supabase/service.ts` server-only). `src/middleware.ts` refreshes the session with `getUser()` and protects app routes (`/login?next=` for anonymous, authed users off `/login`/`/signup`). Server truth: `getCurrentUser()` (`lib/auth/session.ts`); client truth: `AuthProvider`/`useAuth` seeded from the root layout (no flash) + `onAuthStateChange` + `router.refresh()`; gates use `RequireAuth` (skeleton while loading, sign-in card only when anonymous). Post-auth destination: `lib/auth/routing.ts` (`sanitizeNext`/`resolveNextPath`) shared by `/auth/callback`, `AuthForm`, `/login`, `/signup`. Shell hydration: `GET /api/me/bootstrap` (no-store); diagnostics: `/api/health` (env booleans, no secrets) + authed `GET /api/me/status`. Storage policy: device-only prefs may stay local; account data lives in Postgres; guest words migrate once via `POST /api/me/migrate-guest` (server wins), user-scoped keys cleared on sign-out/switch (`lib/auth/storage.ts`).
 ## Auth + onboarding flow (Phase 13)
-`/signup` → `/onboarding` (resumable via `onboarding_step`, per-step saves) → `/placement` (20 questions, A1–C1, atomic `save_placement_result`; retakes append history) → `/dashboard`. Returning users skip finished steps via `resolveNextPath`; `/login?next=` preserves deep links; `/profile` offers "Retake level test" (`/placement?retake=1`) and "Edit goals" (`/onboarding?edit=1`). `/auth/callback` exchanges OAuth codes, preserves cookies on the final redirect, and routes by DB state.
+`/signup` → `/onboarding` (resumable via `onboarding_step`, per-step saves) → `/placement` (v3-multi: grammar 20 + reading 6 + listening 6 + spelling 8 + writing/speaking/pronunciation, deterministic CEFR estimate, server draft `placement_drafts` + local autosave, atomic `save_placement_result`; retakes append history) → `/dashboard`. Returning users skip finished steps via `resolveNextPath`; `/login?next=` preserves deep links; `/profile` offers "Retake level test" (`/placement?retake=1`) and "Edit goals" (`/onboarding?edit=1`). `/auth/callback` exchanges OAuth codes, preserves cookies on the final redirect, and routes by DB state.
 ## Dashboard (Phase 2)
 `/dashboard` (streak, XP vs daily goal, Continue Learning, Word of the Day, recommendations, Daily Challenge card) + `/daily-challenge` (5 questions/day, XP + streak). APIs: `GET /api/dashboard`, `POST /api/xp`, `GET /api/daily-challenge`, `POST /api/daily-challenge/complete`, `POST /api/recommendations` (optional Gemini enhance, rule-based fallback).
 ## Vocabulary + dictionary (Phase 3)

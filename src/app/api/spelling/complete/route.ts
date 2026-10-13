@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "sessionId is required." }, { status: 400 });
   }
 
-  const limited = checkRateLimit(request, { key: "spelling-complete", limit: 60, scope: userId });
+  const limited = await checkRateLimit(request, { key: "spelling-complete", limit: 60, scope: userId });
   if (limited) return limited;
 
   // Idempotency: a completed session is returned as-is — no new XP, no new rows.

@@ -13,6 +13,7 @@ import { PageHero } from "@/components/learn/PageHero";
 import { getSessionProfile, getSessionUserResilient } from "@/lib/auth/session";
 import { isSupabaseConfigured } from "@/lib/env";
 import { Alert } from "@/components/ui/feedback";
+import { createClient } from "@/lib/supabase/server";
 import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
 import { formatXP } from "@/lib/i18n/format";
 
@@ -40,6 +41,30 @@ export default async function ProfilePage() {
     // send to onboarding to create it — never to signout (that logged users out in a loop).
     redirect("/onboarding");
   }
+
+  // Authoritative placement history (single source: placement_results, never profile copies).
+  let attempts: Array<{
+    id: string;
+    level: string;
+    score: number;
+    total: number;
+    skill_scores: Record<string, { score?: number; level?: string; answered?: boolean }> | null;
+    created_at: string;
+    test_version: string;
+  }> = [];
+  try {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("placement_results")
+      .select("id,level,score,total,skill_scores,created_at,test_version")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    attempts = ((data ?? []) as typeof attempts) ?? [];
+  } catch {
+    attempts = [];
+  }
+  const latest = attempts[0] ?? null;
 
   return (
     <AppShell>
@@ -76,6 +101,14 @@ export default async function ProfilePage() {
                   {profile.placement_score !== null ? `${profile.placement_score}%` : "—"}
                 </dd>
               </div>
+              {latest && (
+                <div className="flex justify-between gap-2">
+                  <dt className="text-ink-500">{t("placement.yourLevel")}</dt>
+                  <dd className="font-semibold tabular-nums">
+                    {latest.level} · {new Date(latest.created_at).toLocaleDateString(locale)}
+                  </dd>
+                </div>
+              )}
               <div className="flex justify-between gap-2">
                 <dt className="text-ink-500">{t("profile.dailyGoal")}</dt>
                 <dd className="font-semibold tabular-nums">{formatXP(locale, profile.daily_goal_xp)}</dd>
@@ -85,6 +118,33 @@ export default async function ProfilePage() {
                 <dd className="font-semibold">{profile.onboarding_completed ? t("profile.complete") : t("profile.incomplete")}</dd>
               </div>
             </dl>
+            {latest?.skill_scores && typeof latest.skill_scores === "object" && (
+              <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Latest placement skills">
+                {Object.entries(latest.skill_scores)
+                  .filter(([k, v]) => !k.startsWith("_") && v && (v as { answered?: boolean }).answered !== false)
+                  .slice(0, 7)
+                  .map(([k, v]) => (
+                    <Badge key={k} tone="brand">
+                      {k}: {(v as { level?: string }).level ?? (v as { score?: number }).score ?? "—"}
+                    </Badge>
+                  ))}
+              </div>
+            )}
+            {attempts.length > 1 && (
+              <div className="mt-3 rounded-xl bg-ink-50 p-2.5 text-xs text-ink-600 dark:bg-ink-800 dark:text-ink-300">
+                <p className="font-bold">{t("placement.reviewTitle")} · {attempts.length}</p>
+                <ul className="mt-1 space-y-0.5 tabular-nums">
+                  {attempts.map((a) => (
+                    <li key={a.id}>
+                      {new Date(a.created_at).toLocaleDateString(locale)} · {a.level} · {a.score}/{a.total} · {a.test_version}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {!latest && (
+              <p className="mt-3 text-xs text-ink-500">{t("placement.fillMore")}</p>
+            )}
             <div className="mt-4 flex flex-wrap gap-2">
               <Link href="/dashboard">
                 <Button size="sm">
@@ -98,6 +158,9 @@ export default async function ProfilePage() {
               </Link>
               <Link href="/onboarding?edit=1">
                 <Button variant="ghost" size="sm">{t("profile.editProfile")}</Button>
+              </Link>
+              <Link href="/smart-path">
+                <Button variant="ghost" size="sm">{t("placement.openSmartPath")}</Button>
               </Link>
               <Link href="/progress">
                 <Button variant="ghost" size="sm">{t("nav.progress")}</Button>

@@ -9,7 +9,7 @@ import { XP_RULES, xpFromBands } from "@/lib/gamification/xp-rules";
 import { awardXp } from "@/lib/dashboard/award";
 
 export async function POST(request: Request) {
-  const limited = checkRateLimit(request, { key: "pronunciation", limit: 30 });
+  const limited = await checkRateLimit(request, { key: "pronunciation", limit: 30 });
   if (limited) return limited;
 
   let body: unknown;
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   }
   if (!supabase || !userId) return NextResponse.json({ score, total: 100, xpEarned, saved: false });
 
-  const userLimited = checkRateLimit(request, { key: "pronunciation", limit: 60, scope: userId });
+  const userLimited = await checkRateLimit(request, { key: "pronunciation", limit: 60, scope: userId });
   if (userLimited) return userLimited;
 
   // Self-reported rating: same key replays award XP once.

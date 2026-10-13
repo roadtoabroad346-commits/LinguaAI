@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid review.", issues: parsed.error.flatten() }, { status: 400 });
   const { cardId, rating, idempotencyKey } = parsed.data;
 
-  const userLimited = checkRateLimit(request, { key: "vocab-reviews", limit: 120, scope: userId });
+  const userLimited = await checkRateLimit(request, { key: "vocab-reviews", limit: 120, scope: userId });
   if (userLimited) return userLimited;
 
   // Idempotency: return prior result without double-counting XP/scheduling.

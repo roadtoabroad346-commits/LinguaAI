@@ -99,6 +99,30 @@ export interface Database {
         Insert: Omit<PlacementResultRow, "id" | "created_at">;
         Update: Partial<PlacementResultRow>;
       };
+      placement_drafts: {
+        Row: {
+          id: string;
+          user_id: string;
+          attempt_key: string;
+          status: "in_progress" | "completed";
+          section_index: number;
+          payload: Record<string, unknown>;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          attempt_key: string;
+          status?: "in_progress" | "completed";
+          section_index?: number;
+          payload?: Record<string, unknown>;
+        };
+        Update: Partial<{
+          status: "in_progress" | "completed";
+          section_index: number;
+          payload: Record<string, unknown>;
+        }>;
+      };
       activity_events: {
         Row: { id: string; user_id: string; kind: string; title: string; subtitle: string | null; href: string | null; xp: number; created_at: string };
         Insert: Omit<Database["public"]["Tables"]["activity_events"]["Row"], "id" | "created_at">;

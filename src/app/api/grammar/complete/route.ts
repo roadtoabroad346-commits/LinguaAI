@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   }
   if (!supabase || !userId) return NextResponse.json({ ...grade, saved: false });
 
-  const limited = checkRateLimit(request, { key: "grammar-complete", limit: 60, scope: userId });
+  const limited = await checkRateLimit(request, { key: "grammar-complete", limit: 60, scope: userId });
   if (limited) return limited;
 
   // Idempotency: retries / double-submits with the same key award XP once.

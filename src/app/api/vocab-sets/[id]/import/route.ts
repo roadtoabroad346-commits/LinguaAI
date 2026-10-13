@@ -114,7 +114,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   if (!set) return NextResponse.json({ error: "Set not found." }, { status: 404 });
 
   // Bulk writes are expensive: per-user limit.
-  const limited = checkRateLimit(request, { key: "vocab-import", limit: 10, scope: userId });
+  const limited = await checkRateLimit(request, { key: "vocab-import", limit: 10, scope: userId });
   if (limited) return limited;
 
   let body: unknown;

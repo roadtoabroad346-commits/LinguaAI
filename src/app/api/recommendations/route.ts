@@ -12,7 +12,7 @@ import { generateText } from "@/lib/gemini/client";
  * user context, short completion. Falls back to deterministic list on any error.
  */
 export async function POST(request: Request) {
-  const limited = checkRateLimit(request, { key: "recommendations", limit: 15, windowMs: 60_000 });
+  const limited = await checkRateLimit(request, { key: "recommendations", limit: 15, windowMs: 60_000 });
   if (limited) return limited;
 
   let data = null;

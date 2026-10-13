@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ...grade, saved: false, streak: null });
   }
 
-  const limited = checkRateLimit(request, { key: "daily-challenge", limit: 20, scope: userId });
+  const limited = await checkRateLimit(request, { key: "daily-challenge", limit: 20, scope: userId });
   if (limited) return limited;
 
   // Idempotency: one completion per day. Re-submits return the stored result.

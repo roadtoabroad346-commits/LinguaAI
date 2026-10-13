@@ -2,15 +2,25 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { placementSubmitSchema } from "@/lib/auth/schemas";
 import { checkRateLimit } from "@/lib/api/security";
-import { gradePlacement } from "@/lib/placement/scoring";
+import { claimCompletion } from "@/lib/completions/claims";
+import {
+  gradePlacement,
+  gradePlacementV3,
+  type PlacementV3Grade,
+} from "@/lib/placement/scoring";
+import { PLACEMENT_TEST_VERSION } from "@/lib/placement/sections";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Grades the placement test deterministically (no AI) and persists the result.
- * Works account-free for preview: without a session it returns the grade without saving.
- * Authenticated writes go through the atomic save_placement_result RPC (0014)
- * with a legacy insert+update fallback for backends that predate it.
+ * v2 (20 grammar questions) stays supported; v3-multi adds reading, listening,
+ * spelling, writing, speaking and pronunciation in one reproducible grade.
+ * Works account-free for preview: without a session it returns the grade
+ * without saving. Authenticated writes go through the atomic
+ * save_placement_result RPC (0014) with a legacy insert+update fallback.
+ * Idempotent: repeat POSTs with the same idempotencyKey return the stored
+ * result with repeated:true instead of inserting a duplicate.
  */
 export async function POST(request: Request) {
   let body: unknown;
@@ -27,11 +37,34 @@ export async function POST(request: Request) {
     );
   }
 
-  const grade = gradePlacement(parsed.data.answers);
+  const input = parsed.data;
+  const isV3 =
+    (input.testVersion ?? "").startsWith("v3") ||
+    (input.reading?.length ?? 0) > 0 ||
+    (input.listening?.length ?? 0) > 0 ||
+    (input.spelling?.length ?? 0) > 0 ||
+    input.writingText.trim().length > 0 ||
+    input.speakingTranscript.trim().length > 0 ||
+    input.pronunciationTranscript.trim().length > 0;
+
+  const grade: PlacementV3Grade | ReturnType<typeof gradePlacement> = isV3
+    ? gradePlacementV3({
+        grammar: input.answers,
+        reading: input.reading,
+        listening: input.listening,
+        spelling: input.spelling,
+        writingText: input.writingText,
+        speakingTranscript: input.speakingTranscript,
+        speakingSecs: input.speakingSecs,
+        pronunciationTranscript: input.pronunciationTranscript,
+        pronunciationSecs: input.pronunciationSecs,
+      })
+    : (gradePlacement(input.answers) as unknown as PlacementV3Grade);
+
   const noStore = { "Cache-Control": "no-store" };
 
   // History-append endpoint: per-IP limit against submit spam.
-  const limited = checkRateLimit(request, { key: "placement-submit", limit: 10 });
+  const limited = await checkRateLimit(request, { key: "placement-submit", limit: 10 });
   if (limited) return limited;
 
   let supabase;
@@ -49,7 +82,70 @@ export async function POST(request: Request) {
   // Non-null captures for the verify helper below (narrowing is lost inside closures).
   const sb = supabase;
   const u = user;
-  const input = parsed.data;
+
+  // Idempotency: same attempt key must never create a second history row.
+  const attemptKey = (input.idempotencyKey ?? "").trim().slice(0, 120);
+  if (attemptKey.length >= 8) {
+    try {
+      const claim = await claimCompletion(sb as never, u.id, "placement" as never, attemptKey);
+      if (!claim.fresh) {
+        const { data: latest } = await sb
+          .from("placement_results")
+          .select("score,total,level,skill_scores,answers,created_at,test_version")
+          .eq("user_id", u.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const row = latest as {
+          score?: number;
+          total?: number;
+          level?: string;
+          skill_scores?: unknown;
+          answers?: unknown;
+        } | null;
+        return NextResponse.json(
+          {
+            ...grade,
+            score: typeof row?.score === "number" ? row.score : (grade as { score: number }).score,
+            total: typeof row?.total === "number" ? row.total : (grade as { total: number }).total,
+            level: typeof row?.level === "string" ? row.level : (grade as { level: string }).level,
+            saved: true,
+            repeated: true,
+            xpAwarded: 0,
+          },
+          { headers: noStore }
+        );
+      }
+    } catch {
+      /* fail-open: proceed with the save */
+    }
+  }
+
+  const v3 = grade as PlacementV3Grade;
+  const skillScores =
+    isV3 && v3.skills
+      ? {
+          ...Object.fromEntries(
+            (Object.keys(v3.skills) as Array<keyof typeof v3.skills>).map((k) => [
+              k,
+              {
+                correct: v3.skills[k].correct,
+                total: v3.skills[k].total,
+                score: v3.skills[k].score,
+                level: v3.skills[k].level,
+                answered: v3.skills[k].answered,
+              },
+            ])
+          ),
+          _overall: v3.overall,
+          _productive: v3.productive,
+          _texts: {
+            writing: String(input.writingText ?? "").slice(0, 2000),
+            speaking: String(input.speakingTranscript ?? "").slice(0, 2000),
+            pronunciation: String(input.pronunciationTranscript ?? "").slice(0, 1500),
+          },
+        }
+      : ((grade as { perBand?: unknown }).perBand ?? {});
 
   // UPDATE on a missing profile row affects 0 rows with NO error — so every
   // path verifies the level landed, creating the row when it is absent
@@ -60,17 +156,19 @@ export async function POST(request: Request) {
       .select("level")
       .eq("id", u.id)
       .maybeSingle();
-    if ((current as { level?: string | null } | null)?.level === grade.level) return true;
+    if ((current as { level?: string | null } | null)?.level === (grade as { level: string }).level)
+      return true;
     const now = new Date().toISOString();
+    const g = grade as { level: string; percent: number };
     const { error } = await sb.from("profiles").upsert(
       {
         id: u.id,
         email: u.email ?? null,
-        level: grade.level,
+        level: g.level,
         level_source: "placement",
         placement_completed: true,
         placement_completed_at: now,
-        placement_score: grade.percent,
+        placement_score: g.percent,
         placement_taken_at: now,
         ...(input.learningMode ? { learning_mode: input.learningMode } : {}),
       } as never,
@@ -80,6 +178,16 @@ export async function POST(request: Request) {
   }
 
   function unsyncedResponse() {
+    // Best-effort draft cleanup even when profile sync needs a retry:
+    // the history row exists, so the in-progress draft must not linger.
+    try {
+      const key = attemptKey.trim().slice(0, 120);
+      if (key.length >= 4) {
+        void sb.from("placement_drafts").delete().eq("user_id", u.id).eq("attempt_key", key);
+      }
+    } catch {
+      /* best-effort */
+    }
     return NextResponse.json(
       {
         ...grade,
@@ -91,22 +199,37 @@ export async function POST(request: Request) {
     );
   }
 
+  async function cleanupDraft() {
+    try {
+      const key = attemptKey.trim().slice(0, 120);
+      if (key.length >= 4) {
+        await sb.from("placement_drafts").delete().eq("user_id", u.id).eq("attempt_key", key);
+      } else {
+        await sb.from("placement_drafts").delete().eq("user_id", u.id).eq("status", "in_progress");
+      }
+    } catch {
+      /* best-effort: client also DELETEs */
+    }
+  }
+
   // Atomic path: one transaction inserts history + syncs the profile.
   try {
+    const g = grade as { score: number; total: number; level: string; answers: unknown };
     const { data: rpcData, error: rpcError } = await supabase.rpc("save_placement_result", {
       payload: {
-        score: grade.score,
-        total: grade.total,
-        level: grade.level,
-        answers: grade.answers,
-        skillScores: grade.perBand ?? {},
+        score: g.score,
+        total: g.total,
+        level: g.level,
+        answers: (g.answers ?? []) as unknown,
+        skillScores: (skillScores ?? {}) as unknown,
         learningMode: parsed.data.learningMode,
         durationSeconds: parsed.data.durationSeconds,
-        testVersion: parsed.data.testVersion ?? "v2",
+        testVersion: parsed.data.testVersion ?? (isV3 ? PLACEMENT_TEST_VERSION : "v2"),
       },
     } as never);
     if (!rpcError) {
       if (await ensureProfileLevel()) {
+        await cleanupDraft();
         return NextResponse.json(
           { ...grade, saved: true, receipt: rpcData ?? null },
           { headers: noStore }
@@ -118,23 +241,40 @@ export async function POST(request: Request) {
     /* fall through to legacy write */
   }
 
-  const { error: resultError } = await supabase.from("placement_results").insert({
+  const g = grade as { score: number; total: number; level: string; answers: unknown };
+  const fullInsert: Record<string, unknown> = {
     user_id: user.id,
-    score: grade.score,
-    total: grade.total,
-    level: grade.level,
-    answers: grade.answers,
-  } as never);
+    score: g.score,
+    total: g.total,
+    level: g.level,
+    answers: g.answers,
+    skill_scores: skillScores,
+    correct_answers: g.score,
+    duration_seconds: parsed.data.durationSeconds ?? null,
+    test_version: parsed.data.testVersion ?? (isV3 ? PLACEMENT_TEST_VERSION : "v2"),
+  };
+  const { error: fullError } = await supabase.from("placement_results").insert(fullInsert as never);
+  let resultError = fullError;
+  if (fullError && /column|schema cache|skill_scores|correct_answers|duration_seconds|test_version/i.test(fullError.message)) {
+    const { error: minError } = await supabase.from("placement_results").insert({
+      user_id: user.id,
+      score: g.score,
+      total: g.total,
+      level: g.level,
+      answers: g.answers,
+    } as never);
+    resultError = minError;
+  }
   if (resultError) {
     return NextResponse.json({ error: "Could not save placement result." }, { status: 500, headers: noStore });
   }
 
   const profilePatch: Record<string, unknown> = {
-    level: grade.level,
+    level: g.level,
     level_source: "placement",
     placement_completed: true,
     placement_completed_at: new Date().toISOString(),
-    placement_score: grade.percent,
+    placement_score: (grade as { percent: number }).percent,
     placement_taken_at: new Date().toISOString(),
   };
   if (parsed.data.learningMode) profilePatch.learning_mode = parsed.data.learningMode;
@@ -147,8 +287,8 @@ export async function POST(request: Request) {
     // Backend predates 0013: retry with legacy columns so the level is still saved.
     if (/column|schema cache|0013/i.test(profileError.message)) {
       const legacyPatch: Record<string, unknown> = {
-        level: grade.level,
-        placement_score: grade.percent,
+        level: g.level,
+        placement_score: (grade as { percent: number }).percent,
         placement_taken_at: new Date().toISOString(),
       };
       if (parsed.data.learningMode) legacyPatch.learning_mode = parsed.data.learningMode;
@@ -157,12 +297,14 @@ export async function POST(request: Request) {
         .update(legacyPatch as never)
         .eq("id", user.id);
       if (!legacyError && (await ensureProfileLevel())) {
+        await cleanupDraft();
         return NextResponse.json({ ...grade, saved: true, migrated: false }, { headers: noStore });
       }
     }
     // History row is saved — verify whether the profile actually got the level
     // (the 0016 trigger syncs it even when the update above fails).
     if (await ensureProfileLevel()) {
+      await cleanupDraft();
       return NextResponse.json({ ...grade, saved: true, repaired: true }, { headers: noStore });
     }
     return unsyncedResponse();
@@ -170,6 +312,7 @@ export async function POST(request: Request) {
 
   // Update reported success but may have touched 0 rows (absent profile row).
   if (await ensureProfileLevel()) {
+    await cleanupDraft();
     return NextResponse.json({ ...grade, saved: true }, { headers: noStore });
   }
   return unsyncedResponse();

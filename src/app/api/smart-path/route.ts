@@ -109,22 +109,62 @@ export async function GET() {
       { status: 503, headers: { "Cache-Control": "no-store" } }
     );
   }
-  const [skillRes, writeRes, speakRes, aloudRes, errRes, spellRes, dictRes, chalRes, xpRes, actRes, studioRes, setsRes] = batch;
+  const [skillRes, writeRes, speakRes, aloudRes, errRes, spellRes, dictRes, chalRes, xpRes, actRes, studioRes, setsRes] = batch as unknown as Array<{ data?: unknown }>;
+  // Placement is advisory and must never break Smart Path (e.g. backends
+  // predating 0013 without skill_scores). Best-effort, isolated try/catch.
+  let placementRes: { data?: unknown } | null = null;
+  try {
+    const { data } = await supabase
+      .from("placement_results")
+      .select("skill_scores,level,created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    placementRes = { data };
+  } catch {
+    placementRes = null;
+  }
 
   type SkillRow = { skill: string; slug: string; score: number; total: number; created_at: string };
-  const skillRows = ((skillRes.data ?? []) as SkillRow[]).filter((r) => Number.isFinite(r.score) && Number.isFinite(r.total) && r.total > 0);
+  const skillRows = (((skillRes as { data?: SkillRow[] }).data ?? []) as SkillRow[]).filter((r) => Number.isFinite(r.score) && Number.isFinite(r.total) && r.total > 0);
 
   // Per-skill accuracy (same augmentation as the gamification summary).
   const attemptRows: SkillAttemptLike[] = skillRows.map((r) => ({ skill: r.skill, score: r.score, total: r.total }));
-  const writes = ((writeRes.data ?? []) as Array<{ score: number; created_at: string }>);
+  const writes = ((((writeRes as { data?: Array<{ score: number; created_at: string }> }).data ?? [])) as Array<{ score: number; created_at: string }>);
   for (const w of writes) if (Number.isFinite(w.score)) attemptRows.push({ skill: "writing", score: w.score, total: 100 });
-  const speaks = ((speakRes.data ?? []) as Array<{ created_at: string }>);
-  const alouds = ((aloudRes.data ?? []) as Array<{ accuracy: number }>);
+  const speaks = ((((speakRes as { data?: Array<{ created_at: string }> }).data ?? [])) as Array<{ created_at: string }>);
+  const alouds = ((((aloudRes as { data?: Array<{ accuracy: number }> }).data ?? [])) as Array<{ accuracy: number }>);
   for (const r of alouds) if (Number.isFinite(r.accuracy)) attemptRows.push({ skill: "read-aloud", score: r.accuracy, total: 100 });
-  const spells = ((spellRes.data ?? []) as Array<{ word: string; correct: boolean }>);
+  const spells = ((((spellRes as { data?: Array<{ word: string; correct: boolean }> }).data ?? [])) as Array<{ word: string; correct: boolean }>);
   if (spells.length > 0) attemptRows.push({ skill: "spelling", score: spells.filter((s) => s.correct).length, total: spells.length });
 
-  const dictEntries = ((dictRes.data ?? []) as Array<{ word: string; mastery: number; next_review_at: string | null }>);
+  // Placement v3 is the same authoritative level source as the profile:
+  // seed per-skill accuracy from the latest saved attempt so weak placement
+  // skills surface in Smart Path even before module practice.
+  let placementLevel: Level | null = null;
+  let placementWeak: string[] = [];
+  try {
+    const prow = (placementRes as { data?: { skill_scores?: Record<string, { score?: number; answered?: boolean; level?: string }>; level?: Level } }).data;
+    if (prow?.skill_scores && typeof prow.skill_scores === "object") {
+      for (const [k, v] of Object.entries(prow.skill_scores)) {
+        if (k.startsWith("_") || !v || typeof v !== "object") continue;
+        const score = (v as { score?: number; answered?: boolean }).score;
+        const answered = (v as { answered?: boolean }).answered;
+        if (answered !== true || !Number.isFinite(score)) continue;
+        const skill = k === "pronunciation" ? "pronunciation" : k;
+        attemptRows.push({ skill, score: Math.max(0, Math.min(100, Number(score))), total: 100 });
+        if (Number(score) < 70) placementWeak.push(skill);
+      }
+    }
+    if (prow?.level && ["A1", "A2", "B1", "B2", "C1"].includes(prow.level)) {
+      placementLevel = prow.level as Level;
+    }
+  } catch {
+    /* placement is advisory — never break Smart Path */
+  }
+
+  const dictEntries = ((((dictRes as { data?: Array<{ word: string; mastery: number; next_review_at: string | null }> }).data ?? [])) as Array<{ word: string; mastery: number; next_review_at: string | null }>);
   // Flashcards Pro: merge custom studio cards into the same review queue (source of truth stays per-card).
   const studioEntries = (((studioRes as { data?: Array<{ word: string; mastery: number; next_review_at: string | null; set_id: string }> } | null)?.data ?? []) as Array<{ word: string; mastery: number; next_review_at: string | null }>);
   const studioSets = (((setsRes as { data?: Array<{ id: string; title: string }> } | null)?.data ?? []) as Array<{ id: string; title: string }>);
@@ -164,7 +204,7 @@ export async function GET() {
 
   // Recurring writing error categories.
   const errCounts = new Map<string, number>();
-  for (const e of ((errRes.data ?? []) as Array<{ category: string }>)) {
+  for (const e of ((((errRes as { data?: Array<{ category: string }> }).data ?? [])) as Array<{ category: string }>)) {
     if (typeof e.category === "string" && e.category.length > 0) errCounts.set(e.category, (errCounts.get(e.category) ?? 0) + 1);
   }
   const writingErrors: WritingErrorCount[] = Array.from(errCounts.entries())
@@ -185,7 +225,7 @@ export async function GET() {
     .slice(0, 5);
 
   // Learning history: recent modules + slugs (variety / no-repeat signals).
-  const acts = ((actRes.data ?? []) as Array<{ kind: string; created_at: string }>);
+  const acts = ((((actRes as { data?: Array<{ kind: string; created_at: string }> }).data ?? [])) as Array<{ kind: string; created_at: string }>);
   const recentKinds = Array.from(new Set(acts.filter((a) => (a.created_at ?? "") >= weekAgoIso).map((a) => a.kind)));
   const recentSlugs = Array.from(new Set(skillRows.filter((r) => (r.created_at ?? "") >= weekAgoIso).map((r) => r.slug)));
 
@@ -195,13 +235,14 @@ export async function GET() {
   const writingDaysAgo = lastWrite ? daysBetween(lastWrite, now) : null;
   const speakingDaysAgo = lastSpeak ? daysBetween(lastSpeak, now) : null;
 
-  const xpEvents = ((xpRes.data ?? []) as Array<{ amount: number; created_at: string }>);
+  const xpEvents = ((((xpRes as { data?: Array<{ amount: number; created_at: string }> }).data ?? [])) as Array<{ amount: number; created_at: string }>);
   const xpToday = xpEvents
     .filter((e) => dateKeyInTimezone(new Date(e.created_at ?? ""), timezone) === today)
     .reduce((s, e) => s + (e.amount || 0), 0);
 
+  const effectiveLevel = level ?? placementLevel;
   const input: SmartPathInput = {
-    level,
+    level: effectiveLevel,
     learningMode: (p.learning_mode ?? null) as LearningMode | null,
     goals: Array.isArray(p.goals) ? p.goals : [],
     todayKey: today,
@@ -215,7 +256,7 @@ export async function GET() {
     misspelledWords,
     recentKinds,
     recentSlugs,
-    challengeDone: Boolean(chalRes.data),
+    challengeDone: Boolean((chalRes as { data?: unknown }).data),
     xpToday,
     dailyGoalXp: p.daily_goal_xp ?? 30,
     streak: p.current_streak ?? 0,
@@ -239,6 +280,8 @@ export async function GET() {
       writingErrors,
       misspelledWords: misspelledWords.slice(0, 3),
       recentKinds,
+      placementLevel,
+      placementWeak,
     },
     reviewQueue: dueWords.slice(0, 8),
   }, { headers: { "Cache-Control": "no-store" } });
