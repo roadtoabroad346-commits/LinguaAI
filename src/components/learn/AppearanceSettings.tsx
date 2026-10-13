@@ -4,6 +4,7 @@ import * as React from "react";
 import { Moon, Sun, Vibrate, PersonStanding } from "lucide-react";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
+import { Switch } from "@/components/ui/Switch";
 import { cn } from "@/lib/utils";
 
 function Row({
@@ -101,22 +102,7 @@ export function AppearanceSettings() {
           title="Reduce motion"
           desc="Fades instead of slides"
           control={
-            <button
-              role="switch"
-              aria-checked={reduced}
-              onClick={toggleReduced}
-              className={cn(
-                "relative h-8 w-14 shrink-0 rounded-full transition-colors",
-                reduced ? "bg-brand-600" : "bg-ink-200 dark:bg-ink-700"
-              )}
-            >
-              <span
-                className={cn(
-                  "absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all",
-                  reduced ? "left-7" : "left-1"
-                )}
-              />
-            </button>
+            <Switch on={reduced} onFlip={toggleReduced} label="Reduce motion" />
           }
         />
         <Row
@@ -124,17 +110,7 @@ export function AppearanceSettings() {
           title="Haptics"
           desc="Gentle vibration on taps"
           control={
-            <button
-              role="switch"
-              aria-checked={haptics}
-              onClick={toggleHaptics}
-              className={cn(
-                "relative h-8 w-14 shrink-0 rounded-full transition-colors",
-                haptics ? "bg-brand-600" : "bg-ink-200 dark:bg-ink-700"
-              )}
-            >
-              <span className={cn("absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all", haptics ? "left-7" : "left-1")} />
-            </button>
+            <Switch on={haptics} onFlip={toggleHaptics} label="Haptics" />
           }
         />
       </div>

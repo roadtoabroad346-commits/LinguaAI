@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { BellOff, Mail, Smartphone } from "lucide-react";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Switch } from "@/components/ui/Switch";
 import { Alert } from "@/components/ui/feedback";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
-import { cn } from "@/lib/utils";
 import { DEFAULT_PREFS, NOTIF_CATEGORIES, type NotifPrefs } from "@/lib/notifications/types";
 
 const CATEGORY_ICON_HINT: Record<string, string> = {
@@ -21,30 +21,6 @@ const CATEGORY_ICON_HINT: Record<string, string> = {
   weekly: "📊",
   system: "ℹ️",
 };
-
-function Toggle({ on, onFlip, label }: { on: boolean; onFlip: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      aria-label={label}
-      onClick={onFlip}
-      className={cn(
-        "touch-44 relative h-8 w-14 shrink-0 rounded-full transition-colors",
-        on ? "bg-brand-600" : "bg-ink-200 dark:bg-ink-700"
-      )}
-    >
-      <span
-        aria-hidden
-        className={cn(
-          "absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all",
-          on ? "left-7" : "left-1"
-        )}
-      />
-    </button>
-  );
-}
 
 /** Full notification preferences (id="notifications" anchor target on /profile). */
 export function NotificationSettings() {
@@ -103,19 +79,19 @@ export function NotificationSettings() {
         <div className="mt-4 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-bold">{t("notif.enabled")}</p>
-            <Toggle on={prefs.enabled} onFlip={() => patch({ enabled: !prefs.enabled })} label={t("notif.enabled")} />
+            <Switch on={prefs.enabled} onFlip={() => patch({ enabled: !prefs.enabled })} label={t("notif.enabled")} />
           </div>
 
           <fieldset disabled={!prefs.enabled} className={prefs.enabled ? undefined : "opacity-50"}>
             <legend className="text-sm font-bold">{t("notif.categories")}</legend>
             <ul className="mt-2 grid gap-2 sm:grid-cols-2">
               {NOTIF_CATEGORIES.filter((c) => c !== "system").map((c) => (
-                <li key={c} className="flex items-center justify-between gap-2 rounded-2xl border border-ink-200/70 px-3 py-2 dark:border-ink-700">
-                  <span className="min-w-0 truncate text-sm">
+                <li key={c} className="flex items-center justify-between gap-3 rounded-2xl border border-ink-200/70 py-1 pl-3 pr-1 dark:border-ink-700">
+                  <span className="min-w-0 flex-1 truncate text-sm">
                     <span aria-hidden className="mr-1.5">{CATEGORY_ICON_HINT[c]}</span>
                     {t(`notif.cat_${c}`)}
                   </span>
-                  <Toggle
+                  <Switch
                     on={prefs.categories[c]}
                     onFlip={() => patch({ categories: { ...prefs.categories, [c]: !prefs.categories[c] } })}
                     label={t(`notif.cat_${c}`)}
