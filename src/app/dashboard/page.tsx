@@ -2,13 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
 import { Alert, Badge } from "@/components/ui/feedback";
-import { PageTransition } from "@/lib/motion/components";
 import { PageHero } from "@/components/learn/PageHero";
+import { ContinueLearning, DailyChallengeCard, RecommendationsCard, SmartPathCard, StatsRow, WordOfDayCard } from "@/components/dashboard/DashboardCards";
 import { isSupabaseConfigured } from "@/lib/env";
 import { getDashboardData } from "@/lib/dashboard/queries";
 import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
 import { formatXP } from "@/lib/i18n/format";
-import { ContinueLearning, DailyChallengeCard, RecommendationsCard, SmartPathCard, StatsRow, WordOfDayCard } from "@/components/dashboard/DashboardCards";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +30,6 @@ export default async function DashboardPage() {
 
   return (
     <AppShell>
-      <PageTransition>
         <PageHero
           title={profile?.display_name ? t("dashboard.greeting", { name: profile.display_name }) : t("dashboard.title")}
           desc={profile?.learning_mode === "free" ? t("dashboard.freeDesc") : t("dashboard.guidedDesc")}
@@ -84,23 +82,22 @@ export default async function DashboardPage() {
           <StatsRow data={data} />
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 cv-auto">
           <ContinueLearning data={data} />
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <div className="mt-6 grid gap-4 lg:grid-cols-2 cv-auto">
           <WordOfDayCard data={data} />
           <DailyChallengeCard data={data} />
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 cv-auto">
           <SmartPathCard signedIn={data.signedIn} />
         </div>
 
-        <div className="mt-4">
+        <div className="mt-4 cv-auto">
           <RecommendationsCard initial={data.recommendations} signedIn={data.signedIn} />
         </div>
-      </PageTransition>
     </AppShell>
   );
 }

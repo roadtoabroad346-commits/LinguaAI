@@ -27,8 +27,14 @@ export async function AppShell({ children, title }: { children: React.ReactNode;
         homeHref={user ? "/dashboard" : "/"}
         right={
           <>
-            <ThemeToggle />
-            <LanguageSwitcher />
+            {/* Mobile shows only bell + avatar: theme/language live in Profile >
+                Appearance & Language (avoids 5-icon overflow on 360px screens). */}
+            <span className="hidden sm:inline-flex">
+              <ThemeToggle />
+            </span>
+            <span className="hidden sm:inline-flex">
+              <LanguageSwitcher />
+            </span>
             {user && <NotificationBell />}
             <UserMenu />
           </>

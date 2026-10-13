@@ -9,7 +9,6 @@ import { ProfileForm } from "@/components/profile/ProfileForm";
 import { NotificationSettings } from "@/components/notifications/NotificationSettings";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { AppearanceSettings } from "@/components/learn/AppearanceSettings";
-import { PageTransition } from "@/lib/motion/components";
 import { PageHero } from "@/components/learn/PageHero";
 import { getSessionProfile, getSessionUserResilient } from "@/lib/auth/session";
 import { isSupabaseConfigured } from "@/lib/env";
@@ -44,7 +43,6 @@ export default async function ProfilePage() {
 
   return (
     <AppShell>
-      <PageTransition>
         <div className="flex items-center gap-3">
           <Avatar name={profile.display_name ?? user.email} size="lg" />
           <div className="min-w-0 flex-1">
@@ -131,7 +129,6 @@ export default async function ProfilePage() {
         <div className="mt-4" id="notifications">
           <NotificationSettings />
         </div>
-      </PageTransition>
     </AppShell>
   );
 }

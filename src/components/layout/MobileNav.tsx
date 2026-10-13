@@ -68,20 +68,28 @@ export function BottomTabBar() {
   const [hidden, setHidden] = React.useState(false);
   const [moreOpen, setMoreOpen] = React.useState(false);
   const lastY = React.useRef(0);
+  const ticking = React.useRef(false);
 
+  // rAF-throttled hide-on-scroll: raw scroll listeners + spring per frame
+  // jank on low-end Android. Coalesce to one state update per frame.
   React.useEffect(() => {
     lastY.current = window.scrollY;
     const onScroll = () => {
-      const y = window.scrollY;
-      const dy = y - lastY.current;
-      lastY.current = y;
-      if (moreOpen) return;
-      if (y < 80) {
-        setHidden(false);
-        return;
-      }
-      if (dy > 6) setHidden(true);
-      else if (dy < -6) setHidden(false);
+      if (ticking.current) return;
+      ticking.current = true;
+      requestAnimationFrame(() => {
+        ticking.current = false;
+        const y = window.scrollY;
+        const dy = y - lastY.current;
+        lastY.current = y;
+        if (moreOpen) return;
+        if (y < 80) {
+          setHidden(false);
+          return;
+        }
+        if (dy > 6) setHidden(true);
+        else if (dy < -6) setHidden(false);
+      });
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -118,11 +126,12 @@ export function BottomTabBar() {
 
   return (
     <>
-      <motion.nav
+      <nav
         aria-label={t("nav.mobile")}
-        animate={{ y: hidden ? "110%" : "0%" }}
-        transition={{ type: "spring", stiffness: 380, damping: 36 }}
-        className="fixed inset-x-0 bottom-0 z-40 px-3 pb-safe md:hidden"
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-40 px-3 pb-safe transition-transform duration-300 ease-out will-change-transform md:hidden",
+          hidden ? "translate-y-[110%]" : "translate-y-0"
+        )}
       >
         <div className="glass-strong mx-auto grid max-w-md grid-cols-5 gap-1 rounded-[1.75rem] border border-ink-200/70 p-1.5 shadow-sheet dark:border-ink-700">
           {MAIN_TABS.map((tab) => {
@@ -179,7 +188,7 @@ export function BottomTabBar() {
             {(moreActive || moreOpen) && <span aria-hidden className="relative mt-1 h-1 w-1 rounded-full bg-brand-600 dark:bg-brand-300" />}
           </button>
         </div>
-      </motion.nav>
+      </nav>
 
       <AnimatePresence>
         {moreOpen && (

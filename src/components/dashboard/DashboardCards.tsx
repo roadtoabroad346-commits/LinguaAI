@@ -1,7 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { Flame, ArrowRight, Sparkles, BookOpen, Trophy } from "lucide-react";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { Alert, Badge, Progress } from "@/components/ui/feedback";
@@ -23,7 +22,7 @@ function SectionTitle({ children, action }: { children: React.ReactNode; action?
   );
 }
 
-export function StatsRow({ data }: { data: DashboardData }) {
+export const StatsRow = memo(function StatsRow({ data }: { data: DashboardData }) {
   const { t, locale } = useTranslation();
   const goalLabel = `${data.xpToday} / ${data.dailyGoalXp} XP`;
   const pct = Math.min(100, (data.xpToday / Math.max(1, data.dailyGoalXp)) * 100);
@@ -98,9 +97,9 @@ export function StatsRow({ data }: { data: DashboardData }) {
       </StaggerItem>
     </Stagger>
   );
-}
+});
 
-export function ContinueLearning({ data }: { data: DashboardData }) {
+export const ContinueLearning = memo(function ContinueLearning({ data }: { data: DashboardData }) {
   const { t, locale } = useTranslation();
   return (
     <section aria-label={t("dashboard.continueLearning")}>
@@ -118,7 +117,7 @@ export function ContinueLearning({ data }: { data: DashboardData }) {
       ) : (
         <ul className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0">
           {data.recentActivity.map((a) => (
-            <motion.li key={a.id} whileTap={{ scale: 0.98 }} className="w-[86%] shrink-0 snap-start md:w-auto">
+            <li key={a.id} className="w-[86%] shrink-0 snap-start transition-transform active:scale-[0.98] md:w-auto">
               <Card interactive className="h-full">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -135,15 +134,15 @@ export function ContinueLearning({ data }: { data: DashboardData }) {
                   )}
                 </div>
               </Card>
-            </motion.li>
+            </li>
           ))}
         </ul>
       )}
     </section>
   );
-}
+});
 
-export function WordOfDayCard({ data }: { data: DashboardData }) {
+export const WordOfDayCard = memo(function WordOfDayCard({ data }: { data: DashboardData }) {
   const { t } = useTranslation();
   const w = data.wordOfDay;
   return (
@@ -167,9 +166,9 @@ export function WordOfDayCard({ data }: { data: DashboardData }) {
       </div>
     </Card>
   );
-}
+});
 
-export function DailyChallengeCard({ data }: { data: DashboardData }) {
+export const DailyChallengeCard = memo(function DailyChallengeCard({ data }: { data: DashboardData }) {
   const { t } = useTranslation();
   return (
     <Card interactive className="relative h-full overflow-hidden border-amber-200/70 dark:border-amber-900">
@@ -194,7 +193,7 @@ export function DailyChallengeCard({ data }: { data: DashboardData }) {
       </div>
     </Card>
   );
-}
+});
 
 export function RecommendationsCard({ initial, signedIn }: { initial: Recommendation[]; signedIn: boolean }) {
   const { t } = useTranslation();

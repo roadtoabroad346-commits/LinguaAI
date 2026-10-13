@@ -44,6 +44,8 @@ html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
+  /* Anchored sections must clear the floating bottom tab bar on phones. */
+  scroll-padding-bottom: 6.5rem;
 }
 
 html,
@@ -150,6 +152,24 @@ body {
   .touch-44 {
     min-height: 44px;
     min-width: 44px;
+  }
+  /* Below-fold cards skip rendering until near viewport (perf). */
+  .cv-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 340px;
+  }
+}
+
+/* Mobile GPUs: full-strength backdrop blur on every bar is a common
+   scroll-jank source. Slightly cheaper blur under 640px, same look. */
+@media (max-width: 640px) {
+  .glass {
+    backdrop-filter: blur(12px) saturate(1.25);
+    -webkit-backdrop-filter: blur(12px) saturate(1.25);
+  }
+  .glass-strong {
+    backdrop-filter: blur(14px) saturate(1.3);
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
   }
 }
 

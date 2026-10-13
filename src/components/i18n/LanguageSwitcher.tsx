@@ -63,7 +63,7 @@ export function LanguageSwitcher({
         aria-expanded={open}
         aria-label={t("language.selectLanguage")}
         title={t("language.interfaceLanguage")}
-        className="flex h-9 items-center gap-1.5 rounded-xl border border-ink-200 bg-white px-2.5 text-sm font-medium text-ink-700 transition-colors hover:border-ink-300 hover:bg-ink-50 focus-visible:outline-2 focus-visible:outline-brand-600 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200 dark:hover:border-brand-500 dark:hover:bg-ink-800"
+        className="touch-44 flex h-10 items-center gap-1.5 rounded-xl border border-ink-200 bg-white px-2.5 text-sm font-medium text-ink-700 transition-colors hover:border-ink-300 hover:bg-ink-50 focus-visible:outline-2 focus-visible:outline-brand-600 sm:h-9 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200 dark:hover:border-brand-500 dark:hover:bg-ink-800"
       >
         <Globe className="h-4 w-4 shrink-0" aria-hidden />
         <span className={variant === "compact" ? "hidden sm:inline" : undefined}>
