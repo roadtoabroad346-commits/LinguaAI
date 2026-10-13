@@ -34,3 +34,27 @@ export async function getOwnedSet(
 export function todayKeyUTC(now = new Date()): string {
   return now.toISOString().slice(0, 10);
 }
+
+/**
+ * True when a Supabase error means the Flashcards Pro tables have not been
+ * created yet (migrations 0019/0020 not applied): PostgREST schema-cache
+ * miss (PGRST205) or Postgres undefined-table (42P01). Callers map this to
+ * an honest 503 { code: "needs_migration" } instead of a cryptic 500.
+ */
+export function isMissingTableError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const code = String((err as { code?: unknown }).code ?? "");
+  const message = String((err as { message?: unknown }).message ?? "");
+  if (code === "PGRST205" || code === "42P01") return true;
+  return /could not find the table|not find .* in the schema cache|relation .* does not exist/i.test(message);
+}
+
+export function needsMigrationResponse() {
+  return NextResponse.json(
+    {
+      error: "Vocabulary Sets storage is not ready yet — the database update has not been applied.",
+      code: "needs_migration",
+    },
+    { status: 503 }
+  );
+}

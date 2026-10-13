@@ -11,17 +11,36 @@ export function ImportDialog({ setId, onDone }: { setId: string; onDone: (summar
   const [mode, setMode] = useState<"skip" | "update" | "import">("skip");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ tone: "success" | "danger" | "warning" | "brand"; title: string; body: string } | null>(null);
+  const [details, setDetails] = useState<{ invalid: Array<{ index: number; errors: string[] }>; warnings: string[]; errors: Array<{ index: number; error: string }> } | null>(null);
 
   async function submit(format: string, payload: Record<string, unknown>) {
-    setBusy(true); setMsg(null);
+    setBusy(true); setMsg(null); setDetails(null);
     try {
       const res = await fetch(`/api/vocab-sets/${setId}/import`, {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ format, mode, ...payload }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Import failed");
-      setMsg({ tone: "success", title: "Import complete", body: `Inserted ${json.summary.inserted}, updated ${json.summary.updated}, skipped ${json.summary.skipped}.` });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDetails({
+          invalid: Array.isArray(json.invalid) ? json.invalid.slice(0, 10) : [],
+          warnings: Array.isArray(json.warnings) ? json.warnings.slice(0, 5) : [],
+          errors: [],
+        });
+        throw new Error(json.error || "Import failed");
+      }
+      const s = json.summary ?? { inserted: 0, updated: 0, skipped: 0 };
+      const errCount = Array.isArray(s.errors) ? s.errors.length : 0;
+      setMsg({
+        tone: errCount > 0 && s.inserted === 0 && s.updated === 0 ? "warning" : "success",
+        title: "Import complete",
+        body: `Inserted ${s.inserted ?? 0}, updated ${s.updated ?? 0}, skipped ${s.skipped ?? 0}${errCount > 0 ? `, ${errCount} row error(s)` : ""}.`,
+      });
+      setDetails({
+        invalid: Array.isArray(json.invalid) ? json.invalid.slice(0, 10) : [],
+        warnings: Array.isArray(json.warnings) ? json.warnings.slice(0, 5) : [],
+        errors: Array.isArray(s.errors) ? s.errors.slice(0, 10) : [],
+      });
       setText("");
       onDone(json.summary);
     } catch (e) {
@@ -80,6 +99,13 @@ export function ImportDialog({ setId, onDone }: { setId: string; onDone: (summar
         </>
       )}
       {msg && <Alert tone={msg.tone} title={msg.title}>{msg.body}</Alert>}
+      {details && (details.invalid.length > 0 || details.errors.length > 0 || details.warnings.length > 0) && (
+        <div className="grid gap-1.5 rounded-2xl border border-ink-200 p-3 text-xs dark:border-ink-700" role="status" aria-label="Import details">
+          {details.warnings.map((w, i) => <p key={`w${i}`} className="text-ink-500">⚠ {w}</p>)}
+          {details.invalid.map((r) => <p key={`i${r.index}`} className="text-amber-700">Row {r.index}: skipped — {r.errors.join("; ")}</p>)}
+          {details.errors.map((r) => <p key={`e${r.index}`} className="text-red-600">Row {r.index}: {r.error}</p>)}
+        </div>
+      )}
       <p className="text-xs text-ink-400">Max 500 rows / 1 MB per import. Quoted CSV fields, escaped commas and malformed rows are validated before saving.</p>
     </div>
   );

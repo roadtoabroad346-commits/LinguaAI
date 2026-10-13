@@ -9,6 +9,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Alert, Badge, EmptyState } from "@/components/ui/feedback";
 import { CardEditor, emptyForm, fromRow, type CardForm } from "./CardEditor";
 import { ImportDialog } from "./ImportDialog";
+import { QuickAdd } from "./QuickAdd";
 
 interface Row extends Record<string, unknown> { id: string; front: string; back: string; word: string; mastery: number; status: string; }
 
@@ -149,6 +150,8 @@ export function SetDetail({ setId }: { setId: string }) {
         </div>
         <Button size="sm" onClick={() => { setSaveErr(null); setShowAdd(true); }}><Plus className="h-4 w-4" /> Add card</Button>
       </Card>
+
+      <QuickAdd setId={setId} onAdded={() => load()} />
 
       {filtered.length === 0 ? (
         <EmptyState title={cards.length === 0 ? "No cards yet" : "No matches"}

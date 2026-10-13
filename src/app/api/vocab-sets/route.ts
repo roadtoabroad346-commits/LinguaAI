@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSetSchema } from "@/lib/vocab-studio/schemas";
-import { requireUser, todayKeyUTC } from "@/lib/vocab-studio/server";
+import { requireUser, todayKeyUTC, isMissingTableError, needsMigrationResponse } from "@/lib/vocab-studio/server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,10 @@ export async function GET(request: Request) {
     .eq("user_id", userId)
     .order("updated_at", { ascending: false })
     .limit(500);
-  if (sErr) return NextResponse.json({ error: "Could not load sets." }, { status: 500 });
+  if (sErr) {
+    if (isMissingTableError(sErr)) return needsMigrationResponse();
+    return NextResponse.json({ error: "Could not load sets." }, { status: 500 });
+  }
 
   const { data: cards } = await supabase
     .from("vocab_cards")
@@ -93,6 +96,9 @@ export async function POST(request: Request) {
     color: p.color,
     icon: p.icon,
   } as never).select("*").maybeSingle();
-  if (iErr) return NextResponse.json({ error: "Could not create the set." }, { status: 500 });
+  if (iErr) {
+    if (isMissingTableError(iErr)) return needsMigrationResponse();
+    return NextResponse.json({ error: "Could not create the set." }, { status: 500 });
+  }
   return NextResponse.json({ set: data }, { status: 201 });
 }

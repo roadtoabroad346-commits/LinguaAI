@@ -28,13 +28,17 @@ export function StudioDashboard() {
   const [sets, setSets] = useState<StudioSet[] | null>(null);
   const [stats, setStats] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [needsMigration, setNeedsMigration] = useState(false);
   const [q, setQ] = useState("");
   const [sort, setSort] = useState("recent");
   const [filter, setFilter] = useState("active");
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [level, setLevel] = useState("");
   const [category, setCategory] = useState("general");
+  const [color, setColor] = useState("brand");
+  const [createError, setCreateError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<StudioSet | null>(null);
 
@@ -45,8 +49,12 @@ export function StudioDashboard() {
         fetch(`/api/vocab-sets?sort=${sort}&filter=${filter}&q=${encodeURIComponent(q)}`),
         fetch("/api/vocab-studio/stats"),
       ]);
-      if (!sRes.ok) throw new Error("Could not load your sets.");
-      const sj = await sRes.json();
+      const sj = await sRes.json().catch(() => ({}));
+      if (!sRes.ok) {
+        if (sj.code === "needs_migration") { setNeedsMigration(true); setSets([]); return; }
+        throw new Error(sj.error || "Could not load your sets.");
+      }
+      setNeedsMigration(false);
       setSets(sj.sets ?? []);
       if (stRes.ok) { const st = await stRes.json(); setStats(st.stats ?? null); }
     } catch (e) {
@@ -59,17 +67,28 @@ export function StudioDashboard() {
   async function create() {
     if (!title.trim() || busy) return;
     setBusy(true);
+    setCreateError(null);
     try {
       const res = await fetch("/api/vocab-sets", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ title: title.trim(), level: level || null, category }),
+        body: JSON.stringify({
+          title: title.trim(), description: description.trim(),
+          level: level || null, category: category.trim() || "general", color,
+        }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Create failed.");
-      setTitle(""); setCreating(false);
-      await load();
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (json.code === "needs_migration") { setNeedsMigration(true); setCreating(false); await load(); return; }
+        throw new Error(json.error || "Create failed.");
+      }
+      // Success: reset the form and open the new set so cards can be added right away.
+      const newId = (json.set as { id?: string } | undefined)?.id;
+      setTitle(""); setDescription(""); setLevel(""); setCategory("general"); setColor("brand");
+      setCreating(false);
+      if (newId) window.location.href = `/vocab-sets/${newId}`;
+      else await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Create failed.");
+      setCreateError(e instanceof Error ? e.message : "Create failed.");
     } finally { setBusy(false); }
   }
 
@@ -131,7 +150,14 @@ export function StudioDashboard() {
         <Link href="/flashcards?view=classic" className="text-xs font-semibold text-brand-700">Classic flashcards →</Link>
       </Card>
 
-      {error && <Alert tone="danger" title="Something went wrong">{error} <button className="underline" onClick={load}>Retry</button></Alert>}
+      {needsMigration && (
+        <Alert tone="brand" title="Vocabulary Sets storage is being prepared">
+          Your personal sets need a one-time database update before they can load.
+          Please apply the pending database migration, then press Retry — nothing you do here can break existing data.
+          <div className="mt-2"><button className="font-semibold underline" onClick={load}>Retry</button></div>
+        </Alert>
+      )}
+      {error && !needsMigration && <Alert tone="danger" title="Something went wrong">{error} <button className="underline" onClick={load}>Retry</button></Alert>}
 
       {sets === null ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Loading sets">
@@ -183,21 +209,29 @@ export function StudioDashboard() {
         </div>
       )}
 
-      <Modal open={creating} onClose={() => setCreating(false)} title="New vocabulary set">
-        <div className="grid gap-3">
+      <Modal open={creating} onClose={() => { setCreating(false); setCreateError(null); }} title="New vocabulary set">
+        <div className="grid gap-3" onKeyDown={(e) => { if (e.key === "Enter" && title.trim() && !busy) create(); }}>
           <Input label="Title *" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Travel idioms" maxLength={120} autoFocus />
-          <div className="grid grid-cols-2 gap-3">
+          <Input label="Description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What is this set for?" maxLength={1000} />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <label className="grid gap-1 text-sm font-semibold">Level
-              <select value={level} onChange={(e) => setLevel(e.target.value)} className="h-11 rounded-2xl border border-ink-200 bg-white px-3 dark:border-ink-700 dark:bg-ink-900">
+              <select aria-label="Set level" value={level} onChange={(e) => setLevel(e.target.value)} className="h-11 rounded-2xl border border-ink-200 bg-white px-3 dark:border-ink-700 dark:bg-ink-900">
                 <option value="">Mixed</option>{["A1", "A2", "B1", "B2", "C1"].map((l) => <option key={l} value={l}>{l}</option>)}
               </select>
             </label>
-            <Input label="Category" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="general" />
+            <Input label="Category" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="general" maxLength={64} />
+            <label className="grid gap-1 text-sm font-semibold">Color
+              <select aria-label="Set color" value={color} onChange={(e) => setColor(e.target.value)} className="h-11 rounded-2xl border border-ink-200 bg-white px-3 dark:border-ink-700 dark:bg-ink-900">
+                {["brand", "emerald", "amber", "rose", "violet", "sky", "slate"].map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
           </div>
+          {createError && <Alert tone="danger" title="Could not create the set">{createError}</Alert>}
           <div className="flex gap-2">
-            <Button onClick={create} disabled={!title.trim() || busy} loading={busy}>Create set</Button>
-            <Button variant="secondary" onClick={() => setCreating(false)}>Cancel</Button>
+            <Button onClick={create} disabled={!title.trim() || busy} loading={busy}>Create & open set</Button>
+            <Button variant="secondary" onClick={() => { setCreating(false); setCreateError(null); }}>Cancel</Button>
           </div>
+          <p className="text-xs text-ink-400">After creating, you land in the set and can add cards right away.</p>
         </div>
       </Modal>
 
