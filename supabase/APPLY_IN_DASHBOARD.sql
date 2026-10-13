@@ -7,6 +7,9 @@
 -- Dashboard: https://supabase.com/dashboard/project/ekeubyepwustjhzuthkd/sql/new
 -- ============================================================================
 
+-- pgcrypto provides gen_random_uuid() (pre-enabled on Supabase; harmless if present).
+create extension if not exists "pgcrypto";
+
 -- LinguaAI 0019 — Flashcards Pro / Custom Vocabulary Studio.
 -- Additive only: preserves dictionary_entries (legacy bank saves).
 -- New source of truth for personal sets/cards/reviews.
