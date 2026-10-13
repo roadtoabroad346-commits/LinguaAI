@@ -65,26 +65,90 @@ export async function POST(request: Request) {
   }
   const isNew = !existing;
 
-  const { error: upsertError } = await supabase.from("devices").upsert(
-    {
-      id: deviceId,
-      user_id: user.id,
-      last_seen: new Date().toISOString(),
-      user_agent: net.userAgent,
-      platform: fp.platform,
-      screen: fp.screen,
-      timezone: fp.timezone,
-      language: fp.language,
-    } as never,
-    { onConflict: "id" }
-  );
-  if (upsertError) {
-    if (isMissingTableError(upsertError.message)) {
+  // The devices PK is the fingerprint hash (global), while a row logically
+  // belongs to one user — so a second user on the same hardware (or one user
+  // with two accounts, the exact case this table detects) collides on id.
+  // A blind upsert would UPDATE another user's row and trip RLS (42501), then
+  // the beacon would retry on every page load. Instead: update own row,
+  // insert when absent, and treat a unique-violation as a shared-device
+  // signal — never a 500.
+  const row = {
+    id: deviceId,
+    user_id: user.id,
+    last_seen: new Date().toISOString(),
+    user_agent: net.userAgent,
+    platform: fp.platform,
+    screen: fp.screen,
+    timezone: fp.timezone,
+    language: fp.language,
+  } as never;
+
+  let stored = false;
+  let sharedDevice = false;
+  if (existing) {
+    const { error: updateError } = await supabase
+      .from("devices")
+      .update(row)
+      .eq("id", deviceId)
+      .eq("user_id", user.id);
+    if (updateError) {
+      if (isMissingTableError(updateError.message)) {
+        const res = NextResponse.json({ ok: true, stored: false, reason: "telemetry_unavailable" });
+        res.headers.set("Cache-Control", "no-store");
+        return res;
+      }
+      return NextResponse.json({ error: "Could not save device." }, { status: 500 });
+    }
+    stored = true;
+  } else {
+    const { error: insertError } = await supabase.from("devices").insert(row);
+    if (!insertError) {
+      stored = true;
+    } else if (isMissingTableError(insertError.message)) {
       const res = NextResponse.json({ ok: true, stored: false, reason: "telemetry_unavailable" });
       res.headers.set("Cache-Control", "no-store");
       return res;
+    } else if (String((insertError as { code?: unknown }).code ?? "") === "23505") {
+      // Unique violation: either our own parallel tab won the race, or the
+      // fingerprint belongs to another user. Re-read to tell them apart.
+      const { data: raced } = await supabase
+        .from("devices")
+        .select("id")
+        .eq("id", deviceId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (raced) {
+        await supabase.from("devices").update(row).eq("id", deviceId).eq("user_id", user.id);
+        stored = true;
+      } else {
+        sharedDevice = true;
+      }
+    } else {
+      return NextResponse.json({ error: "Could not save device." }, { status: 500 });
     }
-    return NextResponse.json({ error: "Could not save device." }, { status: 500 });
+  }
+
+  if (sharedDevice) {
+    // Same hardware fingerprint as another account: keep the multi-account
+    // signal (device_new with shared_device flag) without touching their row.
+    await logSecurityEvent(supabase, {
+      userId: user.id,
+      type: "device_new",
+      net,
+      deviceId,
+      meta: {
+        platform: fp.platform,
+        shared_device: true,
+        landing: fp.landing || null,
+        referrer: fp.referrer || null,
+        utm_source: fp.utmSource || null,
+        utm_medium: fp.utmMedium || null,
+        utm_campaign: fp.utmCampaign || null,
+      },
+    });
+    const res = NextResponse.json({ ok: true, stored: false, reason: "shared_device", deviceId, isNew: true });
+    res.headers.set("Cache-Control", "no-store");
+    return res;
   }
 
   if (isNew) {
