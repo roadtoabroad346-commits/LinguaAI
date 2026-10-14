@@ -10,10 +10,13 @@ import { getRequestLocale, getServerT } from "@/lib/i18n/server";
 import { getSessionUser } from "@/lib/auth/session";
 
 export async function AppShell({ children, title }: { children: React.ReactNode; title?: string }) {
-  const locale = getRequestLocale();
+  // Locale lookup and identity validation are independent server operations.
+  const [locale, user] = await Promise.all([
+    getRequestLocale(),
+    getSessionUser().catch(() => null),
+  ]);
   const t = getServerT(locale);
   // Logo goes to the dashboard for signed-in users, landing for guests.
-  const user = await getSessionUser().catch(() => null);
   return (
     <div className="bg-mesh min-h-dvh">
       <a

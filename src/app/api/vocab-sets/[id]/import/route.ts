@@ -107,7 +107,8 @@ async function applyImport(
  *  - { format:"csv", mode, csv:"..." }
  *  - { format:"quick", mode, text:"..." }
  */
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error, supabase, userId } = await requireUser();
   if (error || !supabase || !userId) return error ?? NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   const { set } = await getOwnedSet(supabase, userId, params.id);

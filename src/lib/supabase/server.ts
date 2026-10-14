@@ -8,11 +8,12 @@ export function createClient() {
   const cookieStore = cookies();
   return createServerClient<Database>(url, anon, {
     cookies: {
-      getAll: () => cookieStore.getAll(),
-      setAll: (cookiesToSet: Array<{ name: string; value: string; options: unknown }>) => {
+      getAll: async () => (await cookieStore).getAll(),
+      setAll: async (cookiesToSet: Array<{ name: string; value: string; options: unknown }>) => {
         try {
+          const store = await cookieStore;
           cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options as Parameters<typeof cookieStore.set>[2])
+            store.set(name, value, options as Parameters<typeof store.set>[2])
           );
         } catch { /* Server Component — middleware refreshes session */ }
       }

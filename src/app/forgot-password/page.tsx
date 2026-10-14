@@ -11,11 +11,12 @@ import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
 
 export const metadata = { title: "Reset password" };
 
-export default async function ForgotPasswordPage({
-  searchParams,
-}: {
-  searchParams?: { email?: string };
-}) {
+export default async function ForgotPasswordPage(
+  props: {
+    searchParams?: Promise<{ email?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   // Signed-in users don't need recovery.
   const user = await getSessionUserResilient();
   if (user) redirect("/dashboard");

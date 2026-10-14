@@ -11,7 +11,7 @@ import { SignOutButton } from "@/components/auth/SignOutButton";
 
 export const metadata = {
   title: "Learn English A1–C1 with AI",
-  description: "Placement in 6 minutes, Smart Path every day, vocabulary → reading → listening loop, XP and streaks. Thumb-first mobile app.",
+  description: "Seven-skill placement in about 23 minutes, a Smart Path every day, XP and streaks, from A1 to C1.",
 };
 
 export default async function LandingPage() {
@@ -66,6 +66,12 @@ export default async function LandingPage() {
             </Link>
             <Link href="/health" className="hover:underline">
               {t("landing.footStatus")}
+            </Link>
+            <Link href="/privacy" className="hover:underline">
+              {t("landing.footPrivacy")}
+            </Link>
+            <Link href="/terms" className="hover:underline">
+              {t("landing.footTerms")}
             </Link>
           </div>
         </div>

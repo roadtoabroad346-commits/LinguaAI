@@ -5,7 +5,8 @@ import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
 
 export const metadata = { title: "Flashcards Pro — Vocabulary Studio" };
 
-export default async function FlashcardsPage({ searchParams }: { searchParams?: { view?: string } }) {
+export default async function FlashcardsPage(props: { searchParams?: Promise<{ view?: string }> }) {
+  const searchParams = await props.searchParams;
   const t = getServerT(await getEffectiveLocale());
   const classic = searchParams?.view === "classic";
   return (

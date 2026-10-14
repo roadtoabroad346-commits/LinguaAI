@@ -42,7 +42,7 @@ export default defineConfig({
     ? undefined
     : {
         command: process.env.PW_SERVER_CMD ?? "npm run start -- --port 3100",
-        url: "http://localhost:3100/health",
+        url: "http://localhost:3100/",
         reuseExistingServer: true,
         timeout: 120_000,
         env: { ...process.env, PORT: "3100" } as Record<string, string>,

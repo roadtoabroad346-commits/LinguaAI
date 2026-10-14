@@ -5,12 +5,14 @@ import { PronunciationRunner } from "@/components/pronunciation/PronunciationVie
 
 export const dynamic = "force-dynamic";
 
-export function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const drill = getPronunciationDrill(params.slug);
   return { title: drill ? `Pronunciation: ${drill.title}` : "Pronunciation" };
 }
 
-export default function PronunciationDrillPage({ params }: { params: { slug: string } }) {
+export default async function PronunciationDrillPage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const drill = getPronunciationDrill(params.slug);
   if (!drill) notFound();
   return (

@@ -20,7 +20,8 @@ function toPatch(p: Record<string, unknown>): Record<string, unknown> {
 }
 
 /** GET /api/vocab-sets/[id] — set + cards. */
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(_: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error, supabase, userId } = await requireUser();
   if (error || !supabase || !userId) return error ?? NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   const { set } = await getOwnedSet(supabase, userId, params.id);
@@ -30,7 +31,8 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 }
 
 /** PATCH /api/vocab-sets/[id] — rename / edit / archive / favorite. */
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error, supabase, userId } = await requireUser();
   if (error || !supabase || !userId) return error ?? NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   let body: unknown;
@@ -47,7 +49,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 }
 
 /** DELETE /api/vocab-sets/[id] — delete set + cards (cascade). */
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error, supabase, userId } = await requireUser();
   if (error || !supabase || !userId) return error ?? NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   const { set } = await getOwnedSet(supabase, userId, params.id);

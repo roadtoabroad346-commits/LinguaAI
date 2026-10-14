@@ -26,11 +26,12 @@ const MESSAGE_KEYS: Record<string, string> = {
   email_verified: "auth.emailVerified",
 };
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: { error?: string; signed_out?: string; next?: string; message?: string };
-}) {
+export default async function LoginPage(
+  props: {
+    searchParams: Promise<{ error?: string; signed_out?: string; next?: string; message?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await getSessionUserResilient();
   if (user) {
     const profile = await getSessionProfile().catch(() => null);

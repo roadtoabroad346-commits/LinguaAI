@@ -379,7 +379,8 @@ export function LandingStory() {
           <h2 className="font-display mt-2 text-2xl font-bold md:text-4xl">{t("landing.curTitle")}</h2>
           <p className="mt-3 text-ink-500 dark:text-ink-400">{t("landing.curDesc")}</p>
         </Reveal>
-        <Reveal className="mt-8 overflow-x-auto rounded-3xl border border-ink-200/70 shadow-card dark:border-ink-700">
+        <Reveal className="mt-8 rounded-3xl border border-ink-200/70 shadow-card dark:border-ink-700">
+          <div className="overflow-x-auto rounded-3xl" role="region" aria-label={t("landing.curTitle")} tabIndex={0}>
           <table className="w-full min-w-[640px] border-collapse bg-white text-left text-sm dark:bg-ink-900">
             <thead>
               <tr className="border-b border-ink-200 dark:border-ink-700">
@@ -398,6 +399,7 @@ export function LandingStory() {
               ))}
             </tbody>
           </table>
+          </div>
         </Reveal>
       </section>
 

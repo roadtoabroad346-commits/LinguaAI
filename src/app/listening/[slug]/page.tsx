@@ -8,12 +8,14 @@ import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-export function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const t = getListeningTrack(params.slug);
   return { title: t ? `Listening: ${t.title}` : "Listening" };
 }
 
-export default async function ListeningTrackPage({ params }: { params: { slug: string } }) {
+export default async function ListeningTrackPage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const t = getListeningTrack(params.slug);
   if (!t) notFound();
   const tr = getServerT(await getEffectiveLocale());

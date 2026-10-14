@@ -16,12 +16,14 @@ import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: { params: { word: string } }) {
+export async function generateMetadata(props: { params: Promise<{ word: string }> }) {
+  const params = await props.params;
   const entry = getWord(params.word);
   return { title: entry ? `${entry.word} — Vocabulary` : "Vocabulary" };
 }
 
-export default async function WordDetailPage({ params }: { params: { word: string } }) {
+export default async function WordDetailPage(props: { params: Promise<{ word: string }> }) {
+  const params = await props.params;
   const entry = getWord(params.word);
   if (!entry) notFound();
   const t = getServerT(await getEffectiveLocale());

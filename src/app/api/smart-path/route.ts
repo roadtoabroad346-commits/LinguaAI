@@ -151,7 +151,7 @@ export async function GET() {
   // seed per-skill accuracy from the latest saved attempt so weak placement
   // skills surface in Smart Path even before module practice.
   let placementLevel: Level | null = null;
-  let placementWeak: string[] = [];
+  const placementWeak: string[] = [];
   try {
     const prow = (placementRes as { data?: { skill_scores?: Record<string, { score?: number; answered?: boolean; level?: string }>; level?: Level } }).data;
     if (prow?.skill_scores && typeof prow.skill_scores === "object") {

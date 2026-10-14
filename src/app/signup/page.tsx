@@ -12,11 +12,12 @@ import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
 
 export const metadata = { title: "Sign up" };
 
-export default async function SignUpPage({
-  searchParams,
-}: {
-  searchParams?: { next?: string };
-}) {
+export default async function SignUpPage(
+  props: {
+    searchParams?: Promise<{ next?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await getSessionUserResilient();
   if (user) {
     const profile = await getSessionProfile().catch(() => null);

@@ -28,7 +28,7 @@ export function RingProgress({
   const strokeColor =
     tone === "success" ? "url(#ring-success)" : tone === "warm" ? "url(#ring-warm)" : "url(#ring-brand)";
   return (
-    <div className={cn("inline-flex items-center gap-3", className)} role="progressbar" aria-valuenow={Math.round(pct * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={sublabel ?? "progress"}>
+    <div className={cn("inline-flex items-center gap-3", className)} role="progressbar" aria-valuenow={Math.round(pct * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={sublabel?.trim() || "Progress"}>
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="-rotate-90">
           <defs>

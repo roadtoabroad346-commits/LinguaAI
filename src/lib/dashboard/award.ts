@@ -1,11 +1,9 @@
-/** Phase 2 — shared XP + streak + activity writer (server-only). */
-import { dateKeyInTimezone, nextStreakState, startOfDayUtc } from "./streak";
+/** Shared XP + streak + activity writer (server-only). */
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { createServiceClient } from "@/lib/supabase/service";
+import type { Database } from "@/types/database";
 
-// Loose client type: server Supabase client generics vary across versions;
-// structural typing via `any` keeps awardXp usable from all routes.
-type Client = {
-  from(table: string): any;
-};
+type Client = SupabaseClient<Database>;
 
 export interface AwardInput {
   amount: number;
@@ -15,65 +13,44 @@ export interface AwardInput {
   activityHref?: string;
 }
 
-/** Records xp_events + activity_events and advances profile streak counters (timezone-aware). */
+type AtomicAwardResult = {
+  data: unknown;
+  error: { message: string } | null;
+};
+
+/** Records XP, activity and streak counters in one database transaction. */
 export async function awardXp(
-  supabase: Client,
+  _supabase: Client,
   userId: string,
   input: AwardInput,
   now = new Date()
 ): Promise<{ streak: { current: number; longest: number }; xpToday: number }> {
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("current_streak,longest_streak,last_active_date,total_xp,timezone")
-    .eq("id", userId)
-    .maybeSingle();
-  const p = (profile ?? {}) as { current_streak?: number; longest_streak?: number; last_active_date?: string | null; total_xp?: number; timezone?: string | null };
-  const timezone = p.timezone ?? "UTC";
-  const today = dateKeyInTimezone(now, timezone);
-
-  const { error: xpError } = await supabase.from("xp_events").insert({
-    user_id: userId,
-    amount: input.amount,
-    source: input.source,
-  } as never);
-  if (xpError) throw new Error("Could not record XP.");
-
-  if (input.activityKind && input.activityTitle) {
-    const { error: activityError } = await supabase.from("activity_events").insert({
-      user_id: userId,
-      kind: input.activityKind,
-      title: input.activityTitle,
-      subtitle: null,
-      href: input.activityHref ?? null,
-      xp: input.amount,
-    } as never);
-    if (activityError) {
-      console.error("[award] activity insert failed", { message: activityError.message, source: input.source });
-    }
+  // XP is server-authoritative. Calling this with the user's client would
+  // require exposing a privileged RPC to every authenticated browser session.
+  const service = createServiceClient();
+  const rpc = service.rpc as unknown as (
+    name: "award_xp_atomic",
+    args: Database["public"]["Functions"]["award_xp_atomic"]["Args"]
+  ) => PromiseLike<AtomicAwardResult>;
+  const { data, error } = await rpc("award_xp_atomic", {
+    p_user_id: userId,
+    p_amount: input.amount,
+    p_source: input.source,
+    p_activity_kind: input.activityKind ?? null,
+    p_activity_title: input.activityTitle ?? null,
+    p_activity_href: input.activityHref ?? null,
+    p_now: now.toISOString(),
+  });
+  if (error) {
+    console.error("[award] atomic XP transaction failed", { message: error.message, source: input.source });
+    throw new Error("Could not record XP.");
   }
-
-  const next = nextStreakState(
-    { current: p.current_streak ?? 0, longest: p.longest_streak ?? 0, lastActiveDate: p.last_active_date ?? null },
-    today
-  );
-  const profilePatch = { current_streak: next.current, longest_streak: next.longest, last_active_date: today, total_xp: (p.total_xp ?? 0) + input.amount } as never;
-  const { error: profileError } = await supabase.from("profiles").update(profilePatch).eq("id", userId);
-  if (profileError) {
-    // One retry before failing loudly: a silent streak/total_xp desync is worse than an error.
-    const { error: retryError } = await supabase.from("profiles").update(profilePatch).eq("id", userId);
-    if (retryError) {
-      console.error("[award] profile update failed", { message: retryError.message, source: input.source });
-      throw new Error("Could not update streak.");
-    }
-  }
-
-  const dayStart = startOfDayUtc(now, timezone);
-  const { data: todayEvents } = await supabase
-    .from("xp_events")
-    .select("amount")
-    .eq("user_id", userId)
-    .gte("created_at", dayStart.toISOString());
-  const xpToday = ((todayEvents ?? []) as Array<{ amount: number }>).reduce((s, e) => s + (e.amount || 0), 0);
-
-  return { streak: { current: next.current, longest: next.longest }, xpToday };
+  const result = data as { streak?: { current?: number; longest?: number }; xpToday?: number } | null;
+  return {
+    streak: {
+      current: Number(result?.streak?.current ?? 0),
+      longest: Number(result?.streak?.longest ?? 0),
+    },
+    xpToday: Number(result?.xpToday ?? input.amount),
+  };
 }

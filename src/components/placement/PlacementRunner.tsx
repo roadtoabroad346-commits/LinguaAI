@@ -885,17 +885,16 @@ export function PlacementRunner({
     return (
       <PageTransition>
         <Card>
-          <CardTitle className="font-display text-xl">{t("placement.introTitle")}</CardTitle>
+          <h2 className="font-display text-xl font-semibold text-ink-900 dark:text-ink-50">{t("placement.introTitle")}</h2>
           <CardDescription>
-            {t("placement.introDesc", { minutes: PLACEMENT_ESTIMATED_MINUTES })} ·{" "}
-            {t("placement.desc")}
+            {t("placement.introDesc", { minutes: PLACEMENT_ESTIMATED_MINUTES })}
           </CardDescription>
           <ol className="mt-3 grid gap-2 text-sm">
             {PLACEMENT_SECTION_ORDER.map((s, i) => (
               <li key={s.skill} className="flex items-center gap-2 rounded-xl bg-ink-50 px-3 py-2 dark:bg-ink-800">
                 <Badge tone="brand">{i + 1}</Badge>
                 <span className="font-semibold">{t(s.titleKey)}</span>
-                <span className="ml-auto text-xs text-ink-500">~{s.minutes} min</span>
+                <span className="ml-auto text-xs text-ink-500">{t("placement.minutesShort", { minutes: s.minutes })}</span>
               </li>
             ))}
           </ol>

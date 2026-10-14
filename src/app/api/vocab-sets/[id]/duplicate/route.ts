@@ -5,7 +5,8 @@ import { checkRateLimit } from "@/lib/api/security";
 export const dynamic = "force-dynamic";
 
 /** POST /api/vocab-sets/[id]/duplicate — deep-copy set + cards. */
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error, supabase, userId } = await requireUser();
   if (error || !supabase || !userId) return error ?? NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   const limited = await checkRateLimit(request, { key: "vocab-duplicate", limit: 20, scope: userId });

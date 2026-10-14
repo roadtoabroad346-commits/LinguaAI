@@ -115,9 +115,8 @@ end;
 $$;
 revoke all on function public.sync_profile_level_on_placement() from public, anon, authenticated;
 
--- A5. check_shared_ip: intentionally callable by authenticated (login hook needs it
--- without cross-user reads). Harden: explicit search_path, revoke anon/public,
--- grant authenticated only.
+-- A5. check_shared_ip: server-only login telemetry helper. Harden with an
+-- explicit search_path and allow execution only through the service role.
 create or replace function public.check_shared_ip(p_ip text)
 returns int
 language sql
@@ -130,8 +129,8 @@ as $$
     and created_at >= now() - interval '1 hour'
     and user_id is not null;
 $$;
-revoke all on function public.check_shared_ip(text) from public, anon;
-grant execute on function public.check_shared_ip(text) to authenticated;
+revoke all on function public.check_shared_ip(text) from public, anon, authenticated;
+grant execute on function public.check_shared_ip(text) to service_role;
 
 -- ============================================================================
 -- B. RLS performance: (select auth.uid()) — evaluated once per statement.
@@ -337,7 +336,7 @@ begin
       -- level defaults to 'private': only authorized subscribers receive it.
     );
   exception
-    when undefined_function or undefined_schema or undefined_table then
+    when undefined_function or invalid_schema_name or undefined_table then
       -- Local dev without the realtime extension: skip silently, app still works via polling.
       null;
   end;

@@ -5,7 +5,8 @@ import { requireUser, getOwnedSet } from "@/lib/vocab-studio/server";
 export const dynamic = "force-dynamic";
 
 /** GET /api/vocab-sets/[id]/export?format=csv|json — private by default (owner-only). */
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error, supabase, userId } = await requireUser();
   if (error || !supabase || !userId) return error ?? NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   const { set } = await getOwnedSet(supabase, userId, params.id);

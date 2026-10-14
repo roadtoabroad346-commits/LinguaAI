@@ -13,11 +13,12 @@ export const metadata = { title: "Onboarding" };
 
 export const dynamic = "force-dynamic";
 
-export default async function OnboardingPage({
-  searchParams,
-}: {
-  searchParams?: { edit?: string };
-}) {
+export default async function OnboardingPage(
+  props: {
+    searchParams?: Promise<{ edit?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const t = getServerT(await getEffectiveLocale());
 
   if (!isSupabaseConfigured()) {

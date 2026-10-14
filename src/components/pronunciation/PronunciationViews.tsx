@@ -71,7 +71,7 @@ export function PronunciationList({ drills }: { drills: PronunciationDrill[] }) 
                 </div>
                 <CardTitle className="mt-2">{x.title}</CardTitle>
                 <CardDescription className="line-clamp-2">{x.focus}</CardDescription>
-                <p className="mt-1 truncate font-mono text-xs text-ink-400">{x.ipa}</p>
+                <p className="mt-1 truncate font-mono text-xs text-ink-600 dark:text-ink-300">{x.ipa}</p>
                 <div className="mt-3">
                   <Link href={`/pronunciation/${x.slug}`}><Button size="sm" shine className="w-full sm:w-auto">{t("learn.pronStart")}</Button></Link>
                 </div>

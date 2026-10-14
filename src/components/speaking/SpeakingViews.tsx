@@ -121,14 +121,12 @@ function useLiveTranscript(t: (key: string) => string) {
       rec.lang = "en-US";
       rec.interimResults = true;
       rec.continuous = true;
-      let finalText = "";
       rec.onresult = (e) => {
         let interim = "";
         for (let i = 0; i < e.results.length; i++) {
           const part = e.results[i][0]?.transcript ?? "";
           interim += part + " ";
         }
-        void finalText;
         setTranscript(interim.trim());
       };
       rec.onerror = (e) => {

@@ -7,6 +7,7 @@ import {
   isCountryChange,
   logSecurityEvent,
 } from "@/lib/security/telemetry";
+import { createServiceClient } from "@/lib/supabase/service";
 
 /** Build the public origin correctly on Vercel (forwarded host/proto aware).
  * The forwarded host is allowlisted (app URL / Vercel hosts only) so a
@@ -190,7 +191,11 @@ export async function GET(request: NextRequest) {
       .limit(1)
       .maybeSingle();
     const lastCountry = (lastLogin as { country?: string | null } | null)?.country ?? null;
-    const { data: sharedCount } = await supabase.rpc("check_shared_ip", { p_ip: net.ip } as never);
+    // Cross-account telemetry must never be exposed through the user's JWT.
+    // Keep the SECURITY DEFINER RPC service-role-only and call it exclusively
+    // from this trusted server callback.
+    const service = createServiceClient();
+    const { data: sharedCount } = await service.rpc("check_shared_ip", { p_ip: net.ip } as never);
     const newCountry = isCountryChange(lastCountry, net.country);
     const sharedIp = typeof sharedCount === "number" && sharedCount >= 2;
     await logSecurityEvent(supabase, {

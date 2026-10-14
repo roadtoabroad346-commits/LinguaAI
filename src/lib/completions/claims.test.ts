@@ -68,9 +68,9 @@ describe("completion claims (anti double-XP)", () => {
     expect(await claimCompletion(c, "u1", "writing", "race-key-1")).toEqual({ fresh: false });
   });
 
-  it("transient DB failure is fail-open (never blocks learning)", async () => {
+  it("transient DB failure is fail-closed (never duplicates XP)", async () => {
     const c = stubStore();
     c.__failInsert(true);
-    expect(await claimCompletion(c, "u1", "speaking", "key-abcdef12")).toEqual({ fresh: true });
+    await expect(claimCompletion(c, "u1", "speaking", "key-abcdef12")).rejects.toThrow("Could not reserve completion");
   });
 });

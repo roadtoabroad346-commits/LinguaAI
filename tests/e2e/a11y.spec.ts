@@ -2,14 +2,15 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 /**
- * Accessibility: placement + profile + dashboard have no serious/critical
- * axe violations. Tagged @a11y so `playwright test --grep @a11y` runs only these.
+ * Accessibility checks must analyze the requested page, never an unnoticed
+ * authentication redirect.
  */
-const PAGES = ["/placement", "/dashboard", "/profile", "/smart-path"];
+const PAGES = ["/", "/placement", "/grammar", "/reading", "/listening", "/pronunciation", "/health", "/privacy", "/terms"];
 
 for (const url of PAGES) {
   test(`@a11y ${url} has no serious axe violations`, async ({ page }) => {
     await page.goto(url);
+    expect(new URL(page.url()).pathname).toBe(url);
     // Let client hydration settle; placement intro is client-rendered.
     await page.waitForTimeout(800);
     const results = await new AxeBuilder({ page })
@@ -25,6 +26,21 @@ for (const url of PAGES) {
     expect(detail, `axe violations on ${url}: ${JSON.stringify(detail, null, 2)}`).toEqual([]);
   });
 }
+
+for (const url of ["/dashboard", "/profile", "/smart-path"]) {
+  test(`anonymous ${url} redirects to login`, async ({ page }) => {
+    await page.goto(url);
+    await expect(page).toHaveURL(/\/login\?next=/);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  });
+}
+
+test("PWA manifest and service worker assets are available", async ({ request }) => {
+  const [manifest, worker] = await Promise.all([request.get("/manifest.webmanifest"), request.get("/sw.js")]);
+  expect(manifest.ok()).toBeTruthy();
+  expect(worker.ok()).toBeTruthy();
+  expect(await worker.text()).toContain("linguaai-public-v1");
+});
 
 test("@a11y placement keyboard: section nav is reachable", async ({ page }) => {
   await page.goto("/placement");

@@ -21,7 +21,11 @@ function toPatch(p: Record<string, unknown>): Record<string, unknown> {
 }
 
 /** PATCH /api/vocab-sets/[id]/cards/[cardId] — edit (never overwrites without explicit save). */
-export async function PATCH(request: Request, { params }: { params: { id: string; cardId: string } }) {
+export async function PATCH(
+  request: Request,
+  props: { params: Promise<{ id: string; cardId: string }> }
+) {
+  const params = await props.params;
   const { error, supabase, userId } = await requireUser();
   if (error || !supabase || !userId) return error ?? NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   const { set } = await getOwnedSet(supabase, userId, params.id);
@@ -39,7 +43,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 }
 
 /** DELETE /api/vocab-sets/[id]/cards/[cardId] */
-export async function DELETE(_: Request, { params }: { params: { id: string; cardId: string } }) {
+export async function DELETE(_: Request, props: { params: Promise<{ id: string; cardId: string }> }) {
+  const params = await props.params;
   const { error, supabase, userId } = await requireUser();
   if (error || !supabase || !userId) return error ?? NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   const { set } = await getOwnedSet(supabase, userId, params.id);
@@ -51,7 +56,8 @@ export async function DELETE(_: Request, { params }: { params: { id: string; car
 }
 
 /** POST handled as duplicate-card: POST /api/vocab-sets/[id]/cards/[cardId]/duplicate */
-export async function POST(_: Request, { params }: { params: { id: string; cardId: string } }) {
+export async function POST(_: Request, props: { params: Promise<{ id: string; cardId: string }> }) {
+  const params = await props.params;
   const { error, supabase, userId } = await requireUser();
   if (error || !supabase || !userId) return error ?? NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   const { set } = await getOwnedSet(supabase, userId, params.id);

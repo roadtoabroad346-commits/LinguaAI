@@ -132,42 +132,27 @@ export function AuthProvider({
       router.refresh();
     }
     try {
-      let res = await fetch("/api/me/bootstrap", { cache: "no-store" });
-      // Post-login / OAuth cookies can lag one tick behind the client event
-      // (exchangeCodeForSession redirect, signInWithPassword flush). Delayed
-      // retries prevent a transient 401 from wiping a valid session — this
-      // was the mobile "Progress kicks to signup" bug.
-      if (!res.ok && res.status === 401) {
-        await new Promise((r) => setTimeout(r, 700));
-        try {
-          res = await fetch("/api/me/bootstrap", { cache: "no-store" });
-        } catch {
-          /* keep original 401 below */
+      // Anonymous bootstrap is a single successful request. Only retry when
+      // Supabase confirms a browser session but the server cookie has not yet
+      // arrived (the short post-login/OAuth cookie propagation window).
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const res = await fetch("/api/me/bootstrap", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = await res.json().catch(() => null);
+        const snap = snapshotFromBootstrap(json);
+        if (snap) {
+          setState({ ...snap, status: "authenticated" });
+          return;
         }
-      }
-      if (!res.ok && res.status === 401) {
-        await new Promise((r) => setTimeout(r, 1500));
-        try {
-          res = await fetch("/api/me/bootstrap", { cache: "no-store" });
-        } catch {
-          /* fall through to demotion check */
-        }
-      }
-      if (!res.ok) {
-        // 401 -> anonymous only when the browser session is really gone;
-        // other errors keep current state to avoid flashing gates.
-        if (res.status === 401) {
+        const localSession = await hasLocalSession();
+        if (!localSession) {
           await demoteIfTrulyAnonymous();
+          return;
         }
-        return;
+        if (attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, attempt === 0 ? 400 : 900));
+        }
       }
-      const json = await res.json().catch(() => null);
-      const snap = snapshotFromBootstrap(json);
-      if (!snap) {
-        await demoteIfTrulyAnonymous();
-        return;
-      }
-      setState({ ...snap, status: "authenticated" });
     } catch {
       /* keep current state on network failure */
     }

@@ -8,12 +8,14 @@ import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-export function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const p = getReadingPassage(params.slug);
   return { title: p ? `Reading: ${p.title}` : "Reading" };
 }
 
-export default async function ReadingPassagePage({ params }: { params: { slug: string } }) {
+export default async function ReadingPassagePage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const p = getReadingPassage(params.slug);
   if (!p) notFound();
   const t = getServerT(await getEffectiveLocale());

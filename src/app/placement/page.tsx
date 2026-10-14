@@ -21,11 +21,12 @@ export const dynamic = "force-dynamic";
  * a new attempt starts only via explicit ?retake=1.
  * Questions themselves stay in English — they assess English level.
  */
-export default async function PlacementPage({
-  searchParams,
-}: {
-  searchParams?: { retake?: string };
-}) {
+export default async function PlacementPage(
+  props: {
+    searchParams?: Promise<{ retake?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const user = await getSessionUser();
   const profile = user ? await getSessionProfile() : null;
   const locale = await getEffectiveLocale();

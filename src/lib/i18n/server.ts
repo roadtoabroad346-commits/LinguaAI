@@ -4,16 +4,16 @@ import type { Locale } from "./config";
 import { translate } from "./dictionaries";
 
 /** Read the persisted locale cookie (may be absent for new/logged-out visitors). */
-export function getRequestLocale(): Locale {
+export async function getRequestLocale(): Promise<Locale> {
   try {
-    const store = cookies();
+    const store = await cookies();
     const raw = store.get(LOCALE_COOKIE)?.value;
     if (isLocale(raw)) return raw;
   } catch {
     /* cookies() unavailable (e.g. client) — fall through */
   }
   try {
-    const h = headers();
+    const h = await headers();
     const al = h.get("accept-language");
     return resolveLocale({ acceptLanguage: al });
   } catch {
@@ -35,7 +35,7 @@ export function getServerT(locale: Locale) {
  * Priority: user setting → local preference → browser language → English.
  */
 export async function getEffectiveLocale(): Promise<Locale> {
-  const cookieLocale = getRequestLocale();
+  const cookieLocale = await getRequestLocale();
   try {
     const { getSessionProfile } = await import("@/lib/auth/session");
     const profile = await getSessionProfile();

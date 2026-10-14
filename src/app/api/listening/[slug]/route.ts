@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getListeningTrack, toPublicListeningQuestions, dictationSentences } from "@/lib/listening/library";
 
-export async function GET(_request: Request, { params }: { params: { slug: string } }) {
+export async function GET(_request: Request, props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const t = getListeningTrack(params.slug);
   if (!t) return NextResponse.json({ error: "Track not found." }, { status: 404 });
   const { questions: _omit, ...rest } = t;

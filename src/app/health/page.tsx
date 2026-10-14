@@ -1,21 +1,17 @@
 import { Header } from "@/components/layout/Header";
-import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/feedback";
+import { Card, CardDescription } from "@/components/ui/Card";
+import { HealthStatus } from "@/components/health/HealthStatus";
+import { getRequestLocale } from "@/lib/i18n/server";
+
+const copy = {
+  en: { title: "System status", desc: "Live connectivity check for core services.", checking: "Checking services…", healthy: "All systems operational", degraded: "Service degraded", updated: "Updated" },
+  ru: { title: "Статус системы", desc: "Живая проверка доступности основных сервисов.", checking: "Проверяем сервисы…", healthy: "Все системы работают", degraded: "Есть неполадки", updated: "Обновлено" },
+  kk: { title: "Жүйе мәртебесі", desc: "Негізгі қызметтердің қолжетімділігін тірі тексеру.", checking: "Қызметтер тексерілуде…", healthy: "Барлық жүйе жұмыс істейді", degraded: "Қызметте ақау бар", updated: "Жаңартылды" },
+} as const;
+
 export const metadata = { title: "System status" };
-export default function HealthPage() {
-  return (
-    <div className="min-h-screen">
-      <Header />
-      <main className="mx-auto max-w-md px-4 py-12">
-        <Card>
-          <CardTitle>System status</CardTitle>
-          <CardDescription>Phase 0 foundation checks. Live JSON at <code>/api/health</code>.</CardDescription>
-          <div className="mt-4 text-sm text-ink-600">
-            <p>Start the dev server (<code>npm run dev</code>) and open <code>/api/health</code> for live service status.</p>
-            <p className="mt-2">Expected keys: <Badge>supabase</Badge> <Badge>gemini</Badge> each <Badge tone="warning">missing</Badge> until env is set.</p>
-          </div>
-        </Card>
-      </main>
-    </div>
-  );
+
+export default async function HealthPage() {
+  const c = copy[await getRequestLocale()];
+  return <div className="min-h-screen"><Header /><main className="mx-auto max-w-md px-4 py-12"><h1 className="font-display text-2xl font-bold">{c.title}</h1><Card className="mt-4"><CardDescription>{c.desc}</CardDescription><div className="mt-5"><HealthStatus labels={c} /></div></Card></main></div>;
 }

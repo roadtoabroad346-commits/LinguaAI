@@ -246,5 +246,25 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["completion_claims"]["Row"]>;
       };
     };
+    Functions: {
+      award_xp_atomic: {
+        Args: {
+          p_user_id: string;
+          p_amount: number;
+          p_source: string;
+          p_activity_kind?: string | null;
+          p_activity_title?: string | null;
+          p_activity_href?: string | null;
+          p_now?: string;
+        };
+        Returns: {
+          streak: { current: number; longest: number };
+          xpToday: number;
+        };
+      };
+    };
+    Views: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 }

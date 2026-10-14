@@ -28,7 +28,8 @@ function toRow(p: Record<string, unknown>, setId: string, userId: string): Recor
 }
 
 /** GET /api/vocab-sets/[id]/cards — list cards (search supported). */
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error, supabase, userId } = await requireUser();
   if (error || !supabase || !userId) return error ?? NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   const { set } = await getOwnedSet(supabase, userId, params.id);
@@ -42,7 +43,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 /** POST /api/vocab-sets/[id]/cards — add one card (duplicate-guarded). */
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const { error, supabase, userId } = await requireUser();
   if (error || !supabase || !userId) return error ?? NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   const { set } = await getOwnedSet(supabase, userId, params.id);

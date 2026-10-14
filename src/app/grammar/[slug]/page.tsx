@@ -9,12 +9,14 @@ import { getEffectiveLocale, getServerT } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-export function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const t = getGrammarTopic(params.slug);
   return { title: t ? `Grammar: ${t.title}` : "Grammar" };
 }
 
-export default async function GrammarTopicPage({ params }: { params: { slug: string } }) {
+export default async function GrammarTopicPage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const topic = getGrammarTopic(params.slug);
   if (!topic) notFound();
   const t = getServerT(await getEffectiveLocale());

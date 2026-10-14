@@ -7,7 +7,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/me/bootstrap — one consistent hydration document for the app shell.
- * no-store, validated via getUser (never getSession alone), 401 when anonymous.
+ * no-store, validated via getUser (never getSession alone). Anonymous is a
+ * normal state, so it returns 200 instead of producing noisy 401 retries.
  */
 export async function GET() {
   if (!isSupabaseConfigured()) {
@@ -30,7 +31,7 @@ export async function GET() {
   if (!user) {
     return NextResponse.json(
       { configured: true, signedIn: false },
-      { status: 401, headers: { "Cache-Control": "no-store" } }
+      { headers: { "Cache-Control": "no-store" } }
     );
   }
 

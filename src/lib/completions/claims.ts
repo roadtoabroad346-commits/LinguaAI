@@ -6,20 +6,18 @@
  *
  * Protocol:
  * - Client generates one UUID per attempt (`crypto.randomUUID()`) and sends
- *   it as `idempotencyKey`. Old clients omit it → behavior unchanged
- *   (backward compatible, still vulnerable to replays — new clients are safe).
+ *   it as the required `idempotencyKey`.
  * - Server calls `claimCompletion()` BEFORE inserting history rows / awarding
  *   XP. `{ fresh: true }` → proceed. `{ fresh: false }` → return the grade
  *   with `repeated: true` and award nothing.
  * - The UNIQUE(user_id, scope, key) constraint makes concurrent double-posts
  *   safe: the loser re-reads the winner and returns `repeated: true`.
- * - Fail-open on transient DB errors: if the claim insert fails AND no prior
- *   claim is found, we proceed (never worse than the status quo — grade
- *   stands, XP best-effort, same as before this guard existed).
+ * - Fail closed on database errors so an unavailable idempotency store can
+ *   never turn a retry into duplicate XP.
  */
 import { z } from "zod";
 
-export const idempotencyKeySchema = z.string().trim().min(8).max(120).optional();
+export const idempotencyKeySchema = z.string().trim().min(8).max(120);
 
 export type CompletionScope =
   | "grammar" | "reading" | "listening" | "dictation" | "pronunciation"
@@ -50,7 +48,7 @@ export async function claimCompletion(
       .maybeSingle();
     if (prior) return { fresh: false };
   } catch {
-    return { fresh: true };
+    throw new Error("Could not verify completion.");
   }
   try {
     const { error } = await supabase
@@ -68,10 +66,10 @@ export async function claimCompletion(
         .maybeSingle();
       if (raced) return { fresh: false };
     } catch {
-      /* fall through to fail-open */
+      throw new Error("Could not verify completion.");
     }
-    return { fresh: true };
+    throw new Error("Could not reserve completion.");
   } catch {
-    return { fresh: true };
+    throw new Error("Could not reserve completion.");
   }
 }

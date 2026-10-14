@@ -9,6 +9,7 @@ import { AppProviders } from "@/components/providers/AppProviders";
 import { DeviceBeacon } from "@/components/security/DeviceBeacon";
 import { GuestPlacementMigrator } from "@/components/placement/GuestPlacementMigrator";
 import { getCurrentUser } from "@/lib/auth/session";
+import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration";
 
 const sans = Inter({ subsets: ["latin", "cyrillic"], variable: "--font-sans", display: "swap" });
 const display = Sora({ subsets: ["latin"], variable: "--font-display", display: "swap", weight: ["500", "600", "700", "800"] });
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: APP_NAME, description: APP_DESCRIPTION },
   icons: {
     icon: [{ url: "/icons/icon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/icons/icon.svg" }],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
@@ -45,9 +46,12 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const locale = getRequestLocale();
-  // Server-provided auth snapshot: no signed-out flash on first paint.
-  const session = await getCurrentUser().catch(() => null);
+  // Locale and auth are independent; resolve both together to avoid a server
+  // render waterfall while keeping the first paint correctly localized/authenticated.
+  const [locale, session] = await Promise.all([
+    getRequestLocale(),
+    getCurrentUser().catch(() => null),
+  ]);
   const initialAuth = session
     ? {
         status: "authenticated" as const,
@@ -79,6 +83,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className={`${sans.variable} ${display.variable} min-h-dvh bg-ink-50 text-ink-900 dark:bg-ink-950 dark:text-ink-100`}>
         <AppProviders initialAuth={initialAuth}>
+          <ServiceWorkerRegistration />
           {initialAuth.status === "authenticated" && <DeviceBeacon />}
           {initialAuth.status === "authenticated" && <GuestPlacementMigrator />}
           <I18nProvider initialLocale={locale}>{children}</I18nProvider>

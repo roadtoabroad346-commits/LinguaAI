@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { getRequestLocale, getServerT } from "@/lib/i18n/server";
 
-export default function NotFound() {
-  const t = getServerT(getRequestLocale());
+export default async function NotFound() {
+  const t = getServerT(await getRequestLocale());
   return (
     <main className="mx-auto flex max-w-lg flex-col items-center gap-4 px-4 py-16 text-center">
       <p className="text-sm font-semibold uppercase tracking-wide text-brand-700">404</p>
