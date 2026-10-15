@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
@@ -48,7 +50,7 @@ export function DailyChallengeRunner() {
     fetch("/api/daily-challenge")
       .then(async (r) => {
         if (!r.ok) throw new Error("load");
-        return r.json();
+        return readJson(r);
       })
       .then((json) => {
         if (!cancelled) setData(json);
@@ -129,7 +131,7 @@ export function DailyChallengeRunner() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ dateKey: data!.dateKey, answers }),
       });
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error || "submit failed");
       setResult(json);
     } catch (e) {

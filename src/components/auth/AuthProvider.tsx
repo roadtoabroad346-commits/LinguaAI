@@ -1,5 +1,7 @@
 "use client";
 
+import { readJson } from "@/lib/api/response";
+
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -138,7 +140,7 @@ export function AuthProvider({
       for (let attempt = 0; attempt < 3; attempt += 1) {
         const res = await fetch("/api/me/bootstrap", { cache: "no-store" });
         if (!res.ok) return;
-        const json = await res.json().catch(() => null);
+        const json = await readJson(res).catch(() => null);
         const snap = snapshotFromBootstrap(json);
         if (snap) {
           setState({ ...snap, status: "authenticated" });

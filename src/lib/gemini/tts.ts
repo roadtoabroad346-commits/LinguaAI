@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readJson } from "@/lib/api/response";
 import { createServiceClient } from "@/lib/supabase/service";
 
 export const GEMINI_TTS_MODEL = process.env.GEMINI_TTS_MODEL ?? "gemini-3.8-flash-lite-tts";
@@ -70,7 +71,7 @@ export async function generateGeminiSpeech(request: TtsRequest): Promise<TtsAudi
     signal: AbortSignal.timeout(25_000),
   });
   if (!response.ok) throw new Error(`Gemini TTS failed with HTTP ${response.status}.`);
-  return parseGeminiTtsResponse(await response.json());
+  return parseGeminiTtsResponse(await readJson(response));
 }
 
 function durableCache(): TtsCache | null {

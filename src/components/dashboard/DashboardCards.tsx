@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { memo, useEffect, useState } from "react";
 import Link from "next/link";
 import { Flame, ArrowRight, Sparkles, BookOpen, Trophy } from "lucide-react";
@@ -204,7 +206,7 @@ export function RecommendationsCard({ initial, signedIn }: { initial: Recommenda
     setState("loading");
     try {
       const res = await fetch("/api/recommendations", { method: "POST" });
-      const json = await res.json();
+      const json = await readJson(res);
       if (Array.isArray(json.recommendations) && json.recommendations.length > 0) {
         setRecs(json.recommendations);
         setState(json.ai ? "ai" : "idle");
@@ -270,7 +272,7 @@ export function SmartPathCard({ signedIn }: { signedIn: boolean }) {
     if (!signedIn) return;
     let cancelled = false;
     fetch("/api/smart-path")
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => (r.ok ? readJson(r) : null))
       .then((json) => {
         if (!cancelled && json && Array.isArray(json.steps)) setPreview({ steps: json.steps.slice(0, 3), meta: json.meta });
       })

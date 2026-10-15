@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { PartyPopper } from "lucide-react";
@@ -37,7 +39,7 @@ export function PracticeRunner() {
     fetch(`/api/vocab/practice?seed=${new Date().toISOString().slice(0, 10)}-${Math.floor(Math.random() * 100000)}`)
       .then(async (r) => {
         if (!r.ok) throw new Error("load");
-        return r.json();
+        return readJson(r);
       })
       .then((json) => {
         if (cancelled) return;
@@ -115,7 +117,7 @@ export function PracticeRunner() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ selections, idempotencyKey: attemptKey.current }),
       });
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error || "submit failed");
       setResult(json);
       if (json.perfect) celebrate({ big: true, force: true });

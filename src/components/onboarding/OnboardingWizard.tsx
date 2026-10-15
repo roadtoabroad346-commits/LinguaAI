@@ -1,5 +1,7 @@
 "use client";
 
+import { readJson } from "@/lib/api/response";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -138,7 +140,7 @@ export function OnboardingWizard({ initial }: { initial: Omit<Partial<Onboarding
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed.data),
       });
-      const json = await res.json().catch(() => ({}));
+      const json = await readJson(res).catch(() => ({}));
       if (!res.ok) {
         setSubmitError((json as { error?: string }).error ?? t("common.couldNotSave"));
         return;
@@ -153,7 +155,7 @@ export function OnboardingWizard({ initial }: { initial: Omit<Partial<Onboarding
       // the level already exists — never force a retake of the placement test.
       try {
         const st = await fetch("/api/me/status", { cache: "no-store" });
-        const sj = (await st.json().catch(() => null)) as {
+        const sj = (await readJson(st).catch(() => null)) as {
           placementCompleted?: boolean;
           level?: string | null;
         } | null;

@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 
@@ -18,7 +20,7 @@ export function SaveToSetButton({ word, definition, example, source }: {
 
   useEffect(() => {
     if (!open) return;
-    fetch("/api/vocab-sets?filter=active").then((r) => r.json()).then((j) => setSets(j.sets ?? [])).catch(() => setSets([]));
+    fetch("/api/vocab-sets?filter=active").then((r) => readJson(r)).then((j) => setSets(j.sets ?? [])).catch(() => setSets([]));
   }, [open ]);
 
   async function save(setId: string) {
@@ -32,7 +34,7 @@ export function SaveToSetButton({ word, definition, example, source }: {
           source: source || "exercise",
         }),
       });
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error || "Save failed.");
       setMsg("Saved ✓");
       window.setTimeout(() => setOpen(false), 800);

@@ -1,5 +1,7 @@
 "use client";
 
+import { readJson } from "@/lib/api/response";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -228,7 +230,7 @@ export function PlacementRunner({
       if (signedIn && !cancelled) {
         try {
           const res = await fetch("/api/placement/draft", { cache: "no-store" });
-          const json = (await res.json().catch(() => null)) as {
+          const json = (await readJson(res).catch(() => null)) as {
             draft?: {
               attempt_key: string;
               section_index: number;
@@ -414,7 +416,7 @@ export function PlacementRunner({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const json = (await res.json().catch(() => ({}))) as GradeResponse;
+      const json = (await readJson(res).catch(() => ({}))) as GradeResponse;
       if (!res.ok) {
         setError(json.error ?? t("placement.gradedError"));
         setSubmitLock(false);

@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
@@ -77,7 +79,7 @@ export function SmartPathViews() {
           return null;
         }
         if (!r.ok) throw new Error("load");
-        const json = (await r.json()) as PlanResponse;
+        const json = (await readJson(r)) as PlanResponse;
         // Authenticated users must never be served a signed-out payload.
         if (json.signedIn === false) {
           if (!cancelled) setUnauthorized(true);

@@ -1,5 +1,7 @@
 "use client";
 
+import { readJson } from "@/lib/api/response";
+
 import { useEffect, useState } from "react";
 import { BellOff, Mail, Smartphone } from "lucide-react";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
@@ -32,7 +34,7 @@ export function NotificationSettings() {
 
   useEffect(() => {
     fetch("/api/notifications/preferences", { cache: "no-store" })
-      .then((r) => r.json())
+      .then((r) => readJson(r))
       .then((j) => {
         if (j?.prefs) setPrefs({ ...DEFAULT_PREFS, ...j.prefs, categories: { ...DEFAULT_PREFS.categories, ...(j.prefs.categories ?? {}) } });
         else setFailed(true);

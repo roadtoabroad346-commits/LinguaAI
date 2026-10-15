@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useMotionValue, useTransform } from "framer-motion";
@@ -95,7 +97,7 @@ export function FlashcardRunner() {
     fetch("/api/flashcards")
       .then(async (r) => {
         if (!r.ok) throw new Error("load");
-        return r.json();
+        return readJson(r);
       })
       .then((json) => {
         if (cancelled) return;
@@ -199,7 +201,7 @@ export function FlashcardRunner() {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ word: card.slug, known, idempotencyKey: newAttemptKey() }),
         });
-        const json = await res.json();
+        const json = await readJson(res);
         if (!res.ok) throw new Error(json.error || "review failed");
         if (json.repeated) {
           // Server deduped this review (retry/double-fire): undo optimistic XP.

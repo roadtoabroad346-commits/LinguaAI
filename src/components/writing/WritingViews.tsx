@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { Alert, Badge, EmptyState, Progress } from "@/components/ui/feedback";
@@ -24,7 +26,7 @@ export function WritingExplorer({ initialTasks }: { initialTasks: TaskSummary[] 
   const [history, setHistory] = useState<{ submissions: Array<{ task_slug: string; score: number; word_count: number; created_at: string }>; topErrors: Array<{ category: string; count: number }> } | null>(null);
 
   useEffect(() => {
-    fetch("/api/writing/history").then((r) => r.json()).then((j) => {
+    fetch("/api/writing/history").then((r) => readJson(r)).then((j) => {
       if (j.submissions) setHistory(j);
     }).catch(() => {});
   }, []);
@@ -180,7 +182,7 @@ export function WritingEditor({ task, onBack }: { task: TaskSummary; onBack: () 
     setChecking(true); setError(null);
     try {
       const res = await fetch("/api/writing/check", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ taskSlug: task.slug, text, idempotencyKey: checkKey.current }) });
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error ?? t("learn.checkFailedDesc"));
       setResult(json);
     } catch (e) { setError(e instanceof Error ? e.message : t("learn.couldNotCheck")); }

@@ -1,5 +1,7 @@
 "use client";
 
+import { readJson } from "@/lib/api/response";
+
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -45,7 +47,7 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
     try {
       const res = await fetch("/api/me/bootstrap", { cache: "no-store" });
       if (res.ok) {
-        const json = await res.json().catch(() => null);
+        const json = await readJson(res).catch(() => null);
         const profile = (json?.profile ?? null) as {
           onboarding_completed?: boolean;
           placement_completed?: boolean;

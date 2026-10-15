@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useRef, useState } from "react";
 import { Card, CardDescription } from "@/components/ui/Card";
 import { Alert, Badge, EmptyState } from "@/components/ui/feedback";
@@ -35,7 +37,7 @@ export function TeacherChat() {
           learningLanguage: "en",
         }),
       });
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error ?? t("teacher.unavailable"));
       setUsedAi(Boolean(json.ai));
       setMessages([...next, { role: "assistant", content: String(json.reply), ai: Boolean(json.ai) }]);

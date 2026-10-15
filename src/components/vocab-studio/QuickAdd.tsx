@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -31,7 +33,7 @@ export function QuickAdd({ setId, onAdded }: { setId: string; onAdded: () => voi
           definition: back.trim(), source: "quick-add",
         }),
       });
-      const json = await res.json().catch(() => ({}));
+      const json = await readJson(res).catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Could not save the card.");
       setFront(""); setBack("");
       setAdded((n) => n + 1);

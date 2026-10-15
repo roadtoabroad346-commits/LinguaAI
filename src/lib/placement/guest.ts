@@ -1,5 +1,7 @@
 /** Guest placement carry-over: a test taken before signup must never be retaken. */
 
+import { readJson } from "@/lib/api/response";
+
 export const GUEST_PLACEMENT_KEY = "linguaai:guest:placement-result";
 /** Guest results older than this are dropped (stale answers should not resurrect). */
 const MAX_AGE_MS = 7 * 24 * 3600 * 1000;
@@ -168,7 +170,7 @@ export async function migrateGuestPlacement(): Promise<MigrateResult> {
   try {
     const statusRes = await fetch("/api/me/status", { cache: "no-store" });
     if (statusRes.status === 401) return "nothing";
-    const status = (await statusRes.json().catch(() => null)) as {
+    const status = (await readJson(statusRes).catch(() => null)) as {
       level?: string | null;
       placementCompleted?: boolean;
     } | null;
@@ -195,7 +197,7 @@ export async function migrateGuestPlacement(): Promise<MigrateResult> {
         idempotencyKey: `guest-migrate-${String(guest.savedAt ?? 0)}`,
       }),
     });
-    const json = (await submitRes.json().catch(() => null)) as { saved?: boolean } | null;
+    const json = (await readJson(submitRes).catch(() => null)) as { saved?: boolean } | null;
     if (submitRes.ok && json?.saved === true) {
       clearGuestPlacement(s);
       return "migrated";

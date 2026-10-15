@@ -1,5 +1,7 @@
 "use client";
 
+import { readJson } from "@/lib/api/response";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
@@ -101,7 +103,7 @@ export function ProfileForm({ profile }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed.data),
       });
-      const json = await res.json().catch(() => ({}));
+      const json = await readJson(res).catch(() => ({}));
       if (!res.ok) {
         setError((json as { error?: string }).error ?? t("common.couldNotSaveProfile"));
         return;

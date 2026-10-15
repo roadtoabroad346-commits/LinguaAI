@@ -1,5 +1,7 @@
 "use client";
 
+import { readJson } from "@/lib/api/response";
+
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/feedback";
 
@@ -11,7 +13,7 @@ export function HealthStatus({ labels }: { labels: { checking: string; healthy: 
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/health", { cache: "no-store", signal: controller.signal })
-      .then((response) => response.json() as Promise<Health>)
+      .then((response) => readJson(response) as Promise<Health>)
       .then(setHealth)
       .catch(() => setFailed(true));
     return () => controller.abort();

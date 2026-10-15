@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Shuffle, Volume2, RotateCcw, Keyboard } from "lucide-react";
@@ -52,7 +54,7 @@ export function StudyRunner({ setId }: { setId: string }) {
     setMatched(new Set()); setMatchPicked(null);
     try {
       const res = await fetch(`/api/vocab-sets/${setId}/study?mode=${q}&limit=100`);
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error || "Could not load queue.");
       setTitle(String(json.set?.title ?? ""));
       setCards(json.cards ?? []);
@@ -91,7 +93,7 @@ export function StudyRunner({ setId }: { setId: string }) {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ cardId: card.id, rating, idempotencyKey: key }),
       });
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error || "Review failed");
       if (json.deduped) {
         // Server deduped this review: undo the optimistic XP/counters.

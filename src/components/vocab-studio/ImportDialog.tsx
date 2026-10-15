@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Input";
@@ -20,7 +22,7 @@ export function ImportDialog({ setId, onDone }: { setId: string; onDone: (summar
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ format, mode, ...payload }),
       });
-      const json = await res.json().catch(() => ({}));
+      const json = await readJson(res).catch(() => ({}));
       if (!res.ok) {
         setDetails({
           invalid: Array.isArray(json.invalid) ? json.invalid.slice(0, 10) : [],

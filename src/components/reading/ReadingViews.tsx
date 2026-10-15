@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { PartyPopper, Type } from "lucide-react";
@@ -115,7 +117,7 @@ export function ReadingRunner({ slug, paragraphs, vocabFocus, questions }: {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ slug, selections, idempotencyKey: attemptKey.current }),
       });
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error ?? t("learn.submitFailed"));
       setResult(json);
       if (json.perfect) celebrate({ big: true, force: true });

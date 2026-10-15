@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Bookmark, BookmarkCheck } from "lucide-react";
@@ -67,7 +69,7 @@ export function SaveWordButton({ word, initialSaved, signedIn, size = "sm" }: {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ word }),
         });
-        const json = await res.json();
+        const json = await readJson(res);
         if (!res.ok) throw new Error(json.error || "save failed");
         setSaved(true);
       }

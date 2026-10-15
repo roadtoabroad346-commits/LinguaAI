@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Search, Star, Archive, Play, Copy, Trash2, Pencil, BarChart3 } from "lucide-react";
@@ -49,14 +51,14 @@ export function StudioDashboard() {
         fetch(`/api/vocab-sets?sort=${sort}&filter=${filter}&q=${encodeURIComponent(q)}`),
         fetch("/api/vocab-studio/stats"),
       ]);
-      const sj = await sRes.json().catch(() => ({}));
+      const sj = await readJson(sRes).catch(() => ({}));
       if (!sRes.ok) {
         if (sj.code === "needs_migration") { setNeedsMigration(true); setSets([]); return; }
         throw new Error(sj.error || "Could not load your sets.");
       }
       setNeedsMigration(false);
       setSets(sj.sets ?? []);
-      if (stRes.ok) { const st = await stRes.json(); setStats(st.stats ?? null); }
+      if (stRes.ok) { const st = await readJson(stRes); setStats(st.stats ?? null); }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Load failed.");
     }
@@ -76,7 +78,7 @@ export function StudioDashboard() {
           level: level || null, category: category.trim() || "general", color,
         }),
       });
-      const json = await res.json().catch(() => ({}));
+      const json = await readJson(res).catch(() => ({}));
       if (!res.ok) {
         if (json.code === "needs_migration") { setNeedsMigration(true); setCreating(false); await load(); return; }
         throw new Error(json.error || "Create failed.");
@@ -94,19 +96,19 @@ export function StudioDashboard() {
 
   async function patch(id: string, body: Record<string, unknown>) {
     const res = await fetch(`/api/vocab-sets/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-    if (!res.ok) { const j = await res.json(); throw new Error(j.error || "Update failed."); }
+    if (!res.ok) { const j = await readJson(res); throw new Error(j.error || "Update failed."); }
     await load();
   }
 
   async function duplicate(id: string) {
     const res = await fetch(`/api/vocab-sets/${id}/duplicate`, { method: "POST" });
-    if (!res.ok) { const j = await res.json(); throw new Error(j.error || "Duplicate failed."); }
+    if (!res.ok) { const j = await readJson(res); throw new Error(j.error || "Duplicate failed."); }
     await load();
   }
 
   async function remove(id: string) {
     const res = await fetch(`/api/vocab-sets/${id}`, { method: "DELETE" });
-    if (!res.ok) { const j = await res.json(); throw new Error(j.error || "Delete failed."); }
+    if (!res.ok) { const j = await readJson(res); throw new Error(j.error || "Delete failed."); }
     setConfirmDelete(null);
     await load();
   }
@@ -254,7 +256,7 @@ export function StudioDashboard() {
 export function useStudioSetsSnapshot() {
   const [sets, setSets] = useState<StudioSet[] | null>(null);
   useEffect(() => {
-    fetch("/api/vocab-sets?filter=active").then((r) => r.json()).then((j) => setSets(j.sets ?? [])).catch(() => setSets([]));
+    fetch("/api/vocab-sets?filter=active").then((r) => readJson(r)).then((j) => setSets(j.sets ?? [])).catch(() => setSets([]));
   }, []);
   return sets;
 }

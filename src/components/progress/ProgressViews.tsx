@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
@@ -66,7 +68,7 @@ export function ProgressViews() {
           signal: ctrl.signal,
         });
         if (!r.ok) throw new Error(`http-${r.status}`);
-        const json = await r.json();
+        const json = await readJson(r);
         if (cancelled) return;
         if (json.signedIn === false) {
           // Server says anonymous but client holds a session (transient 401):
@@ -110,7 +112,7 @@ export function ProgressViews() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ dailyGoalXp: goal }),
       });
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error || t("common.couldNotSave"));
       setGoalMsg(t("progress.goalSaved"));
       setData((d) => (d ? { ...d, dailyGoalXp: goal, goalPct: Math.min(100, Math.round((d.xpToday / goal) * 100)), goalDone: d.xpToday >= goal } : d));

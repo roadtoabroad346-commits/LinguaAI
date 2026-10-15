@@ -1,5 +1,7 @@
 "use client";
 
+import { readJson } from "@/lib/api/response";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -109,7 +111,7 @@ export function NotificationBell() {
         cache: "no-store",
         signal: ctrl.signal,
       });
-      const json = (await res.json().catch(() => null)) as CenterResponse | null;
+      const json = (await readJson(res).catch(() => null)) as CenterResponse | null;
       if (!res.ok) throw new Error(json?.error ?? "load");
       setItems(Array.isArray(json?.items) ? (json?.items ?? []) : []);
       setUnread(typeof json?.unreadCount === "number" ? json.unreadCount : 0);
@@ -125,7 +127,7 @@ export function NotificationBell() {
   const refreshCount = useCallback(async () => {
     try {
       const res = await fetch("/api/notifications?view=active&limit=1", { cache: "no-store" });
-      const json = (await res.json().catch(() => null)) as CenterResponse | null;
+      const json = (await readJson(res).catch(() => null)) as CenterResponse | null;
       if (res.ok && json) {
         setUnread(typeof json.unreadCount === "number" ? json.unreadCount : 0);
         setUnavailable(json.unavailable === true);

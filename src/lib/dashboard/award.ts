@@ -25,11 +25,11 @@ export async function awardXp(
   // XP is server-authoritative. Calling this with the user's client would
   // require exposing a privileged RPC to every authenticated browser session.
   const service = createServiceClient();
-  const rpc = service.rpc as unknown as (
+  const rpcClient = service as unknown as { rpc: (
     name: "award_xp_atomic",
     args: Database["public"]["Functions"]["award_xp_atomic"]["Args"]
-  ) => PromiseLike<AtomicAwardResult>;
-  const { data, error } = await rpc("award_xp_atomic", {
+  ) => PromiseLike<AtomicAwardResult> };
+  const { data, error } = await rpcClient.rpc("award_xp_atomic", {
     p_user_id: userId,
     p_amount: input.amount,
     p_source: input.source,

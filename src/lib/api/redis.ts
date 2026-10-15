@@ -4,6 +4,8 @@
  * limiter in lib/api/security.ts (single-instance correctness preserved).
  */
 
+import { readJson } from "@/lib/api/response";
+
 const URL = process.env.UPSTASH_REDIS_REST_URL ?? "";
 const TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN ?? "";
 
@@ -22,7 +24,7 @@ async function redisCmd(path: string[], init?: RequestInit): Promise<unknown> {
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`redis ${res.status}`);
-  const json = (await res.json().catch(() => null)) as { result?: unknown } | null;
+  const json = (await readJson(res).catch(() => null)) as { result?: unknown } | null;
   return json?.result ?? null;
 }
 
@@ -49,7 +51,7 @@ export async function redisFixedWindow(
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`redis pipeline ${res.status}`);
-  const json = (await res.json().catch(() => null)) as Array<{ result?: unknown }> | null;
+  const json = (await readJson(res).catch(() => null)) as Array<{ result?: unknown }> | null;
   const count = Number(json?.[0]?.result ?? 1);
   if (!Number.isFinite(count)) throw new Error("redis bad count");
   if (count <= limit) return { allowed: true, retryAfter: 0 };

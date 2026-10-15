@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
@@ -95,7 +97,7 @@ export function SpellingViews() {
       if (level !== "all") params.set("level", level);
       const res = await fetch(`/api/spelling/set?${params.toString()}`);
       if (!res.ok) throw new Error("load");
-      setSet(await res.json());
+      setSet(await readJson(res));
     } catch {
       setLoadError(t("learn.couldNotLoadWords"));
     } finally {
@@ -125,7 +127,7 @@ export function SpellingViews() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ mode, level: level === "all" ? undefined : level, sessionId, answers }),
       });
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error || "Could not submit.");
       setResult(json);
     } catch (e) {

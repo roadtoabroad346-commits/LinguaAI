@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/feedback";
@@ -27,7 +29,7 @@ export function TranslationPanel({ word, initialTranslation, signedIn, nativeLan
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ word, targetLang: target }),
       });
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error || t("learn.translationFailed"));
       setTranslation(json.translation);
       if (signedIn) {

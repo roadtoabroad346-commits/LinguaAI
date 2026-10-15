@@ -7,6 +7,7 @@ import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { Alert, Badge, Chip, Progress } from "@/components/ui/feedback";
 import { QuizOption } from "@/components/learn/QuizOption";
 import { playReferenceAudio } from "@/lib/audio/tts-client";
+import { ApiResponseError, readJson } from "@/lib/api/response";
 import type { ExerciseAnswer, ExerciseGrade, LearningSkill, PublicExercise } from "@/lib/exercises/types";
 import { restorePracticeIndex } from "@/lib/exercises/session";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
@@ -61,7 +62,7 @@ export function ExerciseRunner({ exercises, initialLevel }: { exercises: PublicE
   const current = selected[index % Math.max(1, selected.length)];
 
   useEffect(() => {
-    fetch("/api/practice/queue", { cache: "no-store" }).then((r) => r.json()).then((data) => {
+    fetch("/api/practice/queue", { cache: "no-store" }).then((r) => readJson(r)).then((data) => {
       setQueue(data);
       if (data.level) setLevel(data.level);
     }).catch(() => undefined);
@@ -82,7 +83,7 @@ export function ExerciseRunner({ exercises, initialLevel }: { exercises: PublicE
       setAnswer("");
     });
     fetch(`/api/practice/session?sessionKey=${encodeURIComponent(key)}`, { cache: "no-store" })
-      .then((r) => r.json())
+      .then((r) => readJson(r))
       .then((data) => {
         if (data.session?.status === "in_progress") {
           setRevision(data.session.revision ?? 0);
@@ -116,12 +117,18 @@ export function ExerciseRunner({ exercises, initialLevel }: { exercises: PublicE
           complete: index >= selected.length - 1,
         }),
       });
-      const data = await response.json();
+      const data = await readJson<SaveResult & { error?: string }>(response);
       if (!response.ok) throw new Error(data.error ?? t("practice.saveFailed"));
       setGrade(data);
       if (data.saved) setRevision(data.revision);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("practice.saveFailed"));
+      setError(
+        cause instanceof ApiResponseError
+          ? t("practice.saveFailed")
+          : cause instanceof Error
+            ? cause.message
+            : t("practice.saveFailed"),
+      );
     } finally { setSubmitting(false); }
   }
 

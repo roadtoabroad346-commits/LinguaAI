@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
@@ -90,7 +92,7 @@ export function CardEditor({ initial, saving, error, aiEnabled, onSave, onCancel
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ word }),
       });
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error || "AI unavailable");
       const s = json.suggestion;
       setF((p) => ({

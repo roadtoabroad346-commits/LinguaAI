@@ -3,6 +3,7 @@ import { z } from "zod";
 import { checkRateLimit } from "@/lib/api/security";
 import { getExercise } from "@/lib/exercises/catalog";
 import { scoreExercise } from "@/lib/exercises/engine";
+import { savePracticeAnswer, type PracticeRpcClient } from "@/lib/exercises/persistence";
 import { isSupabaseConfigured } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -92,26 +93,31 @@ export async function POST(request: Request) {
   const limited = await checkRateLimit(request, { key: "practice-save", limit: 90, scope: auth.user.id });
   if (limited) return limited;
 
-  const rpc = supabase.rpc as unknown as (name: string, args: Record<string, unknown>) => PromiseLike<{
-    data: Array<{ session_id: string; revision: number; session_score: number; answer_count: number; status: string }> | null;
-    error: { code: string; message: string } | null;
-  }>;
-  const { data, error } = await rpc("save_practice_answer", {
-    p_session_key: parsed.data.sessionKey,
-    p_expected_revision: parsed.data.expectedRevision,
-    p_mode: parsed.data.mode,
-    p_level: exercise.level,
-    p_skill: exercise.skill,
-    p_topic: exercise.topic,
-    p_exercise_id: exercise.id,
-    p_content_version: exercise.contentVersion,
-    p_answer: parsed.data.answer,
-    p_score: grade.score,
-    p_correct: grade.correct,
-    p_feedback: { explanation: grade.explanation, needsReview: grade.needsReview },
-    p_state: { lastExerciseId: exercise.id },
-    p_complete: parsed.data.complete,
-  });
+  let result;
+  try {
+    result = await savePracticeAnswer(supabase as unknown as PracticeRpcClient, {
+      p_session_key: parsed.data.sessionKey,
+      p_expected_revision: parsed.data.expectedRevision,
+      p_mode: parsed.data.mode,
+      p_level: exercise.level,
+      p_skill: exercise.skill,
+      p_topic: exercise.topic,
+      p_exercise_id: exercise.id,
+      p_content_version: exercise.contentVersion,
+      p_answer: parsed.data.answer,
+      p_score: grade.score,
+      p_correct: grade.correct,
+      p_feedback: { explanation: grade.explanation, needsReview: grade.needsReview },
+      p_state: { lastExerciseId: exercise.id },
+      p_complete: parsed.data.complete,
+    });
+  } catch {
+    return noStore(
+      { ...grade, error: "Practice history could not be saved. Please try again.", saved: false, revision: parsed.data.expectedRevision },
+      { status: 503 },
+    );
+  }
+  const { data, error } = result;
 
   if (error) {
     if (error.code === "40001" || /STALE_WRITE/i.test(error.message)) {

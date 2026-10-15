@@ -66,7 +66,7 @@ describe("guest placement carry-over", () => {
       saveGuestPlacement(s, { answers });
       const fetch = vi.fn(async (url: string) => {
         if (String(url).includes("/api/me/status")) {
-          return { status: 200, json: async () => ({ level: "B1", placementCompleted: true }) };
+          return Response.json({ level: "B1", placementCompleted: true });
         }
         throw new Error("unexpected " + url);
       });
@@ -84,11 +84,11 @@ describe("guest placement carry-over", () => {
       const fetch = vi.fn(async (url: string, init?: { body?: string }) => {
         calls.push(String(url));
         if (String(url).includes("/api/me/status")) {
-          return { status: 200, json: async () => ({ level: null, placementCompleted: false }) };
+          return Response.json({ level: null, placementCompleted: false });
         }
         const body = JSON.parse(init?.body ?? "{}");
         expect(body.answers).toEqual(answers);
-        return { ok: true, json: async () => ({ saved: true, level: "A2" }) };
+        return Response.json({ saved: true, level: "A2" });
       });
       vi.stubGlobal("fetch", fetch as never);
       vi.stubGlobal("window", { localStorage: s } as never);
@@ -103,9 +103,9 @@ describe("guest placement carry-over", () => {
       saveGuestPlacement(s, { answers });
       const fetch = vi.fn(async (url: string) => {
         if (String(url).includes("/api/me/status")) {
-          return { status: 200, json: async () => ({ level: null, placementCompleted: false }) };
+          return Response.json({ level: null, placementCompleted: false });
         }
-        return { ok: false, json: async () => ({ error: "x" }) };
+        return Response.json({ error: "x" }, { status: 500 });
       });
       vi.stubGlobal("fetch", fetch as never);
       vi.stubGlobal("window", { localStorage: s } as never);

@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { Alert, Badge, EmptyState, Progress } from "@/components/ui/feedback";
@@ -201,7 +203,7 @@ function TopicPractice({ topic, onBack }: { topic: TopicSummary; onBack: () => v
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ topicSlug: topic.slug, transcript, durationSecs: secs, idempotencyKey: checkKey.current }),
       });
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error ?? t("learn.feedbackFailedDesc"));
       setResult(json);
       if (json.modelAnswer) speakText(json.modelAnswer);
@@ -347,7 +349,7 @@ export function TopicTalkExplorer({ initialTopics }: { initialTopics: TopicSumma
   const [history, setHistory] = useState<{ attempts: Array<{ topic_slug: string; score: number; word_count: number; created_at: string }> } | null>(null);
 
   useEffect(() => {
-    fetch("/api/speaking/history").then((r) => r.json()).then((j) => {
+    fetch("/api/speaking/history").then((r) => readJson(r)).then((j) => {
       if (j.attempts) setHistory(j);
     }).catch(() => {});
   }, []);
@@ -475,7 +477,7 @@ function ReadAloudPractice({ passage, onBack }: { passage: PassageSummary; onBac
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ passageSlug: passage.slug, transcript, durationSecs: secs, idempotencyKey: checkKey.current }),
       });
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error ?? t("learn.checkFailedDesc"));
       setResult(json);
     } catch (e) { setError(e instanceof Error ? e.message : t("learn.couldNotCheck")); }

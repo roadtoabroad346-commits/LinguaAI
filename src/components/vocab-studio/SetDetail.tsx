@@ -1,4 +1,6 @@
 "use client";
+
+import { readJson } from "@/lib/api/response";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Play, Plus, Search, Copy, Trash2, Pencil, Download } from "lucide-react";
@@ -32,7 +34,7 @@ export function SetDetail({ setId }: { setId: string }) {
     setError(null);
     try {
       const res = await fetch(`/api/vocab-sets/${setId}`);
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error || "Could not load set.");
       setSet(json.set);
       setCards(json.cards ?? []);
@@ -46,7 +48,7 @@ export function SetDetail({ setId }: { setId: string }) {
   }, [setId]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { fetch("/api/vocab-studio/ai-assist").then((r) => r.json()).then((j) => setAiEnabled(Boolean(j.configured))).catch(() => {}); }, []);
+  useEffect(() => { fetch("/api/vocab-studio/ai-assist").then((r) => readJson(r)).then((j) => setAiEnabled(Boolean(j.configured))).catch(() => {}); }, []);
 
   async function saveMeta() {
     setSaving(true);
@@ -55,7 +57,7 @@ export function SetDetail({ setId }: { setId: string }) {
         method: "PATCH", headers: { "content-type": "application/json" },
         body: JSON.stringify({ title: meta.title, description: meta.description, category: meta.category, level: meta.level || null, color: meta.color }),
       });
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error || "Save failed.");
       setSet(json.set); setEditingMeta(false); await load();
     } catch (e) { setError(e instanceof Error ? e.message : "Save failed."); }
@@ -67,7 +69,7 @@ export function SetDetail({ setId }: { setId: string }) {
     try {
       const url = id ? `/api/vocab-sets/${setId}/cards/${id}` : `/api/vocab-sets/${setId}/cards`;
       const res = await fetch(url, { method: id ? "PATCH" : "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
-      const json = await res.json();
+      const json = await readJson(res);
       if (!res.ok) throw new Error(json.error || "Save failed.");
       setShowAdd(false); setEditCard(null); await load();
     } catch (e) { setSaveErr(e instanceof Error ? e.message : "Save failed."); }
@@ -76,13 +78,13 @@ export function SetDetail({ setId }: { setId: string }) {
 
   async function duplicateCard(id: string) {
     const res = await fetch(`/api/vocab-sets/${setId}/cards/${id}`, { method: "POST" });
-    if (!res.ok) { const j = await res.json(); setError(j.error || "Duplicate failed."); return; }
+    if (!res.ok) { const j = await readJson(res); setError(j.error || "Duplicate failed."); return; }
     await load();
   }
 
   async function deleteCard(id: string) {
     const res = await fetch(`/api/vocab-sets/${setId}/cards/${id}`, { method: "DELETE" });
-    if (!res.ok) { const j = await res.json(); setError(j.error || "Delete failed."); return; }
+    if (!res.ok) { const j = await readJson(res); setError(j.error || "Delete failed."); return; }
     setConfirmCard(null); await load();
   }
 
