@@ -1,9 +1,6 @@
 /** Shared XP + streak + activity writer (server-only). */
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/types/database";
-
-type Client = SupabaseClient<Database>;
 
 export interface AwardInput {
   amount: number;
@@ -20,7 +17,7 @@ type AtomicAwardResult = {
 
 /** Records XP, activity and streak counters in one database transaction. */
 export async function awardXp(
-  _supabase: Client,
+  _supabase: unknown,
   userId: string,
   input: AwardInput,
   now = new Date()

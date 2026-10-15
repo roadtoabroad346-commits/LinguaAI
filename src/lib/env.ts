@@ -5,6 +5,7 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional().default(""),
   GEMINI_API_KEY: z.string().optional().default(""),
   GEMINI_MODEL: z.string().optional().default("gemini-3.5-flash-lite"),
+  GEMINI_TTS_MODEL: z.string().optional().default("gemini-3.8-flash-lite-tts"),
   NEXT_PUBLIC_APP_URL: z.string().optional().default("http://localhost:3000"),
   // Vercel ставит это автоматически — используем как запасной вариант в проде.
   VERCEL_URL: z.string().optional().default(""),

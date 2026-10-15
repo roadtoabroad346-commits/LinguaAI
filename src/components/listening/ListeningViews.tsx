@@ -15,6 +15,7 @@ import { PageTransition, Stagger, StaggerItem } from "@/lib/motion/components";
 import { celebrate } from "@/lib/motion/celebrate";
 import { LEVELS } from "@/lib/constants";
 import { speak, stopSpeaking } from "@/lib/vocab/speak";
+import { playReferenceAudio, stopReferenceAudio } from "@/lib/audio/tts-client";
 import type { ListeningTrack } from "@/lib/listening/library";
 import { newAttemptKey } from "@/lib/completions/client";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
@@ -123,8 +124,9 @@ export function ListeningRunner({ slug, lines, vocabFocus, questions, dictationI
   const fullText = useMemo(() => lines.map((l) => l.text).join(" "), [lines]);
   const answered = Object.keys(answers).length;
 
-  function playAll() {
+  async function playAll() {
     if (playing) {
+      stopReferenceAudio();
       stopSpeaking();
       setPlaying(false);
       setActiveLine(null);
@@ -135,7 +137,10 @@ export function ListeningRunner({ slug, lines, vocabFocus, questions, dictationI
     setPlaying(true);
     setActiveLine(0);
     try {
-      // speak() uses the learner's saved playback speed (SpeedMenu below).
+      await playReferenceAudio({ kind: "listening", slug, segment: "full" });
+    } catch {
+      // Explicit availability fallback: browser speech is not presented as
+      // Gemini audio and never affects assessment.
       speak(fullText);
     } finally {
       window.setTimeout(() => {
@@ -149,10 +154,16 @@ export function ListeningRunner({ slug, lines, vocabFocus, questions, dictationI
       }, Math.min(60000, fullText.length * 90));
     }
   }
-  function playSentence(i: number) {
+  async function playSentence(i: number) {
     setActiveLine(i);
     const line = lines[i];
-    if (line) speak(line.text);
+    if (line) {
+      try {
+        await playReferenceAudio({ kind: "listening", slug, segment: "line", index: i });
+      } catch {
+        speak(line.text);
+      }
+    }
     window.setTimeout(() => setActiveLine((a) => (a === i ? null : a)), 4000);
   }
 

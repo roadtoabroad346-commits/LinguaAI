@@ -12,6 +12,7 @@ import { celebrate } from "@/lib/motion/celebrate";
 import { LEVELS } from "@/lib/constants";
 import { speak, stopSpeaking } from "@/lib/vocab/speak";
 import { SLOW_PLAYBACK_SPEED } from "@/lib/audio/speed";
+import { playReferenceAudio, stopReferenceAudio } from "@/lib/audio/tts-client";
 import { KIND_LABEL, type PronunciationDrill, type PronunciationKind } from "@/lib/pronunciation/drills";
 import { newAttemptKey } from "@/lib/completions/client";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
@@ -101,9 +102,17 @@ export function PronunciationRunner({ drill }: { drill: PronunciationDrill }) {
   // One idempotency key per rating submit; a new rating mints a fresh key.
   const submitKey = useRef(newAttemptKey());
 
-  function playLine(line: string, slow: boolean) {
+  async function playLine(line: string, segment: "line" | "example", index: number, slow: boolean) {
+    stopReferenceAudio();
     stopSpeaking();
-    speak(line, slow ? { rate: SLOW_PLAYBACK_SPEED } : undefined);
+    try {
+      await playReferenceAudio(
+        { kind: "pronunciation", slug: drill.slug, segment, index },
+        slow ? SLOW_PLAYBACK_SPEED : undefined,
+      );
+    } catch {
+      speak(line, slow ? { rate: SLOW_PLAYBACK_SPEED } : undefined);
+    }
   }
 
   async function toggleRecord() {
@@ -182,11 +191,11 @@ export function PronunciationRunner({ drill }: { drill: PronunciationDrill }) {
           <div className="mt-3">
             <p className="text-xs font-bold uppercase tracking-wide text-ink-400">{t("learn.pronContrast")}</p>
             <ul className="mt-1.5 flex flex-wrap gap-1.5">
-              {drill.examples.map((e) => (
+              {drill.examples.map((e, i) => (
                 <li key={e}>
                   <button
                     type="button"
-                    onClick={() => playLine(e, false)}
+                    onClick={() => playLine(e, "example", i, false)}
                     className="rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm font-medium hover:bg-ink-50 dark:border-ink-700 dark:bg-ink-900"
                   >
                     🔊 {e}
@@ -207,7 +216,7 @@ export function PronunciationRunner({ drill }: { drill: PronunciationDrill }) {
                 <span className="flex shrink-0 gap-1.5">
                   <button
                     type="button"
-                    onClick={() => playLine(line, false)}
+                    onClick={() => playLine(line, "line", i, false)}
                     aria-label={t("learn.playLine", { n: i + 1 })}
                     className="touch-44 flex h-9 w-9 items-center justify-center rounded-xl border border-ink-200 bg-white hover:bg-ink-100 dark:border-ink-700 dark:bg-ink-900"
                   >
@@ -215,7 +224,7 @@ export function PronunciationRunner({ drill }: { drill: PronunciationDrill }) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => playLine(line, true)}
+                    onClick={() => playLine(line, "line", i, true)}
                     aria-label={t("learn.pronSlowLine", { n: i + 1 })}
                     className="touch-44 flex h-9 w-9 items-center justify-center rounded-xl border border-ink-200 bg-white hover:bg-ink-100 dark:border-ink-700 dark:bg-ink-900"
                   >

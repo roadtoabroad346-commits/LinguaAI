@@ -1,6 +1,7 @@
 # LinguaAI
-Personalized AI-powered English learning (A1–C1). Mobile-first premium app shell with motion.
+Personalized AI-powered English learning with validated A1–C1 pathways and an explicitly labelled C2 pilot-content framework. Mobile-first premium app shell with motion.
 ## Quickstart
+Requires Node.js 22 or newer (Supabase JavaScript clients no longer support Node 20).
 ```bash
 cp .env.example .env   # fill in keys
 npm install
@@ -11,7 +12,7 @@ npm run dev            # http://localhost:3000
 ## Design system (Phase 10)
 Tokens in `tailwind.config.ts` + `src/app/globals.css` (light/dark, Inter + Sora, glass/gradients, safe-area, 100dvh). UI kit in `src/components/ui/` (Button motion press/shine, Card, Tabs, Progress+Ring, Sheet bottom sheet, Toast, Skeleton, Avatar, Section). Motion in `src/lib/motion/` (page transitions, reveals, counters, confetti). Shell: bottom tab bar (Home/Learn/Words/Challenge/Profile, hide-on-scroll) + desktop sidebar, theme toggle (`linguaai_theme`), reduced-motion + haptics settings on Profile. Landing is a scroll story (`src/components/landing/LandingStory.tsx`). PWA manifest + `/offline`.
 ## Environment
-See `.env.example`. Server-only: `GEMINI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. Public: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Optional server-only: `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` (multi-instance rate limits; without them the API fails open to in-memory limits).
+See `.env.example`. Server-only: `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_TTS_MODEL`, `SUPABASE_SERVICE_ROLE_KEY`. Public: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Optional server-only: `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` (multi-instance rate limits; without them the API fails open to in-memory limits).
 ## Google OAuth (Phase 1) — production настроен
 Код: `src/components/auth/AuthForm.tsx` (`signInWithOAuth provider google`,
 `redirectTo: <origin>/auth/callback?next=/onboarding`), обмен кода — `src/app/auth/callback/route.ts`.
@@ -48,7 +49,8 @@ Apply migrations in order in Supabase SQL editor (or `supabase db push`):
 - `supabase/migrations/0021_realtime_security_performance_fix.sql` — SECURITY DEFINER hardening, RLS perf (`(select auth.uid())`), missing FK indexes, private Realtime Broadcast.
 - `supabase/migrations/0022_placement_drafts.sql` — `placement_drafts` (`user_id, attempt_key` unique, `status`, `section_index`, `payload jsonb`) with owner-only RLS for multi-device resume.
 - `supabase/migrations/0023_telemetry_rls_tightening.sql` — `security_events` append-only (SELECT+INSERT, no UPDATE/DELETE), `devices` no DELETE.
-Apply `0001` → `0023` in order (0013 → 0014 → 0015 for the new ones); every file is idempotent and ends with an `OK-00XX` proof row — if you do not see it, the paste was truncated, re-copy the entire file.
+- `supabase/migrations/20261015120207_universal_practice_engine.sql` — versioned practice sessions/answers, mistake notebook, spaced-review schedule, atomic stale-write-safe save RPC, and the private Gemini TTS cache bucket.
+Apply migrations in filename order; every recent file is idempotent and ends with an `OK-*` proof row — if you do not see it, the paste was truncated, re-copy the entire file.
 ## Auth + session architecture (Phase 13)
 Cookie sessions via `@supabase/ssr` everywhere (singleton `lib/supabase/client.ts`, `lib/supabase/server.ts`, service-role `lib/supabase/service.ts` server-only). `src/middleware.ts` refreshes the session with `getUser()` and protects app routes (`/login?next=` for anonymous, authed users off `/login`/`/signup`). Server truth: `getCurrentUser()` (`lib/auth/session.ts`); client truth: `AuthProvider`/`useAuth` seeded from the root layout (no flash) + `onAuthStateChange` + `router.refresh()`; gates use `RequireAuth` (skeleton while loading, sign-in card only when anonymous). Post-auth destination: `lib/auth/routing.ts` (`sanitizeNext`/`resolveNextPath`) shared by `/auth/callback`, `AuthForm`, `/login`, `/signup`. Shell hydration: `GET /api/me/bootstrap` (no-store); diagnostics: `/api/health` (env booleans, no secrets) + authed `GET /api/me/status`. Storage policy: device-only prefs may stay local; account data lives in Postgres; guest words migrate once via `POST /api/me/migrate-guest` (server wins), user-scoped keys cleared on sign-out/switch (`lib/auth/storage.ts`).
 ## Auth + onboarding flow (Phase 13)
@@ -56,7 +58,7 @@ Cookie sessions via `@supabase/ssr` everywhere (singleton `lib/supabase/client.t
 ## Dashboard (Phase 2)
 `/dashboard` (streak, XP vs daily goal, Continue Learning, Word of the Day, recommendations, Daily Challenge card) + `/daily-challenge` (5 questions/day, XP + streak). APIs: `GET /api/dashboard`, `POST /api/xp`, `GET /api/daily-challenge`, `POST /api/daily-challenge/complete`, `POST /api/recommendations` (optional Gemini enhance, rule-based fallback).
 ## Vocabulary + dictionary (Phase 3)
-60-word deterministic bank (12 per level, `src/lib/vocab/bank.ts`) with phonetics, learner-friendly definitions and examples.
+100-word deterministic bank (20 per level, `src/lib/vocab/bank.ts`) with phonetics, learner-friendly definitions, examples and topic filters.
 `/vocabulary` (search, level/type filters, audio via Web Speech API, save/unsave) → `/vocabulary/[word]` (detail, mastery, lazy translation, related words) → `/dictionary` (search, mastery/level filters, sort, remove) → `/flashcards` (spaced repetition: due first; +3 XP known / +1 XP attempt) → `/vocabulary/practice` (8-question quiz from saved low-mastery words first; +5 XP each, +10 bonus; gentle mastery nudge).
 APIs: `GET /api/vocab`, `GET/POST/PATCH/DELETE /api/dictionary`, `POST /api/vocab/translate` (one compact Gemini call per tap, cached to the entry), `GET /api/flashcards`, `POST /api/flashcards/review`, `GET /api/vocab/practice`, `POST /api/vocab/practice/complete` (server-side grading — answers never leave the server).
 Preview mode without keys: bank browsing, localStorage saves, preview flashcard deck and ungraded-persistent practice all work; sign-in gates persistence.
@@ -64,4 +66,7 @@ Preview mode without keys: bank browsing, localStorage saves, preview flashcard 
 Deterministic, zero-Gemini libraries: 15 grammar topics (3 per level, `src/lib/grammar/topics.ts`), 10 reading passages (2 per level, `src/lib/reading/library.ts`), 10 listening tracks (dialogue/monologue/podcast, `src/lib/listening/library.ts`).
 `/grammar` → `/grammar/[slug]` (lesson + 5-question quiz; +5 XP each, +10 perfect bonus) · `/reading` → `/reading/[slug]` (passage with vocabulary-linked highlights + comprehension; +8 XP each, +10 bonus) · `/listening` → `/listening/[slug]` (device TTS audio, transcript mode, per-line play, dictation with forgiving grading +5 XP exact, comprehension +8 XP each +10 bonus).
 APIs: `GET /api/grammar`, `GET /api/grammar/[slug]`, `POST /api/grammar/complete`, `GET /api/reading`, `GET /api/reading/[slug]`, `POST /api/reading/complete`, `GET /api/listening`, `GET /api/listening/[slug]`, `POST /api/listening/complete`, `POST /api/listening/dictation` (all server-side grading — answers never leave the server; signed-out users get graded preview without persistence). Completions record `skill_attempts` + XP/streak via shared `awardXp()`. Reading/listening texts reuse the Phase-3 vocabulary bank (`vocabFocus` words link to `/vocabulary/[word]`).
-Audio note: listening playback uses the Web Speech API (device TTS, no key needed). To upgrade to studio audio, replace `speak()` calls in `ListeningRunner` with file/signed-URL playback — the transcript, dictation and grading layers are already audio-source agnostic.
+Audio note: listening and pronunciation reference playback uses the allow-listed server route `GET /api/audio/tts`, Gemini Flash-Lite TTS, deterministic cache keys, a private Supabase Storage cache, HTTP caching and concurrent-request deduplication. If Gemini is unavailable the client explicitly falls back to device speech synthesis; playback never becomes an assessment score.
+
+## Universal Practice Lab
+`/practice` provides Daily Practice, Smart Review, Mixed Practice and Topic Practice through a single versioned exercise contract. The reusable engine covers multiple choice/select, blanks, matching, ordering, correction, transformation, short/long answers, reading/audio comprehension, dictation, flashcards, recording, pronunciation and mixed review. Objective work is scored deterministically on the server. Productive work carries a rubric and returns `needsReview` instead of a fabricated score. Signed-in answer saves atomically update session restoration, mistake history and spaced-review dates without changing the official Placement Test level.

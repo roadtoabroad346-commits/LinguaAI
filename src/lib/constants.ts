@@ -8,6 +8,7 @@ export const NAV_ITEMS = [
   { href: "/daily-challenge", key: "nav.dailyChallenge", icon: "Flame" },
   { href: "/guided-path", key: "nav.guidedPath", icon: "Route" },
   { href: "/smart-path", key: "nav.smartPath", icon: "Compass" },
+  { href: "/practice", key: "nav.practice", icon: "Dumbbell" },
   { href: "/vocabulary", key: "nav.vocabulary", icon: "BookOpen" },
   { href: "/dictionary", key: "nav.dictionary", icon: "BookMarked" },
   { href: "/flashcards", key: "nav.flashcards", icon: "Layers" },

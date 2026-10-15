@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
  * Accessibility checks must analyze the requested page, never an unnoticed
  * authentication redirect.
  */
-const PAGES = ["/", "/placement", "/grammar", "/reading", "/listening", "/pronunciation", "/health", "/privacy", "/terms"];
+const PAGES = ["/", "/placement", "/grammar", "/reading", "/listening", "/pronunciation", "/practice", "/health", "/privacy", "/terms"];
 
 for (const url of PAGES) {
   test(`@a11y ${url} has no serious axe violations`, async ({ page }) => {

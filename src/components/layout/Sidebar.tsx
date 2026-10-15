@@ -19,6 +19,7 @@ import {
   Sparkles,
   Trophy,
   Flame,
+  Dumbbell,
   type LucideIcon,
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -29,6 +30,7 @@ import { cn } from "@/lib/utils";
 const ICONS: Record<string, LucideIcon> = {
   LayoutDashboard,
   Flame,
+  Dumbbell,
   Route,
   Compass,
   BookOpen,

@@ -51,12 +51,14 @@ export function Progress({
   max = 100,
   className,
   label,
+  ariaLabel,
   tone = "brand",
 }: {
   value: number;
   max?: number;
   className?: string;
   label?: string;
+  ariaLabel?: string;
   tone?: "brand" | "success" | "warm";
 }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
@@ -74,7 +76,7 @@ export function Progress({
           <span className="tabular-nums">{Math.round(pct)}%</span>
         </div>
       )}
-      <div role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100} className="h-2.5 overflow-hidden rounded-full bg-ink-100 dark:bg-ink-800">
+      <div role="progressbar" aria-label={ariaLabel ?? label ?? "Progress"} aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100} className="h-2.5 overflow-hidden rounded-full bg-ink-100 dark:bg-ink-800">
         <motion.div
           className={cn("h-full rounded-full", bar)}
           initial={{ width: 0 }}

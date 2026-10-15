@@ -245,6 +245,45 @@ export interface Database {
         Insert: Omit<Database["public"]["Tables"]["completion_claims"]["Row"], "id" | "created_at">;
         Update: Partial<Database["public"]["Tables"]["completion_claims"]["Row"]>;
       };
+      practice_sessions: {
+        Row: {
+          id: string; user_id: string; session_key: string;
+          mode: "daily" | "smart-review" | "mixed" | "topic" | "skill";
+          level: string | null; skill: string | null; topic: string | null;
+          content_version: number; status: "in_progress" | "completed" | "abandoned";
+          score: number; total: number; revision: number; state: Record<string, unknown>;
+          started_at: string; completed_at: string | null; updated_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["practice_sessions"]["Row"], "id" | "started_at" | "updated_at">;
+        Update: Partial<Database["public"]["Tables"]["practice_sessions"]["Row"]>;
+      };
+      practice_answers: {
+        Row: {
+          id: string; session_id: string; user_id: string; exercise_id: string;
+          content_version: number; answer: unknown; score: number | null; correct: boolean | null;
+          feedback: Record<string, unknown>; answered_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["practice_answers"]["Row"], "id" | "answered_at">;
+        Update: Partial<Database["public"]["Tables"]["practice_answers"]["Row"]>;
+      };
+      mistake_notebook: {
+        Row: {
+          id: string; user_id: string; exercise_id: string; content_version: number;
+          skill: string; topic: string; last_answer: unknown; explanation: string;
+          occurrences: number; resolved_at: string | null; first_seen_at: string; last_seen_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["mistake_notebook"]["Row"], "id" | "first_seen_at" | "last_seen_at">;
+        Update: Partial<Database["public"]["Tables"]["mistake_notebook"]["Row"]>;
+      };
+      practice_review_schedule: {
+        Row: {
+          id: string; user_id: string; exercise_id: string; content_version: number;
+          skill: string; topic: string; interval_days: number; ease_factor: number;
+          review_count: number; last_result: boolean | null; last_reviewed_at: string | null; next_review_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["practice_review_schedule"]["Row"], "id">;
+        Update: Partial<Database["public"]["Tables"]["practice_review_schedule"]["Row"]>;
+      };
     };
     Functions: {
       award_xp_atomic: {
@@ -261,6 +300,16 @@ export interface Database {
           streak: { current: number; longest: number };
           xpToday: number;
         };
+      };
+      save_practice_answer: {
+        Args: {
+          p_session_key: string; p_expected_revision: number; p_mode: string;
+          p_level: string | null; p_skill: string; p_topic: string;
+          p_exercise_id: string; p_content_version: number; p_answer: unknown;
+          p_score: number | null; p_correct: boolean | null; p_feedback: Record<string, unknown>;
+          p_state?: Record<string, unknown>; p_complete?: boolean;
+        };
+        Returns: Array<{ session_id: string; revision: number; session_score: number; answer_count: number; status: string }>;
       };
     };
     Views: Record<string, never>;

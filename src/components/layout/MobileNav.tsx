@@ -22,6 +22,7 @@ import {
   Sparkles,
   SpellCheck,
   Trophy,
+  Dumbbell,
   User,
   X,
   type LucideIcon,
@@ -48,6 +49,7 @@ const ICONS: Record<string, LucideIcon> = {
   SpellCheck,
   Sparkles,
   Trophy,
+  Dumbbell,
 };
 
 const MAIN_TABS = [

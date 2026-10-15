@@ -1,6 +1,23 @@
 # LinguaAI — Development Status
 
-## Current phase: PHASE 13 — AUTH + SESSION + DATABASE SYNC (complete)
+## Current phase: PHASE 14 — UNIVERSAL PRACTICE + CACHED GEMINI TTS
+
+### Completed work
+- Added a versioned universal exercise contract and deterministic scorer for 16 interaction types, with stable IDs, CEFR/skill/topic/difficulty metadata, explanations, answer keys or explicit productive-skill rubrics. Validated A1–C1 items drive the product; C2 remains visibly `pilot` and is excluded from validated pathway lists.
+- Added `/practice` with Daily, Smart Review, Mixed and Topic modes, level/skill/topic filters, keyboard/touch-friendly controls, progress, recording and honest rubric-required outcomes.
+- Added atomic practice persistence: sessions, answers, mistake notebook and spaced-review schedule; owner-only RLS, explicit authenticated grants, idempotent answer upserts, multi-tab revision guards and restoration APIs. Placement level is read only as a recommendation signal and never updated.
+- Added server-side Gemini TTS for allow-listed listening/pronunciation/exercise content, current `gemini-3.8-flash-lite-tts` default, SHA-256 cache keys, private Supabase Storage cache, HTTP caching, in-flight request deduplication, rate limits and explicit device-TTS fallback. TTS never assesses pronunciation.
+- Added trilingual Practice Lab navigation/UI and preserved all existing auth, onboarding and Placement Test routes.
+
+### Verification
+- `npm run typecheck`: clean. `npm test`: 308/308 pass across 33 files. `npm run lint`: 0 errors; 60 pre-existing React 19/advisory warnings remain under the repository's warning-only policy (new files lint clean).
+- `npm run build`: clean, including `/practice`, `/api/practice/{queue,session}` and `/api/audio/tts`.
+- `npm run test:e2e`: 60/60 pass on 360 px, 390 px and 1440 px — axe WCAG checks, Placement Test guest/resume regression, auth redirects, Practice Lab grading and horizontal overflow.
+
+### Database action for the owner
+- Apply `supabase/migrations/20261015120207_universal_practice_engine.sql`, confirm the `OK-universal-practice-engine` proof row, then redeploy with optional `GEMINI_TTS_MODEL=gemini-3.8-flash-lite-tts` (the same value is the server default).
+
+## Previous phase: PHASE 13 — AUTH + SESSION + DATABASE SYNC (complete)
 
 ### Root causes (evidence in `docs/AUTH_ROOT_CAUSE.md`)
 - No shared auth source: one-shot `getUser()` in `UserMenu` + one-shot fetch in `SmartPathViews` disagreed with the server session.
