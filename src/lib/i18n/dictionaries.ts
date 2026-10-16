@@ -18,8 +18,6 @@ export function getEnglishDictionary(): Dictionary {
 }
 
 type PluralForms = { one?: string; few?: string; many?: string; other?: string };
-type DictValue = string | PluralForms;
-
 function lookup(obj: unknown, path: string): unknown {
   let cur: unknown = obj;
   for (const seg of path.split(".")) {
@@ -67,7 +65,6 @@ export function translate(
 
   if (raw === undefined) {
     if (process.env.NODE_ENV !== "production") {
-      // eslint-disable-next-line no-console
       console.warn(`[i18n] missing key "${key}" (locale "${locale}")`);
     }
     return humanize(key);

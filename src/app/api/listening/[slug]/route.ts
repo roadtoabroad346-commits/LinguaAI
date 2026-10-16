@@ -5,7 +5,8 @@ export async function GET(_request: Request, props: { params: Promise<{ slug: st
   const params = await props.params;
   const t = getListeningTrack(params.slug);
   if (!t) return NextResponse.json({ error: "Track not found." }, { status: 404 });
-  const { questions: _omit, ...rest } = t;
+  const { questions, ...rest } = t;
+  void questions;
   return NextResponse.json({
     ...rest,
     questions: toPublicListeningQuestions(t),

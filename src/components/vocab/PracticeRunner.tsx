@@ -31,35 +31,43 @@ export function PracticeRunner() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ score: number; total: number; correctWords: string[]; xpEarned: number; perfect: boolean; saved: boolean } | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [seed, setSeed] = useState(() => `${new Date().toISOString().slice(0, 10)}-${crypto.randomUUID()}`);
   // Quiz is loaded once per mount; its single submit carries one key.
   const attemptKey = useRef(newAttemptKey());
 
   useEffect(() => {
-    let cancelled = false;
-    fetch(`/api/vocab/practice?seed=${new Date().toISOString().slice(0, 10)}-${Math.floor(Math.random() * 100000)}`)
+    const controller = new AbortController();
+    fetch(`/api/vocab/practice?seed=${encodeURIComponent(seed)}`, { signal: controller.signal })
       .then(async (r) => {
         if (!r.ok) throw new Error("load");
         return readJson(r);
       })
       .then((json) => {
-        if (cancelled) return;
         setQuestions(json.questions ?? []);
         setMeta({ xpPerCorrect: json.xpPerCorrect ?? 5, bonusXp: json.bonusXp ?? 10, level: json.level ?? "mixed", signedIn: json.signedIn ?? false });
       })
       .catch(() => {
-        if (!cancelled) setLoadError(t("learn.couldNotLoadPractice"));
+        if (!controller.signal.aborted) setLoadError(t("learn.couldNotLoadPractice"));
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [seed]);
+
+  function restart() {
+    setQuestions(null);
+    setAnswers({});
+    setLoadError(null);
+    setSubmitError(null);
+    setResult(null);
+    attemptKey.current = newAttemptKey();
+    setSeed(`${new Date().toISOString().slice(0, 10)}-${crypto.randomUUID()}`);
+  }
 
   if (loadError) {
     return (
       <Card>
         <Alert tone="danger" title={t("learn.couldNotLoadTitle")}>{loadError}</Alert>
-        <div className="mt-3"><Button variant="secondary" onClick={() => window.location.reload()}>{t("common.retry")}</Button></div>
+        <div className="mt-3"><Button variant="secondary" onClick={restart}>{t("common.retry")}</Button></div>
       </Card>
     );
   }
@@ -95,7 +103,7 @@ export function PracticeRunner() {
           </CardDescription>
           <Progress value={(result.score / Math.max(1, result.total)) * 100} tone={result.perfect ? "success" : "brand"} className="mx-auto mt-3 max-w-xs" />
           <div className="mt-4 flex flex-wrap justify-center gap-2">
-            <Button size="md" variant="secondary" onClick={() => window.location.reload()}>{t("learn.practiceAgain")}</Button>
+            <Button size="md" variant="secondary" onClick={restart}>{t("learn.practiceAgain")}</Button>
             <Link href="/flashcards"><Button size="md" shine>{t("learn.reviewFlashcards")}</Button></Link>
             <Link href="/dictionary"><Button size="md" variant="ghost">{t("nav.dictionary")}</Button></Link>
           </div>

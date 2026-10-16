@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import { isSupabaseConfigured } from "@/lib/env";
 
 const PROTECTED_PREFIXES = [
   "/dashboard",
@@ -32,15 +33,18 @@ function isAuthPage(pathname: string): boolean {
 export async function proxy(request: NextRequest) {
   const { response, userId } = await updateSession(request);
   const pathname = request.nextUrl.pathname;
+  const configured = isSupabaseConfigured();
 
-  if (!userId && isProtected(pathname)) {
+  // Preview mode intentionally exposes deterministic, non-persisted learning
+  // screens. Real user data routes remain protected when Supabase is present.
+  if (configured && !userId && isProtected(pathname)) {
     const login = request.nextUrl.clone();
     login.pathname = "/login";
     login.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(login);
   }
 
-  if (userId && isAuthPage(pathname)) {
+  if (configured && userId && isAuthPage(pathname)) {
     const next = request.nextUrl.searchParams.get("next");
     const safe =
       next &&

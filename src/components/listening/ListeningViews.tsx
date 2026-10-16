@@ -126,6 +126,23 @@ export function ListeningRunner({ slug, lines, vocabFocus, questions, dictationI
   const fullText = useMemo(() => lines.map((l) => l.text).join(" "), [lines]);
   const answered = Object.keys(answers).length;
 
+  function restart() {
+    stopReferenceAudio();
+    stopSpeaking();
+    setPlaying(false);
+    setActiveLine(null);
+    setAnswers({});
+    setResult(null);
+    setError(null);
+    setDictIndex(0);
+    setDictText("");
+    setDictResult(null);
+    setDictError(null);
+    dictKeys.current.clear();
+    attemptKey.current = newAttemptKey();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   async function playAll() {
     if (playing) {
       stopReferenceAudio();
@@ -358,7 +375,7 @@ export function ListeningRunner({ slug, lines, vocabFocus, questions, dictationI
             <CardDescription>{result.saved ? t("learn.xpSaved", { xp: result.xpEarned }) : t("learn.xpPreview", { xp: result.xpEarned })}</CardDescription>
             <Progress value={(result.score / Math.max(1, result.total)) * 100} tone={result.perfect ? "success" : "brand"} className="mx-auto mt-3 max-w-xs" />
             <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <Button size="md" variant="secondary" onClick={() => window.location.reload()}>{t("learn.tryAgain")}</Button>
+              <Button size="md" variant="secondary" onClick={restart}>{t("learn.tryAgain")}</Button>
               <Link href="/listening"><Button size="md" variant="ghost">{t("learn.allTracks")}</Button></Link>
             </div>
           </Card>

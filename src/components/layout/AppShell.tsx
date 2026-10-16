@@ -5,7 +5,6 @@ import { NotificationBell } from "@/components/notifications/NotificationCenter"
 import { BottomTabBar } from "./MobileNav";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { ThemeToggle } from "@/components/providers/ThemeToggle";
-import { PageTransition } from "@/lib/motion/components";
 import { getRequestLocale, getServerT } from "@/lib/i18n/server";
 import { getSessionUser } from "@/lib/auth/session";
 
@@ -18,7 +17,7 @@ export async function AppShell({ children, title }: { children: React.ReactNode;
   const t = getServerT(locale);
   // Logo goes to the dashboard for signed-in users, landing for guests.
   return (
-    <div className="bg-mesh min-h-dvh">
+    <div className="app-shell-canvas min-h-dvh">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-2 focus:z-50 focus:rounded-xl focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-ink-900 dark:focus:bg-ink-900 dark:focus:text-ink-50"
@@ -45,12 +44,12 @@ export async function AppShell({ children, title }: { children: React.ReactNode;
       />
       <div className="mx-auto grid w-full max-w-6xl gap-5 px-4 py-5 md:grid-cols-[248px_minmax(0,1fr)] md:px-6 md:py-8">
         <aside className="hidden md:block">
-          <div className="glass sticky top-24 max-h-[calc(100dvh-7.5rem)] overflow-y-auto rounded-3xl border border-ink-200/70 p-3 shadow-card dark:border-ink-800">
+          <div className="sticky top-24 max-h-[calc(100dvh-7.5rem)] overflow-y-auto rounded-2xl border border-ink-200/80 bg-white p-3 shadow-sm dark:border-ink-800 dark:bg-ink-900">
             <Sidebar />
           </div>
         </aside>
         <main id="main" className="min-w-0 pb-28 md:pb-10">
-          <PageTransition>{children}</PageTransition>
+          <div className="animate-page-in">{children}</div>
         </main>
       </div>
       <BottomTabBar />

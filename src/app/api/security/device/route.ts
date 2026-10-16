@@ -83,7 +83,6 @@ export async function POST(request: Request) {
     language: fp.language,
   } as never;
 
-  let stored = false;
   let sharedDevice = false;
   if (existing) {
     const { error: updateError } = await supabase
@@ -105,11 +104,9 @@ export async function POST(request: Request) {
       }
       return NextResponse.json({ error: "Could not save device." }, { status: 500 });
     }
-    stored = true;
   } else {
     const { error: insertError } = await supabase.from("devices").insert(row);
     if (!insertError) {
-      stored = true;
     } else if (isMissingTableError(insertError.message)) {
       const res = NextResponse.json({ ok: true, stored: false, reason: "telemetry_unavailable" });
       res.headers.set("Cache-Control", "no-store");
@@ -136,7 +133,6 @@ export async function POST(request: Request) {
         .maybeSingle();
       if (raced) {
         await supabase.from("devices").update(row).eq("id", deviceId).eq("user_id", user.id);
-        stored = true;
       } else {
         sharedDevice = true;
       }

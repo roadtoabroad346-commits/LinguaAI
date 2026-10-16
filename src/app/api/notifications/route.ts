@@ -8,7 +8,7 @@ import { isDue } from "@/lib/vocab/mastery";
 import { generateNotifications, type NotifSignals } from "@/lib/notifications/generator";
 import { inQuietHours, parsePrefs, pastReminderTime } from "@/lib/notifications/prefs";
 import { planSync } from "@/lib/notifications/sync";
-import type { NotifCategory, NotificationRow } from "@/lib/notifications/types";
+import type { NotificationRow } from "@/lib/notifications/types";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +53,11 @@ export async function GET(request: Request) {
   const limit = Number.isFinite(rawLimit) ? Math.min(50, Math.max(1, Math.floor(rawLimit))) : 20;
   const offset = Number.isFinite(rawOffset) ? Math.max(0, Math.floor(rawOffset)) : 0;
 
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("preferences,timezone,onboarding_completed,level,placement_completed,daily_goal_xp,current_streak,total_xp")
+    .eq("id", user.id)
+    .maybeSingle();
   const p = (profile ?? {}) as Record<string, unknown>;
   const prefs = parsePrefs((p.preferences as Record<string, unknown> | undefined)?.notifs);
   const timezone = typeof p.timezone === "string" && p.timezone ? p.timezone : "UTC";
@@ -157,8 +161,9 @@ export async function GET(request: Request) {
   ).length;
   const plan = planSync(generated, existing, { createdToday, dailyMax: prefs.dailyMax });
 
+  const syncOperations: Array<PromiseLike<unknown>> = [];
   if (plan.insert.length > 0) {
-    await supabase.from("notifications").insert(
+    syncOperations.push(supabase.from("notifications").insert(
       plan.insert.map((g) => ({
         user_id: user.id,
         dedupe_key: g.key,
@@ -170,14 +175,19 @@ export async function GET(request: Request) {
         href: g.href,
         expires_at: g.expiresAt,
       }) as never)
+    ));
+  }
+  if (plan.rearm.length > 0) {
+    syncOperations.push(
+      supabase.from("notifications").update({ resolved_at: null } as never).eq("user_id", user.id).in("dedupe_key", plan.rearm)
     );
   }
-  for (const key of plan.rearm) {
-    await supabase.from("notifications").update({ resolved_at: null } as never).eq("user_id", user.id).eq("dedupe_key", key);
+  if (plan.resolve.length > 0) {
+    syncOperations.push(
+      supabase.from("notifications").update({ resolved_at: now.toISOString() } as never).eq("user_id", user.id).in("dedupe_key", plan.resolve)
+    );
   }
-  for (const key of plan.resolve) {
-    await supabase.from("notifications").update({ resolved_at: now.toISOString() } as never).eq("user_id", user.id).eq("dedupe_key", key);
-  }
+  await Promise.all(syncOperations);
   // Hygiene: drop expired + ancient history (best-effort).
   try {
     await supabase.from("notifications").delete().eq("user_id", user.id).lt("expires_at", now.toISOString());
@@ -186,7 +196,10 @@ export async function GET(request: Request) {
     /* non-fatal */
   }
 
-  let query = supabase.from("notifications").select("*").eq("user_id", user.id);
+  let query = supabase
+    .from("notifications")
+    .select("id,user_id,dedupe_key,category,priority,title_key,body_key,vars,href,read_at,dismissed_at,snoozed_until,resolved_at,expires_at,created_at")
+    .eq("user_id", user.id);
   if (view === "active") {
     // PostgREST .or() values containing ":" / "+" (ISO timestamps) must be
     // double-quoted, otherwise the parser throws a 400 syntax error near the

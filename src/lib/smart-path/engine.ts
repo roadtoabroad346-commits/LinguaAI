@@ -109,18 +109,6 @@ const READING_LEVELLED: Levelled[] = READING_PASSAGES.map((p) => ({ slug: p.slug
 const LISTENING_LEVELLED: Levelled[] = LISTENING_TRACKS.map((t) => ({ slug: t.slug, level: t.level, title: t.title }));
 const PRON_LEVELLED: Levelled[] = PRONUNCIATION_DRILLS.map((t) => ({ slug: t.slug, level: t.level, title: t.title }));
 
-const KIND_HREF: Record<string, string> = {
-  grammar: "/grammar",
-  reading: "/reading",
-  listening: "/listening",
-  dictation: "/listening",
-  vocabulary: "/vocabulary/practice",
-  spelling: "/spelling",
-  writing: "/writing",
-  speaking: "/speaking",
-  "read-aloud": "/speaking",
-};
-
 /** Pick deterministic remedial/at-level content, preferring unattempted slugs. */
 export function pickContent(
   pool: Levelled[],
@@ -263,8 +251,6 @@ export function buildSmartPath(input: SmartPathInput): SmartPathPlan {
     totalMinutes -= dropped.minutes;
   }
 
-  const ranked = steps.map((s, i) => ({ ...s, id: s.id }));
-  void ranked;
   return {
     steps: steps.map((s, i) => ({ ...s, id: s.id.startsWith(`step-`) ? `step-${i + 1}-${s.id}` : s.id })),
     meta: {

@@ -1,6 +1,32 @@
 # LinguaAI — Development Status
 
-## Current phase: PHASE 14 — UNIVERSAL PRACTICE + CACHED GEMINI TTS
+## Current phase: PHASE 15 — PRODUCTION OPTIMIZATION + PREMIUM UX
+
+### Completed work
+- Reduced anonymous-route JavaScript by deferring Supabase Auth/Realtime until an authenticated session needs it, splitting locale dictionaries by language, and replacing global Framer Motion usage in core controls/navigation with transform/opacity CSS transitions. The production `/practice` trace fell to 171 KB encoded JavaScript (11 chunks); no Supabase chunk is requested on guest routes.
+- Removed internal full-page reloads from Practice, Flashcards, Reading, Listening, Daily Challenge, Smart Path and Vocabulary Studio. Retries now preserve the application shell, cancel obsolete requests, reset mutation/idempotency state safely and avoid stale responses.
+- Fixed preview-mode routing when Supabase is intentionally unconfigured, removed the unconditional anonymous-session retry delay, preserved production route protection, and made Auth/Realtime subscriptions lazy with reliable cleanup.
+- Batched notification rearm/resolve operations, narrowed bootstrap/notification/vocabulary payload selects, retained owner-scoped authorization, and made study shuffling deterministic during render.
+- Refined the shared product UI toward a restrained solid-surface design system, with consistent radii, borders, focus behavior, CSS-only feedback, reduced-motion support and improved dashboard hierarchy/contrast.
+- Fixed duplicate `<main>` landmarks during streamed loading, dashboard heading order/contrast, stale render-time refs, and the profile preview regression test. Expanded axe coverage to dashboard, profile and Smart Path.
+- Updated the Lighthouse harness with representative routes, explicit Web Vitals output, portable Chromium discovery and a noindex-aware SEO exception for the authenticated dashboard.
+
+### Measured results (local production build, Lighthouse 13.5 mobile simulation)
+- Baseline → optimized `/practice`: performance 64 → 75, LCP 4409 ms → 3547 ms, TBT 878 ms → 576 ms, CLS 0 → 0. Scores remain lab-machine-sensitive; the 90+ performance target is not yet met and is not claimed.
+- Baseline → optimized `/placement`: performance 68 → 73, LCP 4236 ms → 3990 ms, TBT 742 ms → 572 ms, CLS 0 → 0.
+- Public-route accessibility, best-practices and SEO scores were 98–100/100. Dashboard accessibility reached 100 after the final contrast/heading fix; dashboard SEO is intentionally excluded because the authenticated route is blocked from indexing.
+
+### Verification
+- `npm run typecheck`: pass. `npm run build`: pass (60 generated pages, all API/app routes compiled). `npm test`: 315/315 pass across 37 files.
+- `npm run lint`: pass with 0 errors and 33 advisory warnings (down from 60); the remaining warnings are primarily React 19 effect advisories and legacy explicit-`any` Supabase row casts.
+- `npm run test:e2e`: 72/72 pass at 360 px, 390 px and 1440 px, including WCAG axe scans, keyboard navigation, no-overflow checks, placement resume, practice grading/failure recovery, preview routes and PWA assets.
+- `npm audit --omit=dev`: 0 vulnerabilities.
+
+### Remaining production verification
+- This workspace has no Supabase, Gemini or deployment credentials. Authenticated RLS, live Realtime, cross-device reconciliation, AI requests, query plans and migrations were reviewed statically but could not be exercised against production data. Do not apply migrations or claim live-database validation until a safe staging project is connected.
+- Lighthouse 90+, LCP <=2.5 s and TBT/INP goals remain follow-up performance work. Field INP and p75 Web Vitals require production RUM; Lighthouse TBT is only a lab proxy.
+
+## Previous phase: PHASE 14 — UNIVERSAL PRACTICE + CACHED GEMINI TTS
 
 ### Completed work
 - Added a versioned universal exercise contract and deterministic scorer for 16 interaction types, with stable IDs, CEFR/skill/topic/difficulty metadata, explanations, answer keys or explicit productive-skill rubrics. Validated A1–C1 items drive the product; C2 remains visibly `pilot` and is excluded from validated pathway lists.

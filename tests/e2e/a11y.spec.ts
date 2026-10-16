@@ -5,7 +5,21 @@ import { expect, test } from "@playwright/test";
  * Accessibility checks must analyze the requested page, never an unnoticed
  * authentication redirect.
  */
-const PAGES = ["/", "/placement", "/grammar", "/reading", "/listening", "/pronunciation", "/practice", "/health", "/privacy", "/terms"];
+const PAGES = [
+  "/",
+  "/placement",
+  "/grammar",
+  "/reading",
+  "/listening",
+  "/pronunciation",
+  "/practice",
+  "/dashboard",
+  "/profile",
+  "/smart-path",
+  "/health",
+  "/privacy",
+  "/terms",
+];
 
 for (const url of PAGES) {
   test(`@a11y ${url} has no serious axe violations`, async ({ page }) => {
@@ -28,10 +42,10 @@ for (const url of PAGES) {
 }
 
 for (const url of ["/dashboard", "/profile", "/smart-path"]) {
-  test(`anonymous ${url} redirects to login`, async ({ page }) => {
+  test(`preview mode renders ${url} without a configured backend`, async ({ page }) => {
     await page.goto(url);
-    await expect(page).toHaveURL(/\/login\?next=/);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    expect(new URL(page.url()).pathname).toBe(url);
+    await expect(page.locator("#main")).toBeVisible();
   });
 }
 

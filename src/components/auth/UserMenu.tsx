@@ -7,7 +7,6 @@ import { createPortal } from "react-dom";
 import { useAuth } from "./AuthProvider";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
-import { createClient } from "@/lib/supabase/client";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 
 /**
@@ -23,12 +22,7 @@ export function UserMenu() {
   const { t } = useTranslation();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Escape closes. No body scroll-lock: menu is small and non-modal.
   useEffect(() => {
@@ -45,6 +39,7 @@ export function UserMenu() {
     setSigningOut(true);
     try {
       try {
+        const { createClient } = await import("@/lib/supabase/client");
         const supabase = createClient();
         await supabase.auth.signOut();
       } catch {
@@ -111,8 +106,7 @@ export function UserMenu() {
           </span>
         </button>
       </div>
-      {mounted &&
-        open &&
+      {open &&
         createPortal(
           <div className="fixed inset-0 z-[80]">
             {/* Tap anywhere outside closes the menu, never triggers an action. */}

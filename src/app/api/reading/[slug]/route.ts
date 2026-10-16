@@ -5,6 +5,7 @@ export async function GET(_request: Request, props: { params: Promise<{ slug: st
   const params = await props.params;
   const p = getReadingPassage(params.slug);
   if (!p) return NextResponse.json({ error: "Passage not found." }, { status: 404 });
-  const { questions: _omit, ...rest } = p;
+  const { questions, ...rest } = p;
+  void questions;
   return NextResponse.json({ ...rest, words: readingWordCount(p), questions: toPublicReadingQuestions(p) });
 }

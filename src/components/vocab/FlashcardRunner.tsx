@@ -85,6 +85,7 @@ export function FlashcardRunner() {
   const [typed, setTyped] = useState("");
   const [picked, setPicked] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
     const m = readStorage(MODE_KEY);
@@ -93,29 +94,25 @@ export function FlashcardRunner() {
     if (d === "def-word" || d === "mixed" || d === "word-def") setDirection(d);
     setShuffled(readStorage(SHUFFLE_KEY) === "1");
     setFavs(readFavs(favKey));
-    let cancelled = false;
-    fetch("/api/flashcards")
+    const controller = new AbortController();
+    fetch("/api/flashcards", { signal: controller.signal })
       .then(async (r) => {
         if (!r.ok) throw new Error("load");
         return readJson(r);
       })
       .then((json) => {
-        if (cancelled) return;
         setAllCards(json.cards ?? []);
         setSignedIn(json.signedIn !== false);
       })
       .catch(() => {
-        if (!cancelled) setLoadError(t("learn.couldNotLoadDeck"));
+        if (!controller.signal.aborted) setLoadError(t("learn.couldNotLoadDeck"));
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadAttempt]);
 
   useEffect(() => {
     setFavs(readFavs(favKey));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [favKey]);
 
   const cards = useMemo(() => {
@@ -265,7 +262,7 @@ export function FlashcardRunner() {
     return (
       <Card>
         <Alert tone="danger" title={t("learn.couldNotLoadTitle")}>{loadError}</Alert>
-        <div className="mt-3"><Button variant="secondary" onClick={() => window.location.reload()}>{t("common.retry")}</Button></div>
+        <div className="mt-3"><Button variant="secondary" onClick={() => { setLoadError(null); setAllCards(null); setLoadAttempt((value) => value + 1); }}>{t("common.retry")}</Button></div>
       </Card>
     );
   }

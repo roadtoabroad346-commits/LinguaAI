@@ -54,6 +54,17 @@ body {
   overflow-x: clip;
 }
 
+.app-shell-canvas {
+  background:
+    linear-gradient(rgb(248 250 252 / 0.92), rgb(248 250 252 / 0.92)),
+    radial-gradient(700px 260px at 50% -80px, rgb(99 102 241 / 0.14), transparent 70%);
+}
+.dark .app-shell-canvas {
+  background:
+    linear-gradient(rgb(2 6 23 / 0.94), rgb(2 6 23 / 0.94)),
+    radial-gradient(700px 260px at 50% -80px, rgb(99 102 241 / 0.2), transparent 70%);
+}
+
 body {
   @apply bg-ink-50 text-ink-900 antialiased;
   font-family: var(--font-sans);
@@ -174,6 +185,44 @@ body {
 }
 
 /* Button shine sweep */
+.animate-toast-in {
+  animation: toast-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+.animate-page-in {
+  animation: page-in 180ms ease-out both;
+}
+.animate-fade-in {
+  animation: fade-in 150ms ease-out both;
+}
+.animate-sheet-in {
+  animation: sheet-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.animate-option-wrong {
+  animation: option-wrong 320ms ease-out;
+}
+.animate-option-correct {
+  animation: option-correct 260ms ease-out;
+}
+@keyframes page-in { from { opacity: 0; transform: translateY(4px); } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes sheet-in { from { transform: translateY(100%); } }
+@keyframes option-wrong {
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-2px); }
+}
+@keyframes option-correct { 50% { transform: scale(1.015); } }
+
 .btn-shine {
   position: relative;
   overflow: hidden;

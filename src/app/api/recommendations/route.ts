@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { isGeminiConfigured } from "@/lib/env";
 import { checkRateLimit } from "@/lib/api/security";
 import { getDashboardData } from "@/lib/dashboard/queries";

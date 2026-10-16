@@ -18,17 +18,21 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
 });
 
 /**
- * Resilient variant for page guards: a single getUser() can transiently miss
- * (slow Auth, cookie rotation mid-request) and a bare null would redirect a
- * signed-in user to /login. One short retry avoids the false kick; a truly
- * signed-out user just waits ~400ms longer before the (correct) redirect.
+ * Resilient variant for page guards. A successful anonymous response returns
+ * immediately; only a genuine Auth/transport error receives one bounded retry.
  */
 export async function getSessionUserResilient(): Promise<SessionUser | null> {
-  const first = await getSessionUser();
-  if (first) return first;
-  await new Promise((r) => setTimeout(r, 400));
+  // A successful `getUser()` response with no user is authoritative. Retrying
+  // that normal signed-out state added 400 ms to every public auth page.
+  // Retry only an actual transport/Auth error.
   try {
     const supabase = createClient();
+    const first = await supabase.auth.getUser();
+    if (!first.error) {
+      const user = first.data.user;
+      return user ? { id: user.id, email: user.email ?? null } : null;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
     const { data } = await supabase.auth.getUser();
     const u = data.user;
     if (!u) return null;

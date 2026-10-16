@@ -43,33 +43,32 @@ export function DailyChallengeRunner() {
   const [result, setResult] = useState<{ score: number; total: number; xpEarned: number; perfect: boolean; saved: boolean; repeated?: boolean } | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showHints, setShowHints] = useState<Record<string, boolean>>({});
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   // Load-once effect: error text uses the mount-time locale (no refetch on language switch).
   useEffect(() => {
-    let cancelled = false;
-    fetch("/api/daily-challenge")
+    const controller = new AbortController();
+    fetch("/api/daily-challenge", { signal: controller.signal })
       .then(async (r) => {
         if (!r.ok) throw new Error("load");
         return readJson(r);
       })
       .then((json) => {
-        if (!cancelled) setData(json);
+        setData(json);
       })
       .catch(() => {
-        if (!cancelled) setLoadError(t("learn.couldNotLoadChallenge"));
+        if (!controller.signal.aborted) setLoadError(t("learn.couldNotLoadChallenge"));
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
     // Load-once: no refetch on language switch (error text uses mount-time locale).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadAttempt]);
 
   if (loadError) {
     return (
       <Card>
         <Alert tone="danger" title={t("learn.couldNotLoadChallengeTitle")}>{loadError}</Alert>
-        <div className="mt-3"><Button variant="secondary" onClick={() => window.location.reload()}>{t("common.retry")}</Button></div>
+        <div className="mt-3"><Button variant="secondary" onClick={() => { setLoadError(null); setLoadAttempt((value) => value + 1); }}>{t("common.retry")}</Button></div>
       </Card>
     );
   }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 /**
  * Private, user-scoped Realtime Broadcast subscriptions (migration 0021).
@@ -38,8 +37,10 @@ export function useRealtimeNotifications(opts: {
   const { userId, onNotification, onProgress, enabled = true } = opts;
   const notifRef = useRef(onNotification);
   const progressRef = useRef(onProgress);
-  notifRef.current = onNotification;
-  progressRef.current = onProgress;
+  useEffect(() => {
+    notifRef.current = onNotification;
+    progressRef.current = onProgress;
+  }, [onNotification, onProgress]);
 
   useEffect(() => {
     if (!enabled || !userId) return;
@@ -49,6 +50,7 @@ export function useRealtimeNotifications(opts: {
 
     (async () => {
       try {
+        const { createClient } = await import("@/lib/supabase/client");
         const supabase = createClient();
         // Refresh realtime auth context so RLS on realtime.messages sees the JWT.
         try {

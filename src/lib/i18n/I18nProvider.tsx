@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   DEFAULT_LOCALE,
@@ -11,7 +11,13 @@ import {
   resolveLocale,
 } from "./config";
 import type { Locale } from "./config";
-import { translate } from "./dictionaries";
+import { translateDictionary, type RuntimeDictionary } from "./translator";
+
+const DICTIONARY_LOADERS: Record<Locale, () => Promise<RuntimeDictionary>> = {
+  en: () => import("@/locales/en.json").then((module) => module.default),
+  ru: () => import("@/locales/ru.json").then((module) => module.default),
+  kk: () => import("@/locales/kk.json").then((module) => module.default),
+};
 
 interface I18nContextValue {
   locale: Locale;
@@ -49,14 +55,18 @@ function writeStoredLocale(locale: Locale) {
 
 export function I18nProvider({
   initialLocale,
+  initialDictionary,
   children,
 }: {
   initialLocale: Locale;
+  initialDictionary: RuntimeDictionary;
   children: ReactNode;
 }) {
   const [locale, setLocaleState] = useState<Locale>(() =>
     isLocale(initialLocale) ? initialLocale : DEFAULT_LOCALE
   );
+  const [dictionary, setDictionary] = useState<RuntimeDictionary>(initialDictionary);
+  const loadSequence = useRef(0);
 
   // On mount, apply local preference / browser language if the server
   // had nothing better (priority: user setting → local → browser → en).
@@ -67,7 +77,14 @@ export function I18nProvider({
       stored,
       acceptLanguage: typeof navigator !== "undefined" ? navigator.language : null,
     });
-    if (resolved !== locale) setLocaleState(resolved);
+    if (resolved !== locale) {
+      const sequence = ++loadSequence.current;
+      void DICTIONARY_LOADERS[resolved]().then((nextDictionary) => {
+        if (sequence !== loadSequence.current) return;
+        setDictionary(nextDictionary);
+        setLocaleState(resolved);
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -82,7 +99,12 @@ export function I18nProvider({
 
   const setLocale = useCallback((next: Locale, opts?: { persist?: boolean }) => {
     if (!isLocale(next)) return;
-    setLocaleState(next);
+    const sequence = ++loadSequence.current;
+    void DICTIONARY_LOADERS[next]().then((nextDictionary) => {
+      if (sequence !== loadSequence.current) return;
+      setDictionary(nextDictionary);
+      setLocaleState(next);
+    });
     if (opts?.persist === false) return;
     writeStoredLocale(next);
     // Best-effort sync to the Supabase profile (logged-in users).
@@ -94,8 +116,9 @@ export function I18nProvider({
   }, []);
 
   const t = useCallback(
-    (key: string, vars?: Record<string, string | number>) => translate(locale, key, vars),
-    [locale]
+    (key: string, vars?: Record<string, string | number>) =>
+      translateDictionary(dictionary, locale, key, vars),
+    [dictionary, locale]
   );
 
   const value = useMemo(() => ({ locale, setLocale, t }), [locale, setLocale, t]);

@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export function RingProgress({
@@ -46,7 +45,7 @@ export function RingProgress({
             </linearGradient>
           </defs>
           <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className="stroke-ink-100 dark:stroke-ink-800" />
-          <motion.circle
+          <circle
             cx={size / 2}
             cy={size / 2}
             r={r}
@@ -55,9 +54,8 @@ export function RingProgress({
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={c}
-            initial={{ strokeDashoffset: c }}
-            animate={{ strokeDashoffset: c * (1 - pct) }}
-            transition={{ type: "spring", stiffness: 90, damping: 20 }}
+            strokeDashoffset={c * (1 - pct)}
+            style={{ transition: "stroke-dashoffset 420ms cubic-bezier(0.22, 1, 0.36, 1)" }}
           />
         </svg>
         {label && (

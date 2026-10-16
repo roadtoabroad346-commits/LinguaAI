@@ -3,6 +3,7 @@
 import { readJson } from "@/lib/api/response";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Plus, Search, Star, Archive, Play, Copy, Trash2, Pencil, BarChart3 } from "lucide-react";
 import { Card, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -27,6 +28,7 @@ const COLOR_BG: Record<string, string> = {
 };
 
 export function StudioDashboard() {
+  const router = useRouter();
   const [sets, setSets] = useState<StudioSet[] | null>(null);
   const [stats, setStats] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +89,7 @@ export function StudioDashboard() {
       const newId = (json.set as { id?: string } | undefined)?.id;
       setTitle(""); setDescription(""); setLevel(""); setCategory("general"); setColor("brand");
       setCreating(false);
-      if (newId) window.location.href = `/vocab-sets/${newId}`;
+      if (newId) router.push(`/vocab-sets/${newId}`);
       else await load();
     } catch (e) {
       setCreateError(e instanceof Error ? e.message : "Create failed.");

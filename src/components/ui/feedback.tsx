@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 const tones: Record<string, string> = {
@@ -77,11 +76,9 @@ export function Progress({
         </div>
       )}
       <div role="progressbar" aria-label={ariaLabel ?? label ?? "Progress"} aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100} className="h-2.5 overflow-hidden rounded-full bg-ink-100 dark:bg-ink-800">
-        <motion.div
+        <div
           className={cn("h-full rounded-full", bar)}
-          initial={{ width: 0 }}
-          animate={{ width: `${pct}%` }}
-          transition={{ type: "spring", stiffness: 120, damping: 22 }}
+          style={{ width: `${pct}%`, transition: "width 320ms cubic-bezier(0.22, 1, 0.36, 1)" }}
         />
       </div>
     </div>

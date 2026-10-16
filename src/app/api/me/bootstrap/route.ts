@@ -37,7 +37,7 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*")
+    .select("id,email,display_name,level,onboarding_completed,placement_completed,total_xp,current_streak,longest_streak,daily_goal_xp,timezone,preferences")
     .eq("id", user.id)
     .maybeSingle();
   const p = (profile ?? {}) as Record<string, unknown>;

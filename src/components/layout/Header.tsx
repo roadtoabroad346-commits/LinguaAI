@@ -4,12 +4,12 @@ import { Badge } from "@/components/ui/feedback";
 
 export function Header({ right, title, subtitle, homeHref }: { right?: React.ReactNode; title?: string; subtitle?: string; homeHref?: string }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-ink-200/60 glass pt-safe dark:border-ink-800">
+    <header className="sticky top-0 z-30 border-b border-ink-200/80 bg-white/95 pt-safe backdrop-blur-md dark:border-ink-800 dark:bg-ink-950/95">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-3 sm:h-16 sm:gap-3 sm:px-4">
         <Link href={(homeHref ?? "/") as never} className="flex min-w-0 flex-1 items-center gap-2 sm:gap-2.5">
           <span
             aria-hidden
-            className="bg-brand-gradient flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-base font-extrabold text-white shadow-pop sm:h-9 sm:w-9 sm:rounded-2xl sm:text-lg"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-base font-extrabold text-white shadow-sm sm:h-9 sm:w-9 sm:text-lg"
           >
             L
           </span>

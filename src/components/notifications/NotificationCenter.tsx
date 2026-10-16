@@ -27,7 +27,6 @@ import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/feedback";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/client";
 import { useRealtimeNotifications } from "@/lib/realtime/useRealtimeNotifications";
 
 const ICONS: Record<string, typeof Bell> = {
@@ -84,7 +83,6 @@ export function NotificationBell() {
   const { t, locale } = useTranslation();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [tab, setTab] = useState<"active" | "history">("active");
   const [items, setItems] = useState<NotificationRowLite[]>([]);
   const [unread, setUnread] = useState(0);
@@ -95,10 +93,6 @@ export function NotificationBell() {
   const [userId, setUserId] = useState<string | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const abortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const load = useCallback(async (view: "active" | "history") => {
     abortRef.current?.abort();
@@ -155,6 +149,7 @@ export function NotificationBell() {
     let alive = true;
     (async () => {
       try {
+        const { createClient } = await import("@/lib/supabase/client");
         const supabase = createClient();
         const { data } = await supabase.auth.getUser();
         if (alive) setUserId(data.user?.id ?? null);
@@ -171,9 +166,11 @@ export function NotificationBell() {
   // Any notification change refreshes the badge; when the center is open, reload
   // the active list so inserts/deletes appear without a manual refresh.
   const openRef = useRef(open);
-  openRef.current = open;
   const tabRef = useRef(tab);
-  tabRef.current = tab;
+  useEffect(() => {
+    openRef.current = open;
+    tabRef.current = tab;
+  }, [open, tab]);
   useRealtimeNotifications({
     userId,
     onNotification: () => {
@@ -276,8 +273,8 @@ export function NotificationBell() {
         {unread > 0 && <span className="sr-only">{unread}</span>}
       </button>
 
-      {mounted &&
-        open &&
+      {open &&
+        typeof document !== "undefined" &&
         createPortal(
           <div className="fixed inset-0 z-[80]">
             {/* Backdrop: dim + blocks page taps on mobile, transparent click-catcher on desktop */}

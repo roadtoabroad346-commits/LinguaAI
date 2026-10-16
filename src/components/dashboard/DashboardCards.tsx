@@ -25,7 +25,7 @@ function SectionTitle({ children, action }: { children: React.ReactNode; action?
 }
 
 export const StatsRow = memo(function StatsRow({ data }: { data: DashboardData }) {
-  const { t, locale } = useTranslation();
+  const { t } = useTranslation();
   const goalLabel = `${data.xpToday} / ${data.dailyGoalXp} XP`;
   const pct = Math.min(100, (data.xpToday / Math.max(1, data.dailyGoalXp)) * 100);
 
@@ -35,7 +35,9 @@ export const StatsRow = memo(function StatsRow({ data }: { data: DashboardData }
   }, []);
 
   return (
-    <Stagger className="grid gap-3 sm:grid-cols-3">
+    <section aria-label={t("dashboard.title")}>
+      <h2 className="sr-only">{t("dashboard.title")}</h2>
+      <Stagger className="grid gap-3 sm:grid-cols-3">
       <StaggerItem>
         <Card interactive className="relative overflow-hidden">
           <div aria-hidden className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-500 to-amber-400" />
@@ -97,7 +99,8 @@ export const StatsRow = memo(function StatsRow({ data }: { data: DashboardData }
           </p>
         </Card>
       </StaggerItem>
-    </Stagger>
+      </Stagger>
+    </section>
   );
 });
 
@@ -125,7 +128,7 @@ export const ContinueLearning = memo(function ContinueLearning({ data }: { data:
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold">{a.title}</p>
                     {a.subtitle && <p className="mt-0.5 truncate text-sm text-ink-500">{a.subtitle}</p>}
-                    <p className="mt-1 text-xs text-ink-400">
+                    <p className="mt-1 text-xs text-ink-500 dark:text-ink-400">
                       {a.xp > 0 ? `+${formatXP(locale, a.xp)} · ` : ""}{formatDate(locale, a.created_at)}
                     </p>
                   </div>
@@ -244,10 +247,10 @@ export function RecommendationsCard({ initial, signedIn }: { initial: Recommenda
                 <div className="min-w-0">
                   <p className="text-sm font-bold">{r.title}</p>
                   <p className="mt-0.5 line-clamp-2 text-sm text-ink-500">{r.description}</p>
-                  <p className="mt-1.5 text-xs font-medium text-ink-400">{r.reason} · +{r.xp} XP</p>
+                  <p className="mt-1.5 text-xs font-medium text-ink-500 dark:text-ink-400">{r.reason} · +{r.xp} XP</p>
                 </div>
                 <Link href={r.href as never} className="flex shrink-0 items-center gap-1 text-sm font-bold text-brand-700">
-                  {t("dashboard.cards.start")} <ArrowRight className="h-3.5 w-3.5" />
+                  {t("dashboard.cards.start")}<span className="sr-only"> {r.title}</span> <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
             </div>
@@ -317,7 +320,7 @@ export function SmartPathCard({ signedIn }: { signedIn: boolean }) {
                   </span>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold">{s.title}</p>
-                    <p className="mt-0.5 truncate text-xs text-ink-400">{s.reason} · {t("dashboard.cards.minutes", { count: s.minutes })}</p>
+                    <p className="mt-0.5 truncate text-xs text-ink-500 dark:text-ink-400">{s.reason} · {t("dashboard.cards.minutes", { count: s.minutes })}</p>
                   </div>
                 </div>
                 <Link href={s.href as never} className="shrink-0 text-sm font-bold text-brand-700">

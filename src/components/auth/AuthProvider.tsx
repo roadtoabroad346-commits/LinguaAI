@@ -4,8 +4,18 @@ import { readJson } from "@/lib/api/response";
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { clearUserScopedKeys } from "@/lib/auth/storage";
+
+type BrowserClient = ReturnType<(typeof import("@/lib/supabase/client"))["createClient"]>;
+
+async function getBrowserClient(): Promise<BrowserClient | null> {
+  try {
+    const { createClient } = await import("@/lib/supabase/client");
+    return createClient();
+  } catch {
+    return null;
+  }
+}
 
 export type AuthStatus = "loading" | "authenticated" | "anonymous";
 
@@ -80,15 +90,12 @@ export function AuthProvider({
     status: initial.status,
   });
   const stateRef = React.useRef(state);
-  stateRef.current = state;
+  React.useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   const refresh = React.useCallback(async () => {
-    let supabase: ReturnType<typeof createClient> | null = null;
-    try {
-      supabase = createClient();
-    } catch {
-      supabase = null;
-    }
+    const supabase = await getBrowserClient();
     // Never demote to anonymous while the browser still holds a session:
     // on flaky mobile networks bootstrap can 401 transiently (cookie flush
     // lag, slow Auth). Demoting then looks like "Progress logged me out".
@@ -161,56 +168,58 @@ export function AuthProvider({
   }, [router]);
 
   React.useEffect(() => {
+    // Anonymous public pages already have an authoritative server snapshot.
+    // Do not ship/execute the Supabase SDK just to reconfirm that state.
+    if (stateRef.current.status !== "authenticated") return;
     let mounted = true;
-    let supabase: ReturnType<typeof createClient> | null = null;
-    try {
-      supabase = createClient();
-    } catch {
-      // Backend not configured: honor the server-provided snapshot (anonymous).
-      return;
-    }
-    const { data: sub } = supabase.auth.onAuthStateChange(async (event) => {
-      if (!mounted) return;
-      const prev = stateRef.current;
-      if (event === "SIGNED_OUT") {
-        try {
-          clearUserScopedKeys(window.localStorage);
-        } catch {
-          /* noop */
-        }
-        setState({
-          status: "anonymous",
-          userId: null,
-          email: null,
-          onboardingCompleted: false,
-          placementCompleted: false,
-          level: null,
-        });
-        router.refresh();
-        return;
-      }
-      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-        // If we were anonymous and now have a session, re-hydrate from bootstrap.
-        // If user id changed, reset client state first.
-        try {
-          const { data } = await supabase!.auth.getUser();
-          const nextId = data.user?.id ?? null;
-          if (nextId && prev.userId && nextId !== prev.userId) {
-            try {
-              clearUserScopedKeys(window.localStorage);
-            } catch {
-              /* noop */
-            }
+    let unsubscribe: (() => void) | null = null;
+
+    void (async () => {
+      const supabase = await getBrowserClient();
+      if (!supabase || !mounted) return;
+      const { data: sub } = supabase.auth.onAuthStateChange(async (event) => {
+        if (!mounted) return;
+        const prev = stateRef.current;
+        if (event === "SIGNED_OUT") {
+          try {
+            clearUserScopedKeys(window.localStorage);
+          } catch {
+            /* noop */
           }
-        } catch {
-          /* noop */
+          setState({
+            status: "anonymous",
+            userId: null,
+            email: null,
+            onboardingCompleted: false,
+            placementCompleted: false,
+            level: null,
+          });
+          router.refresh();
+          return;
         }
-        await refresh();
-        router.refresh();
-      }
-    });
-    // Reconcile once on mount (covers hard reload with a valid cookie).
-    void refresh();
+        if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+          // If user id changed, clear data from the prior account first.
+          try {
+            const { data } = await supabase.auth.getUser();
+            const nextId = data.user?.id ?? null;
+            if (nextId && prev.userId && nextId !== prev.userId) {
+              try {
+                clearUserScopedKeys(window.localStorage);
+              } catch {
+                /* noop */
+              }
+            }
+          } catch {
+            /* noop */
+          }
+          await refresh();
+          router.refresh();
+        }
+      });
+      unsubscribe = () => sub.subscription.unsubscribe();
+      // Reconcile after the subscription is active, without blocking hydration.
+      void refresh();
+    })();
     // Mobile networks drop and come back (tunnel, elevator, tab sleep):
     // revalidate when the page becomes visible or the browser goes online.
     const onVisible = () => {
@@ -221,11 +230,11 @@ export function AuthProvider({
     window.addEventListener("online", onOnline);
     return () => {
       mounted = false;
-      sub.subscription.unsubscribe();
+      unsubscribe?.();
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", onOnline);
     };
-  }, [refresh, router]);
+  }, [initial.status, refresh, router]);
 
   const value = React.useMemo<AuthContextValue>(
     () => ({

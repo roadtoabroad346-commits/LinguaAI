@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/layout/AppShell";
-import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
+import { Card, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/feedback";
 import { getGrammarTopic, toPublicGrammarQuestions } from "@/lib/grammar/topics";
 import { GrammarRunner } from "@/components/grammar/GrammarViews";

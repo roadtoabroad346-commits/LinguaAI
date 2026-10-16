@@ -3,7 +3,6 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   AudioLines,
   BookMarked,
@@ -97,10 +96,7 @@ export function BottomTabBar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [moreOpen]);
 
-  // Close the sheet on navigation + Escape.
-  React.useEffect(() => {
-    setMoreOpen(false);
-  }, [pathname]);
+  // More-sheet links close it before navigation; Escape is a second exit.
   React.useEffect(() => {
     if (!moreOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -135,7 +131,7 @@ export function BottomTabBar() {
           hidden ? "translate-y-[110%]" : "translate-y-0"
         )}
       >
-        <div className="glass-strong mx-auto grid max-w-md grid-cols-5 gap-1 rounded-[1.75rem] border border-ink-200/70 p-1.5 shadow-sheet dark:border-ink-700">
+        <div className="mx-auto grid max-w-md grid-cols-5 gap-1 rounded-2xl border border-ink-200/80 bg-white/95 p-1.5 shadow-sheet backdrop-blur-md dark:border-ink-700 dark:bg-ink-900/95">
           {MAIN_TABS.map((tab) => {
             const active = pathname === tab.href || (tab.href !== "/dashboard" && pathname?.startsWith(tab.href + "/"));
             const Icon = tab.icon;
@@ -152,9 +148,7 @@ export function BottomTabBar() {
                 )}
               >
                 {active && (
-                  <motion.span
-                    layoutId="bottom-tab-active"
-                    transition={{ type: "spring", stiffness: 520, damping: 38 }}
+                  <span
                     className="absolute inset-0 rounded-2xl bg-brand-100 dark:bg-brand-950"
                   />
                 )}
@@ -179,9 +173,7 @@ export function BottomTabBar() {
             )}
           >
             {(moreActive || moreOpen) && (
-              <motion.span
-                layoutId="bottom-tab-active"
-                transition={{ type: "spring", stiffness: 520, damping: 38 }}
+              <span
                 className="absolute inset-0 rounded-2xl bg-brand-100 dark:bg-brand-950"
               />
             )}
@@ -192,32 +184,21 @@ export function BottomTabBar() {
         </div>
       </nav>
 
-      <AnimatePresence>
         {moreOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-50 bg-ink-950/50 md:hidden"
+          <div
+            className="animate-fade-in fixed inset-0 z-50 bg-ink-950/50 md:hidden"
             onClick={() => setMoreOpen(false)}
             aria-hidden
           />
         )}
-      </AnimatePresence>
-      <AnimatePresence>
         {moreOpen && (
-          <motion.div
+          <div
             role="dialog"
             aria-modal="true"
             aria-label={t("nav.more")}
-            initial={{ y: "100%" }}
-            animate={{ y: "0%" }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", stiffness: 380, damping: 38 }}
-            className="fixed inset-x-0 bottom-0 z-50 px-3 pb-safe md:hidden"
+            className="animate-sheet-in fixed inset-x-0 bottom-0 z-50 px-3 pb-safe md:hidden"
           >
-            <div className="glass-strong mx-auto max-h-[70dvh] max-w-md overflow-y-auto rounded-[1.75rem] border border-ink-200/70 p-3 shadow-sheet dark:border-ink-700">
+            <div className="mx-auto max-h-[70dvh] max-w-md overflow-y-auto rounded-2xl border border-ink-200/80 bg-white p-3 shadow-sheet dark:border-ink-700 dark:bg-ink-900">
               <div className="mb-1 flex items-center justify-between px-1">
                 <p className="text-sm font-bold">{t("nav.more")}</p>
                 <button
@@ -258,9 +239,8 @@ export function BottomTabBar() {
                 })}
               </div>
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
     </>
   );
 }

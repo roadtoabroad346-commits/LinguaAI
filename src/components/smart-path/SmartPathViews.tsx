@@ -67,38 +67,37 @@ export function SmartPathViews() {
   const [data, setData] = useState<PlanResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [unauthorized, setUnauthorized] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
     if (status === "loading") return;
     if (status === "anonymous") return; // gate below, no fetch
-    let cancelled = false;
-    fetch("/api/smart-path", { cache: "no-store", credentials: "same-origin" })
+    const controller = new AbortController();
+    fetch("/api/smart-path", { cache: "no-store", credentials: "same-origin", signal: controller.signal })
       .then(async (r) => {
         if (r.status === 401) {
-          if (!cancelled) setUnauthorized(true);
+          setUnauthorized(true);
           return null;
         }
         if (!r.ok) throw new Error("load");
         const json = (await readJson(r)) as PlanResponse;
         // Authenticated users must never be served a signed-out payload.
         if (json.signedIn === false) {
-          if (!cancelled) setUnauthorized(true);
+          setUnauthorized(true);
           return null;
         }
         return json;
       })
       .then((json) => {
-        if (cancelled || !json) return;
+        if (!json) return;
         setData(json);
       })
       .catch(() => {
-        if (!cancelled) setError(t("smart.couldNotLoad"));
+        if (!controller.signal.aborted) setError(t("smart.couldNotLoad"));
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  }, [status, loadAttempt]);
 
   // Single source of truth: skeleton while auth resolves.
   if (status === "loading") {
@@ -132,7 +131,7 @@ export function SmartPathViews() {
     return (
       <Card>
         <Alert tone="danger" title={t("smart.couldNotLoadTitle")}>{error}</Alert>
-        <div className="mt-3"><Button variant="secondary" onClick={() => window.location.reload()}>{t("common.retry")}</Button></div>
+        <div className="mt-3"><Button variant="secondary" onClick={() => { setError(null); setData(null); setLoadAttempt((value) => value + 1); }}>{t("common.retry")}</Button></div>
       </Card>
     );
   }

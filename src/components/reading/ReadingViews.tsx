@@ -86,6 +86,15 @@ export function ReadingRunner({ slug, paragraphs, vocabFocus, questions }: {
   const attemptKey = useRef(newAttemptKey());
   const answered = Object.keys(answers).length;
 
+  function restart() {
+    setAnswers({});
+    setResult(null);
+    setError(null);
+    setPeek(null);
+    attemptKey.current = newAttemptKey();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   const textClass = fontSize === "sm" ? "text-[15px]" : fontSize === "lg" ? "text-[19px] leading-loose" : "text-[17px] leading-relaxed";
 
   function highlight(text: string): React.ReactNode[] {
@@ -178,7 +187,7 @@ export function ReadingRunner({ slug, paragraphs, vocabFocus, questions }: {
             <CardDescription>{result.saved ? t("learn.xpSaved", { xp: result.xpEarned }) : t("learn.xpPreview", { xp: result.xpEarned })}</CardDescription>
             <Progress value={(result.score / Math.max(1, result.total)) * 100} tone={result.perfect ? "success" : "brand"} className="mx-auto mt-3 max-w-xs" />
             <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <Button size="md" variant="secondary" onClick={() => window.location.reload()}>{t("learn.tryAgain")}</Button>
+              <Button size="md" variant="secondary" onClick={restart}>{t("learn.tryAgain")}</Button>
               <Link href="/reading"><Button size="md" variant="ghost">{t("learn.library")}</Button></Link>
             </div>
           </Card>

@@ -3,6 +3,7 @@ import { Inter, Sora } from "next/font/google";
 import "./globals.css";
 import { APP_NAME, APP_DESCRIPTION } from "@/lib/constants";
 import { I18nProvider } from "@/lib/i18n/I18nProvider";
+import { getDictionary } from "@/lib/i18n/dictionaries";
 import { LOCALE_META } from "@/lib/i18n/config";
 import { getRequestLocale } from "@/lib/i18n/server";
 import { AppProviders } from "@/components/providers/AppProviders";
@@ -86,7 +87,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <ServiceWorkerRegistration />
           {initialAuth.status === "authenticated" && <DeviceBeacon />}
           {initialAuth.status === "authenticated" && <GuestPlacementMigrator />}
-          <I18nProvider initialLocale={locale}>{children}</I18nProvider>
+          <I18nProvider initialLocale={locale} initialDictionary={getDictionary(locale)}>
+            {children}
+          </I18nProvider>
         </AppProviders>
       </body>
     </html>

@@ -28,6 +28,21 @@ function uuid(): string {
   });
 }
 
+function seededShuffle<T>(items: readonly T[], seedText: string): T[] {
+  let seed = 2166136261;
+  for (let i = 0; i < seedText.length; i += 1) {
+    seed ^= seedText.charCodeAt(i);
+    seed = Math.imul(seed, 16777619);
+  }
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i -= 1) {
+    seed = Math.imul(seed ^ (seed >>> 15), 2246822519);
+    const j = (seed >>> 0) % (i + 1);
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 export function StudyRunner({ setId }: { setId: string }) {
   const [queue, setQueue] = useState<Queue>("due");
   const [mode, setMode] = useState<Mode>("flip");
@@ -66,12 +81,7 @@ export function StudyRunner({ setId }: { setId: string }) {
   const deck = useMemo(() => {
     if (!cards) return null;
     if (!shuffled) return cards;
-    const arr = [...cards];
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
+    return seededShuffle(cards, cards.map((card) => card.id).join(":"));
   }, [cards, shuffled]);
 
   async function grade(rating: "again" | "hard" | "good" | "easy") {
@@ -324,8 +334,7 @@ function MatchingBoard({ deck, matched, setMatched, matchPicked, setMatchPicked,
       t.push({ key: `w-${c.id}`, label: c.front, pair: c.id });
       t.push({ key: `d-${c.id}`, label: String(c.back).slice(0, 60), pair: c.id });
     });
-    // deterministic-ish shuffle per deck
-    return [...t].sort((a, b) => (a.key < b.key ? -1 : 1)).reverse().sort(() => Math.random() - 0.5);
+    return seededShuffle(t, t.map((tile) => tile.key).join(":"));
   }, [pairs]);
 
   function tap(tile: { key: string; pair: string }) {

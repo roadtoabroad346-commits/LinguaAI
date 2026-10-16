@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 
   const { data: sets, error: sErr } = await supabase
     .from("vocab_sets")
-    .select("*")
+    .select("id,user_id,title,description,language,native_language,level,category,color,icon,is_archived,is_favorite,last_studied_at,created_at,updated_at")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false })
     .limit(500);

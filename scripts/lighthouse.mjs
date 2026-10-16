@@ -11,31 +11,37 @@ import path from "node:path";
 
 const run = promisify(execFile);
 const base = (process.env.BASE_URL ?? "http://localhost:3100").replace(/\/$/, "");
-const urls = [`${base}/placement`, `${base}/dashboard`, `${base}/profile`];
-// Mobile simulated throttling is harsh for an interactive Next.js app
-// (framer-motion + placement wizard ~325kB first load). 65 keeps perf
-// regressions visible without demanding a marketing-page score from app screens.
-const thresholds = { performance: 65, accessibility: 90, "best-practices": 85, seo: 90 };
+const routeList = (process.env.LIGHTHOUSE_ROUTES ?? "/,/placement,/practice,/dashboard")
+  .split(",")
+  .map((route) => route.trim())
+  .filter(Boolean);
+const urls = routeList.map((route) => `${base}${route.startsWith("/") ? route : `/${route}`}`);
+// A realistic regression gate for interactive app screens. The product target
+// remains 90+ and every run reports Core Web Vital lab metrics explicitly.
+const thresholds = {
+  performance: Number(process.env.LIGHTHOUSE_PERF_MIN ?? 80),
+  accessibility: 95,
+  "best-practices": 95,
+  seo: 90,
+};
 const NPX = process.platform === "win32" ? "npx.cmd" : "npx";
 
 // Prefer Playwright's bundled Chromium headless shell when system Chrome
 // is absent (CI/Windows): lighthouse accepts --chrome-path.
 function findChrome() {
   if (process.env.CHROME_PATH && fs.existsSync(process.env.CHROME_PATH)) return process.env.CHROME_PATH;
-  const root = path.join(process.env.LOCALAPPDATA ?? "", "ms-playwright");
+  const roots = [
+    path.join(process.env.LOCALAPPDATA ?? "", "ms-playwright"),
+    path.join(process.env.HOME ?? "", ".cache", "ms-playwright"),
+  ];
   try {
-    if (!fs.existsSync(root)) return null;
-    for (const d of fs.readdirSync(root)) {
-      if (!d.startsWith("chromium")) continue;
-      const exe = path.join(root, d, "chrome-win", "chrome.exe");
-      const shell = path.join(root, d, "chrome-headless-shell-win64", "chrome-headless-shell.exe");
-      // Full chromium first (supports all targets), shell as fallback.
-      if (fs.existsSync(exe)) return exe;
-      // Headless shell lives under a different layout per version; search it.
-      const headlessDir = path.join(root, d);
-      const found = searchExe(headlessDir);
-      if (found) return found;
-      if (fs.existsSync(shell)) return shell;
+    for (const root of roots) {
+      if (!fs.existsSync(root)) continue;
+      for (const d of fs.readdirSync(root).sort().reverse()) {
+        if (!d.startsWith("chromium")) continue;
+        const found = searchChrome(path.join(root, d));
+        if (found) return found;
+      }
     }
   } catch {
     /* ignore */
@@ -43,8 +49,8 @@ function findChrome() {
   return null;
 }
 
-function searchExe(dir, depth = 0) {
-  if (depth > 3) return null;
+function searchChrome(dir, depth = 0) {
+  if (depth > 4) return null;
   let entries = [];
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -53,11 +59,11 @@ function searchExe(dir, depth = 0) {
   }
   for (const e of entries) {
     const p = path.join(dir, e.name);
-    if (e.isFile() && /(chrome|headless_shell).*\.exe$/i.test(e.name)) return p;
+    if (e.isFile() && /^(chrome|headless_shell)(\.exe)?$/i.test(e.name)) return p;
   }
   for (const e of entries) {
     if (e.isDirectory()) {
-      const hit = searchExe(p, depth + 1);
+      const hit = searchChrome(p, depth + 1);
       if (hit) return hit;
     }
   }
@@ -90,11 +96,23 @@ for (const url of urls) {
     });
     const json = JSON.parse(stdout.slice(stdout.indexOf("{")));
     for (const [cat, min] of Object.entries(thresholds)) {
+      // Authenticated application screens are intentionally disallowed in
+      // robots.txt. An SEO score for those URLs is therefore not actionable.
+      if (cat === "seo" && new URL(url).pathname === "/dashboard") {
+        console.log("  seo: N/A (authenticated route; intentionally noindex)");
+        continue;
+      }
       const score = Math.round((json.categories?.[cat]?.score ?? 0) * 100);
       const ok = score >= min;
       console.log(`  ${cat}: ${score} (min ${min}) ${ok ? "PASS" : "FAIL"}`);
       if (!ok) failed = true;
     }
+    const audits = json.audits ?? {};
+    const metric = (id) => Math.round(audits[id]?.numericValue ?? 0);
+    console.log(
+      `  FCP ${metric("first-contentful-paint")}ms · LCP ${metric("largest-contentful-paint")}ms · ` +
+      `TBT ${metric("total-blocking-time")}ms · CLS ${(audits["cumulative-layout-shift"]?.numericValue ?? 0).toFixed(3)}`
+    );
   } catch (e) {
     console.error(`  ERROR: ${String(e.message ?? e).slice(0, 600)}`);
     failed = true;

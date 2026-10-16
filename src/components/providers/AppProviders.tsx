@@ -23,7 +23,9 @@ export function AppProviders({
   return (
     <ThemeProvider>
       <ToastProvider>
-        <AuthProvider initial={initial}>{children}</AuthProvider>
+        <AuthProvider key={`${initial.status}:${initial.userId ?? "guest"}`} initial={initial}>
+          {children}
+        </AuthProvider>
       </ToastProvider>
     </ThemeProvider>
   );

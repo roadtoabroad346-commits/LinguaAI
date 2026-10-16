@@ -22,7 +22,6 @@ import {
   Dumbbell,
   type LucideIcon,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { NAV_ITEMS } from "@/lib/constants";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
 import { cn } from "@/lib/utils";
@@ -68,9 +67,7 @@ export function Sidebar({ className }: { className?: string }) {
             )}
           >
             {active && (
-              <motion.span
-                layoutId="sidebar-active"
-                transition={{ type: "spring", stiffness: 480, damping: 40 }}
+              <span
                 className="absolute inset-0 rounded-2xl bg-brand-100 dark:bg-brand-950"
               />
             )}
