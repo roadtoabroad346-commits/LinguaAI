@@ -1,0 +1,6 @@
+streamlit==1.66.1
+pandas==2.2.3
+matplotlib>=3.8,<4
+altair>=5,<7
+numpy>=1.25,<3
+qrcode[pil]>=8,<9
