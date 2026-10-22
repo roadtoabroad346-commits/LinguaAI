@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { Header } from "@/components/layout/Header";
 import { AuthForm } from "@/components/auth/AuthForm";
+import { GuestButton } from "@/components/auth/GuestButton";
 import { AuthShell } from "@/components/learn/AuthShell";
 import { Alert } from "@/components/ui/feedback";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
@@ -73,6 +74,11 @@ export default async function LoginPage(
           <Suspense>
             <AuthForm mode="signin" />
           </Suspense>
+          <div className="mt-3">
+            <Suspense>
+              <GuestButton withDivider={false} />
+            </Suspense>
+          </div>
           <p className="text-center text-sm text-ink-500">
             {t("auth.newTo")}{" "}
             <Link href="/signup" className="font-semibold text-brand-700 hover:underline">

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { GuestButton } from "@/components/auth/GuestButton";
 import { Badge } from "@/components/ui/feedback";
 import { RingProgress } from "@/components/ui/Ring";
 import { Reveal, Stagger, StaggerItem, AnimatedNumber } from "@/lib/motion/components";
@@ -211,6 +212,11 @@ export function LandingStory() {
                 <Button size="xl" variant="secondary" className="w-full sm:w-auto"><Play className="h-4 w-4" /> {authed ? t("placement.retake") : t("landing.tryPlacement")}</Button>
               </Link>
             </div>
+            {!authed && (
+              <div className="mt-4 max-w-md">
+                <GuestButton variant="ghost" withDivider={false} />
+              </div>
+            )}
             <div className="mt-5 flex flex-wrap items-center gap-4 text-xs font-medium text-ink-500">
               <span className="flex items-center gap-1.5"><Zap className="h-3.5 w-3.5 text-amber-500" /> {t("landing.heroP1")}</span>
               <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-green-600" /> {t("landing.heroP2")}</span>

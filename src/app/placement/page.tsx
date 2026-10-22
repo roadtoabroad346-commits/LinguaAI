@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { PlacementRunner } from "@/components/placement/PlacementRunner";
+import { ManualLevelPicker } from "@/components/placement/ManualLevelPicker";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { Card, CardDescription, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -146,6 +147,14 @@ export default async function PlacementPage(
             existingLevel={profile?.level ?? null}
           />
         </div>
+        {user && (
+          <Card className="mt-6">
+            <CardTitle>{t("placement.pickLevelTitle")}</CardTitle>
+            <div className="mt-3">
+              <ManualLevelPicker />
+            </div>
+          </Card>
+        )}
       </main>
     </div>
   );

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { Header } from "@/components/layout/Header";
 import { AuthForm } from "@/components/auth/AuthForm";
+import { GuestButton } from "@/components/auth/GuestButton";
 import { AuthShell } from "@/components/learn/AuthShell";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 import { ThemeToggle } from "@/components/providers/ThemeToggle";
@@ -43,6 +44,11 @@ export default async function SignUpPage(
         <Suspense>
           <AuthForm mode="signup" />
         </Suspense>
+        <div className="mt-3">
+          <Suspense>
+            <GuestButton withDivider={false} />
+          </Suspense>
+        </div>
         <p className="mt-4 text-center text-sm text-ink-500">
           {t("auth.haveAccount")}{" "}
           <Link href="/login" className="font-semibold text-brand-700 hover:underline">

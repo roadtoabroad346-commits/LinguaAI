@@ -356,6 +356,9 @@
     "passwordUpdated": "Password updated. Log in with your new password.",
     "resetLinkSent": "Reset link sent. Check your inbox.",
     "emailVerified": "Email confirmed. Log in to continue.",
+    "guestCta": "Continue as guest",
+    "guestCtaDesc": "No registration — full access to every feature. Built for jury reviews and investor demos.",
+    "guestFailed": "Guest sign-in failed. Please try again.",
     "errors": {
       "oauthFailed": "Google sign-in failed. Try again or use email.",
       "missingCode": "The sign-in link was incomplete. Try again.",
@@ -508,6 +511,11 @@
   },
   "placement": {
     "title": "Placement Test",
+    "pickLevelTitle": "Already know your level?",
+    "pickLevel": "Choose your level instead of the test",
+    "pickLevelDesc": "Full access opens immediately — perfect for a quick demo or review.",
+    "pickLevelError": "Could not save the level. Please try again.",
+    "pickLevelAria": "Select level {level}",
     "desc": "7 sections · about 23 minutes · estimates your level (A1–C1).",
     "questionOf": "Question {current} of {total}",
     "yourLevel": "Your level",
