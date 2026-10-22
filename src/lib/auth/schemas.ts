@@ -59,6 +59,10 @@ export const GOAL_OPTIONS = [
 ] as const;
 
 export const NATIVE_LANGUAGES = [
+  "Kazakh",
+  "Russian",
+  "Kyrgyz",
+  "Uzbek",
   "Ukrainian",
   "Spanish",
   "French",

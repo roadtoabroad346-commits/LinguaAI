@@ -229,7 +229,7 @@ export function OnboardingWizard({ initial }: { initial: Omit<Partial<Onboarding
                 <option value="">{t("onboarding.selectOption")}</option>
                 {NATIVE_LANGUAGES.map((l) => (
                   <option key={l} value={l}>
-                    {l}
+                    {t(`onboarding.nativeLanguages.${l}`)}
                   </option>
                 ))}
               </select>
@@ -262,7 +262,7 @@ export function OnboardingWizard({ initial }: { initial: Omit<Partial<Onboarding
                           : "border-ink-200 bg-white text-ink-700 hover:border-brand-300 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200"
                       )}
                     >
-                      {g}
+                      {t(`onboarding.goalOptions.${g}`)}
                     </button>
                   );
                 })}

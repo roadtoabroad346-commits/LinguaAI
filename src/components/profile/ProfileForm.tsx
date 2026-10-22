@@ -149,7 +149,7 @@ export function ProfileForm({ profile }: Props) {
                   : "border-ink-200 bg-white text-ink-700 hover:border-ink-300 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-200 dark:hover:border-brand-500"
               )}
             >
-              {g}
+              {t(`onboarding.goalOptions.${g}`)}
             </button>
           ))}
         </div>

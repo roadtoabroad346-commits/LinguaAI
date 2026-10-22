@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { readJson } from "@/lib/api/response";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/feedback";
 import { useTranslation } from "@/lib/i18n/I18nProvider";
@@ -35,7 +36,7 @@ export function GuestButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      const json = (await res.json().catch(() => null)) as {
+      const json = (await readJson(res)) as {
         ok?: boolean;
         next?: string;
         error?: string;
