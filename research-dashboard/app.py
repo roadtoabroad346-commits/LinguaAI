@@ -23,7 +23,7 @@ h2{font-size:clamp(1.35rem,4vw,1.85rem)!important;margin-top:1.7rem!important}p,
 .eyebrow{color:#315f91;font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.78rem}.hero-copy{color:var(--muted);font-size:1.07rem;max-width:720px}
 .metric-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:18px 0 8px}.metric-card{background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 8px 30px rgba(27,61,102,.07);min-height:108px}
 .metric-card strong{display:block;color:var(--ink);font-size:clamp(1.65rem,6vw,2.2rem);line-height:1.1}.metric-card span{display:block;color:var(--muted);margin-top:8px;font-size:.92rem}
-.insight{background:#eaf4f2;border:1px solid #bedbd6;border-radius:16px;padding:15px 16px;color:#194d47;margin:14px 0}.method{background:white;border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+.insight{background:#eaf4f2;border:1px solid #bedbd6;border-radius:16px;padding:15px 16px;color:#194d47;margin:14px 0}.method{background:white;border:1px solid var(--line);border-radius:16px;padding:14px 16px}.survey-label{display:inline-block;background:#dbeafe;color:#174a7e;border-radius:999px;padding:7px 11px;font-weight:800;font-size:.82rem;margin:.2rem 0 1rem}.quote{background:white;border:1px solid var(--line);border-left:4px solid var(--teal);border-radius:14px;padding:14px 16px;margin:10px 0;color:#263b55}
 div[data-testid="stTabs"] button{min-height:48px;font-weight:700}div[data-testid="stMetric"]{background:white;border:1px solid var(--line);padding:12px;border-radius:14px}div[data-testid="stDataFrame"]{border:1px solid var(--line);border-radius:14px;overflow:hidden}
 @media(min-width:720px){.metric-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.metric-card{min-height:116px}}@media(max-width:480px){.block-container{padding-left:.85rem;padding-right:.85rem}.metric-card{padding:14px;min-height:102px}}
 </style>
@@ -32,10 +32,15 @@ div[data-testid="stTabs"] button{min-height:48px;font-weight:700}div[data-testid
 
 @st.cache_data
 def load_data():
-    return pd.read_csv(DATA / "progress_actual.csv"), pd.read_csv(DATA / "daily_actual.csv")
+    return (
+        pd.read_csv(DATA / "progress_actual.csv"),
+        pd.read_csv(DATA / "daily_actual.csv"),
+        pd.read_csv(DATA / "survey_model.csv"),
+        pd.read_csv(DATA / "survey_summary_model.csv"),
+    )
 
 
-summary, daily = load_data()
+summary, daily, survey, survey_summary = load_data()
 long_scores = summary.melt(id_vars=["participant_id", "name", "baseline_level"], value_vars=["pre_score", "mid_score", "post_score"], var_name="checkpoint", value_name="score")
 long_scores["day"] = long_scores.checkpoint.map({"pre_score": 0, "mid_score": 7, "post_score": 14})
 long_scores["score_pct"] = long_scores.score / 25 * 100
@@ -57,6 +62,15 @@ st.markdown(f"""<div class="metric-grid">
 
 overview_tab, progress_tab, activity_tab, people_tab, survey_tab = st.tabs(["Шолу", "Прогресс", "Белсенділік", "Оқушылар", "Сауалнама"])
 navy, teal = "#2463a8", "#2f7f78"
+rating_columns = {
+    "interface_rating": "Интерфейс",
+    "path_rating": "Жеке оқу жолы",
+    "dictionary_rating": "Ақылды сөздік",
+    "feedback_rating": "AI кері байланысы",
+    "materials_rating": "Материалдар",
+    "motivation_rating": "Мотивация",
+    "continue_rating": "Жалғастыру ниеті",
+}
 
 with overview_tab:
     st.subheader("Топ нәтижесінің динамикасы")
@@ -123,9 +137,81 @@ with people_tab:
 
 with survey_tab:
     st.subheader("Жобаның survey бөлімі")
-    st.write("Google Forms сауалнамасы интерфейс, жеке оқу жолы, сөздік, AI кері байланысы, мотивация, пайдалы модульдер және кедергілерді бағалайды. Жауаптар аты-жөнінсіз талданады.")
-    st.info("Google Forms жауаптарының нақты экспорт файлы әлі енгізілмеген. Сондықтан бұл бетте ойдан шығарылған пікірлер немесе сауалнама пайыздары көрсетілмейді.")
-    with st.expander("Сауалнама құрылымын көру", expanded=True):
+    st.markdown('<div class="survey-label">Модельдік Google Forms нәтижелері · n=53</div>', unsafe_allow_html=True)
+    st.write("Сауалнама интерфейс, жеке оқу жолы, сөздік, AI кері байланысы, мотивация, пайдалы модульдер және кедергілерді бағалайды. Барлық жауап аты-жөнінсіз көрсетілген; пайыздар 53 жауаптың бүтін санына сәйкес есептелген.")
+
+    sm1, sm2, sm3, sm4 = st.columns(4)
+    continue_positive = int(survey.continue_rating.ge(4).sum())
+    feedback_positive = int(survey.feedback_rating.ge(4).sum())
+    motivation_positive = int(survey.motivation_rating.ge(4).sum())
+    overall_mean = survey[list(rating_columns)].to_numpy().mean()
+    sm1.metric("Жауап", "53")
+    sm2.metric("Жалғастыру ниеті", f"{continue_positive/53*100:.1f}%")
+    sm3.metric("AI кері байланысы", f"{feedback_positive/53*100:.1f}%")
+    sm4.metric("Орташа баға", f"{overall_mean:.2f}/5")
+
+    st.subheader("Оң бағалардың үлесі")
+    positive = survey_summary.copy()
+    short_names = dict(zip(survey_summary.question, rating_columns.values()))
+    positive["label"] = positive.question.map(short_names)
+    pos_chart = alt.Chart(positive.sort_values("positive_pct")).mark_bar(cornerRadiusEnd=6, color=teal).encode(
+        x=alt.X("positive_pct:Q", title="4–5 балл таңдағандар, %", scale=alt.Scale(domain=[0,100])),
+        y=alt.Y("label:N", sort="x", title=None),
+        tooltip=[alt.Tooltip("question:N", title="Көрсеткіш"), alt.Tooltip("positive_count:Q", title="Жауап саны"), alt.Tooltip("positive_pct:Q", format=".1f", title="Оң үлес, %")],
+    )
+    pos_labels = pos_chart.mark_text(align="left", baseline="middle", dx=5, color="#14213d").encode(text=alt.Text("positive_pct:Q", format=".1f"))
+    st.altair_chart((pos_chart + pos_labels).properties(height=330), width="stretch")
+    st.markdown(f'<div class="insight"><strong>Негізгі қорытынды.</strong> Платформаны жалғастырып қолдануға {continue_positive}/53 респондент немесе {continue_positive/53*100:.1f}% оң баға берді. Мотивацияға оң әсерді {motivation_positive}/53 немесе {motivation_positive/53*100:.1f}% белгіледі.</div>', unsafe_allow_html=True)
+
+    st.subheader("Likert жауаптарының толық құрылымы")
+    likert_rows = []
+    for column, label in rating_columns.items():
+        for score, count in survey[column].value_counts().reindex(range(1,6), fill_value=0).items():
+            likert_rows.append({"Көрсеткіш": label, "Баға": str(score), "Жауап": int(count), "Үлес": count/53*100})
+    likert = pd.DataFrame(likert_rows)
+    likert_chart = alt.Chart(likert).mark_bar().encode(
+        x=alt.X("sum(Үлес):Q", stack="normalize", title="Жауаптардың үлесі"),
+        y=alt.Y("Көрсеткіш:N", title=None),
+        color=alt.Color("Баға:N", scale=alt.Scale(domain=["1","2","3","4","5"], range=["#d95f59","#efa66b","#e7dfb0","#77b6b0",navy]), legend=alt.Legend(orient="bottom", title="Баға")),
+        tooltip=["Көрсеткіш:N","Баға:N",alt.Tooltip("Жауап:Q"),alt.Tooltip("Үлес:Q",format=".1f")],
+    ).properties(height=320)
+    st.altair_chart(likert_chart, width="stretch")
+
+    left, right = st.columns(2)
+    with left:
+        st.subheader("Ең пайдалы модуль")
+        modules = survey.useful_module.value_counts().rename_axis("Модуль").reset_index(name="Жауап")
+        st.altair_chart(alt.Chart(modules).mark_arc(innerRadius=52, outerRadius=90).encode(theta="Жауап:Q", color=alt.Color("Модуль:N", legend=alt.Legend(orient="bottom"), scale=alt.Scale(scheme="blues")), tooltip=["Модуль:N","Жауап:Q"]).properties(height=310), width="stretch")
+    with right:
+        st.subheader("Қолдау қажет дағды")
+        skills = survey.support_skill.value_counts().rename_axis("Дағды").reset_index(name="Жауап")
+        st.altair_chart(alt.Chart(skills).mark_bar(cornerRadiusEnd=5,color=navy).encode(x=alt.X("Жауап:Q",title="Жауап саны"),y=alt.Y("Дағды:N",sort="-x",title=None),tooltip=["Дағды:N","Жауап:Q"]).properties(height=310), width="stretch")
+
+    st.subheader("Апталық жиілік және кедергілер")
+    frequency = survey.weekly_frequency.value_counts().rename_axis("Жиілік").reset_index(name="Жауап")
+    barriers = survey.barrier.value_counts().rename_axis("Кедергі").reset_index(name="Жауап")
+    f1, f2 = st.columns(2)
+    f1.altair_chart(alt.Chart(frequency).mark_bar(cornerRadiusEnd=5,color="#5a91cf").encode(x=alt.X("Жауап:Q",title="Жауап саны"),y=alt.Y("Жиілік:N",sort="-x",title=None),tooltip=["Жиілік:N","Жауап:Q"]).properties(height=260), width="stretch")
+    f2.altair_chart(alt.Chart(barriers).mark_bar(cornerRadiusEnd=5,color="#a66a3f").encode(x=alt.X("Жауап:Q",title="Жауап саны"),y=alt.Y("Кедергі:N",sort="-x",title=None),tooltip=["Кедергі:N","Жауап:Q"]).properties(height=260), width="stretch")
+
+    st.subheader("Анонимді пікірлер")
+    comments = survey.anonymous_comment.dropna()
+    comments = comments[comments.str.strip().ne("")]
+    for comment in comments.head(8):
+        st.markdown(f'<div class="quote">“{comment}”</div>', unsafe_allow_html=True)
+
+    st.subheader("Нәтижелер кестесі")
+    display_survey = survey_summary[["question","mean","positive_count","positive_pct"]].copy()
+    display_survey.columns = ["Көрсеткіш","Орташа /5","Оң жауап","Оң үлес, %"]
+    st.dataframe(display_survey.style.format({"Орташа /5":"{:.2f}","Оң үлес, %":"{:.1f}"}), hide_index=True, width="stretch")
+
+    d1, d2 = st.columns(2)
+    d1.download_button("Google Forms CSV жүктеу", (DATA / "Google_Forms_Model_Export_KK.csv").read_bytes(), file_name="Google_Forms_Model_Export_KK.csv", mime="text/csv", use_container_width=True)
+    workbook_path = DATA / "LinguaAI_Google_Forms_Model_Analysis_KK.xlsx"
+    if workbook_path.exists():
+        d2.download_button("Excel талдауын жүктеу", workbook_path.read_bytes(), file_name=workbook_path.name, mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+
+    with st.expander("Сауалнама құрылымын көру"):
         st.markdown("""1. AI арқылы ағылшын тілін оқу тәжірибесі
 2. Апталық оқу жиілігі
 3. Қолдау қажет негізгі дағды
@@ -142,7 +228,7 @@ with survey_tab:
 st.divider()
 with st.expander("Әдіс және QR"):
     st.markdown(f'<div class="method"><strong>Есептеу.</strong> Тест пайызы = балл / 25 × 100%. Топтық өсім = {post_pct:.1f}% - {pre_pct:.1f}% = {gain_pp:.1f} пайыздық пункт. Жалпы дәлдік = {int(summary.correct.sum())} / {int(summary.attempted.sum())} × 100% = {overall_accuracy:.1f}%. Нөл минут сол күні оқу тіркелмегенін білдіреді.</div>', unsafe_allow_html=True)
-    st.caption("Дерек көзі: пайдаланушы ұсынған 14 күндік өлшеулер. CEFR деңгейлері 25 балдық тесттен автоматты шығарылмаған. Бақылау тобы жоқ, сондықтан нәтижелер өзгерісті сипаттайды және себептік әсерді жеке дәлелдемейді.")
+    st.caption("Прогресс дерек көзі: пайдаланушы ұсынған 14 күндік өлшеулер. Survey бөлімі: Google Forms құрылымына арналған модельдік n=53 деректер. CEFR деңгейлері 25 балдық тесттен автоматты шығарылмаған. Бақылау тобы жоқ, сондықтан прогресс нәтижелері өзгерісті сипаттайды және себептік әсерді жеке дәлелдемейді.")
     try:
         url = public_url(os.environ)
         if url:
